@@ -1,0 +1,61 @@
+<?php
+# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# TelegramBot for MantisBT is free software: 
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License as published by the Free Software Foundation, 
+# either version 2 of the License, or (at your option) any later version.
+#
+# TelegramBot plugin for for MantisBT is distributed in the hope 
+# that it will be useful, but WITHOUT ANY WARRANTY; without even the 
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Customer management plugin for MantisBT.  
+# If not, see <http://www.gnu.org/licenses/>.
+
+$s_plugin_TelegramBot_name_plugin_description_page = 'Бот Телеграм';
+$s_plugin_TelegramBot_description = 'Добавляет в MantisBT функцию взаимодействия с пользователем через мессенджер Телеграмм.';
+
+$s_plugin_TelegramBot_config_title = 'Настройка';
+$s_plugin_TelegramBot_bot_name = 'Имя бота (необходимо для авторизации бота при приёме сообщений)';
+$s_plugin_TelegramBot_api_key = 'Ключ API (необходимо для авторизации бота при отправке сообщений)';
+$s_plugin_TelegramBot_current_config = 'Бот будет отправлять обновления на следующий URL:';
+$s_plugin_TelegramBot_response_from_telegram = 'Ответ сервера Telegram: ';
+
+$s_plugin_TelegramBot_bot_successfully_attached = 'Бот успешно привязан.';
+$s_plugin_TelegramBot_info_to_redirect_bot_page = 'Вернитесь в чат, либо дождитесь переадресации.';
+$s_plugin_TelegramBot_user_relationship_question = 'Связать ваш аккаунт с ботом?';
+
+$s_plugin_TelegramBot_registration_message_text = 'Для того чтобы начать использовать бот необходимо:
+- Иметь действующий аккаунт в %1$s.
+- Привязать Ваш аккаунт нажав на кнопку ниже.
+';
+$s_plugin_TelegramBot_registration_button_text = 'Подтвердить привязку';
+
+$s_plugin_TelegramBot_first_message = '
+В данный момент доступны следующие действия с задачами: 
+- добавлять комментарии
+- прикреплять файлы
+
+Просто отправьте комментарий или файл в чат и следуйте дальнейшим инструкциям.';
+
+$s_plugin_TelegramBot_help_registration_bot_header = 'Инструкция по настройке бота';
+$s_plugin_TelegramBot_help_registration_bot_message = 'Для активации бота необходимо:<br><br>
+1. Найти бота BotFather перейдя по ссылке %1$s или найдя его в мессенджере через поиск <br>
+2. Отправить сообщение /newbot в чат с BotFather <br>
+3. Отправить в виде сообщения «Краткое_наименование_бота» <br>
+4. Отправить в виде сообщения «логин_бота_bot» (Обратите внимание, что логин должен оканчиваться на _bot) <br>
+5. После того как BotFather сообщит что бот создан, скопируйте token и логин бота в соответствующие поля ниже и примените изменения. <br>
+6. Далее необходимо передать пользователя имя бота или ссылку в виде https://t.me/"логин_вашего_бота"'; 
+
+
+$s_plugin_TelegramBot_bug_section_select = 'Выберите раздел с задачами:';
+$s_plugin_TelegramBot_bug_select = 'Выберите задачу';
+$s_plugin_TelegramBot_file_upload_complete = 'Файл загружен в задачу: ';
+$s_plugin_TelegramBot_comment_add_complete = 'Комментарий добавлен к задаче: ';
+
+$s_plugin_TelegramBot_error_file_size = 'Файл не должен превышать 20 Мб';
+$s_plugin_TelegramBot_error_content_type = 'Запрос не поддерживается ботом';
+$s_plugin_TelegramBot_error_user = 'Пользователь отключен или не существует.';
+

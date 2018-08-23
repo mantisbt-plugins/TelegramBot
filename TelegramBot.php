@@ -69,9 +69,6 @@ class TelegramBotPlugin extends MantisPlugin {
 //
 //    function bugnote_telegram_send( $p_type_event, $p_bug_id, $p_bugnote_id ) {
 //
-//        $token   = '413412311:AAEl_ZH1U9UF0HQjvpLBB9ZROMBlrLOZRP0';
-//        $botname = 'mantis_profi_bot';
-//
 //
 //        $t_tg = new \Longman\TelegramBot\Telegram( $token, $botname );
 //

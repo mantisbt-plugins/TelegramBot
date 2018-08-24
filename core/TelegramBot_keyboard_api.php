@@ -88,7 +88,7 @@ function keyboard_bugs_get( $p_mantis_custom_filter, $p_page ) {
     }
 
     $t_inline_keyboard->addRow( [
-                              'text'          => '>> К списку разделов <<',
+                              'text'          => '>>' . plugin_lang_get( 'keyboard_button_list_of_sections' ) . '<<',
                               'callback_data' => json_encode( array(
                                                         'get_default_category' => ''
                               ) )

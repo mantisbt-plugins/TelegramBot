@@ -52,7 +52,7 @@ $s_plugin_TelegramBot_help_registration_bot_message = 'Для активации
 
 $s_plugin_TelegramBot_bug_section_select = 'Выберите раздел с задачами:';
 $s_plugin_TelegramBot_bug_select = 'Выберите задачу';
-$s_plugin_TelegramBot_file_upload_complete = 'Файл загружен в задачу: ';
+$s_plugin_TelegramBot_content_upload_complete = 'Контент прикреплён к задаче: ';
 $s_plugin_TelegramBot_comment_add_complete = 'Комментарий добавлен к задаче: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'К списку разделов';
 

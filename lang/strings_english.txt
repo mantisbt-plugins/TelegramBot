@@ -52,7 +52,7 @@ $s_plugin_TelegramBot_help_registration_bot_message = 'To activate the bot, you 
 
 $s_plugin_TelegramBot_bug_section_select = 'Select a section with bugs:';
 $s_plugin_TelegramBot_bug_select = 'Select a bug';
-$s_plugin_TelegramBot_file_upload_complete = 'The file is uploaded to bug: ';
+$s_plugin_TelegramBot_content_upload_complete = 'The content is attached to the bug: ';
 $s_plugin_TelegramBot_comment_add_complete = 'Comment added to bug: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'List of sections';
 

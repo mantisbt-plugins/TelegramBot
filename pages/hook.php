@@ -130,14 +130,14 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
                 case 'get_default_category':
 
                     $t_inline_keyboard = telegram_bot_get_keyboard_default_filter();
-                    $data              = [
+                    $t_data_send       = [
                                               'chat_id'      => $t_orgl_message->getChat()->getId(),
                                               'message_id'   => $t_callback_query->getMessage()->getMessageId(),
                                               'text'         => plugin_lang_get( 'bug_section_select' ),
                                               'reply_markup' => $t_inline_keyboard,
                     ];
 
-                    Longman\TelegramBot\Request::editMessageText( $data );
+                    Longman\TelegramBot\Request::editMessageText( $t_data_send );
                     break;
 
                 case 'get_bugs':
@@ -161,18 +161,19 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
 
                     $t_inline_keyboard = keyboard_bugs_get( $t_custom_filter, $t_data['page'] );
 
-                    $data = [
+                    $t_data_send = [
                                               'chat_id'      => $t_orgl_message->getChat()->getId(),
                                               'message_id'   => $t_callback_query->getMessage()->getMessageId(),
                                               'text'         => plugin_lang_get( bug_select ),
                                               'reply_markup' => $t_inline_keyboard,
                     ];
 
-                    Longman\TelegramBot\Request::editMessageText( $data );
+                    Longman\TelegramBot\Request::editMessageText( $t_data_send );
                     break;
 
                 case 'set_bug':
 
+                    $t_bug_id       = $t_data['set_bug'];
                     $t_content_type = $t_orgl_message->getType();
 
                     switch( $t_content_type ) {
@@ -202,43 +203,49 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
                             $t_file_path = $t_tg->getDownloadPath() . $t_file->getFilePath();
 
                             $t_file_for_attach = [
-                                                      'browser_upload' => FALSE,
-                                                      'tmp_name'       => $t_file_path,
-                                                      'name'           => $t_file_orgl->getFileName() == NULL ? $t_file->getFilePath() : $t_file_orgl->getFileName()
+                                                      'browser_upload' => [ 0 => FALSE ],
+                                                      'tmp_name'       => [ 0 => $t_file_path ],
+                                                      'name'           => $t_file_orgl->getFileName() == NULL ? [ 0 => $t_file->getFilePath() ] : [ 0 => $t_file_orgl->getFileName() ]
                             ];
-
-                            $t_file_complite = file_add( $t_data['set_bug'], $t_file_for_attach );
-
-                            $inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-
-                            $t_data = [
-                                                      'chat_id'    => $t_callback_query->getMessage()->getChat()->getId(),
-                                                      'message_id' => $t_callback_query->getMessage()->getMessageId(),
-                                                      'text'       => plugin_lang_get( 'file_upload_complete' ) . $t_data['set_bug']
-                            ];
-
-                            Longman\TelegramBot\Request::editMessageText( $t_data );
+                            $t_text            = $t_orgl_message->getCaption();
                             break;
 
                         case 'text':
-                            $t_text       = $t_orgl_message->getText();
-                            $t_bugnote_id = bugnote_add( $t_data['set_bug'], $t_text );
 
-                            $inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-
-                            $t_data = [
-                                                      'chat_id'    => $t_callback_query->getMessage()->getChat()->getId(),
-                                                      'message_id' => $t_callback_query->getMessage()->getMessageId(),
-                                                      'text'       => plugin_lang_get( 'comment_add_complete' ) . $t_data['set_bug']
-                            ];
-
-                            Longman\TelegramBot\Request::editMessageText( $t_data );
+                            $t_text            = $t_orgl_message->getText();
+                            $t_file_for_attach = array();
                             break;
                     }
+                    //END SWITCH 'CONTENT TYPE'
+                    //SEND MESSAGE
+                    $inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+                    try {
+                        bugnote_add_from_telegram( $t_bug_id, $t_text, $t_file_for_attach );
+
+                        $t_data_send = [
+                                                  'chat_id'    => $t_callback_query->getMessage()->getChat()->getId(),
+                                                  'message_id' => $t_callback_query->getMessage()->getMessageId(),
+                                                  'text'       => plugin_lang_get( 'content_upload_complete' ) . $t_data['set_bug']
+                        ];
+                    } catch( Mantis\Exceptions\MantisException $t_error ) {
+                        
+                        $t_params = $t_error->getParams();
+                        if( !empty( $t_params ) ) {
+                            call_user_func_array( 'error_parameters', $t_params );
+                        }
+                        $t_error_text = error_string( $t_error->getCode() );
+                        $t_data_send  = [
+                                                  'chat_id'    => $t_callback_query->getMessage()->getChat()->getId(),
+                                                  'message_id' => $t_callback_query->getMessage()->getMessageId(),
+                                                  'text'       => $t_error_text
+                        ];
+                    }
+                    Longman\TelegramBot\Request::editMessageText( $t_data_send );
+                    //END SEND MESSAGE
                     break;
             }
-
             break;
-//END CALLBACK
+        //END CALLBACK
     }
 }

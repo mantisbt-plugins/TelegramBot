@@ -56,3 +56,46 @@ function helper_ensure_telegram_bot_registred_confirmed( $p_message ) {
     layout_page_end();
     exit;
 }
+
+function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(), $p_duration = '0:00') {
+
+    $f_bug_id   = $p_bug_id;
+    $f_text     = $p_text;
+    $f_duration = $p_duration;
+    $f_files    = $p_files;
+
+    $t_query = array( 'issue_id' => $f_bug_id );
+
+    if( count( $f_files ) > 0 && is_blank( $f_text ) && helper_duration_to_minutes( $f_duration ) == 0 ) {
+        $t_payload = array(
+                                  'files' => helper_array_transpose( $f_files )
+        );
+
+        $t_data = array(
+                                  'query'   => $t_query,
+                                  'payload' => $t_payload,
+        );
+
+        $t_command = new IssueFileAddCommand( $t_data );
+        $t_command->execute();
+    } else {
+        $t_payload = array(
+                                  'text'          => $f_text,
+                                  'view_state'    => array(
+                                                            'id' => VS_PUBLIC
+                                  ),
+                                  'time_tracking' => array(
+                                                            'duration' => $f_duration
+                                  ),
+                                  'files'         => helper_array_transpose( $f_files )
+        );
+
+        $t_data = array(
+                                  'query'   => $t_query,
+                                  'payload' => $t_payload,
+        );
+
+        $t_command = new IssueNoteAddCommand( $t_data );
+        $t_command->execute();
+    }
+}

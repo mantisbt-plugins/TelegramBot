@@ -51,7 +51,7 @@ try {
 //}
 
     html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_result->getDescription() );
-} catch( Longman\TelegramBot\Exception\TelegramException $e ) {
-    html_operation_failure( $t_redirect_url, $e->getMessage() );
+} catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
+    html_operation_failure( $t_redirect_url, $t_errors->getMessage() );
 }
 layout_page_end();

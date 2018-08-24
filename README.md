@@ -32,3 +32,4 @@ Supported Versions
 ------------------
 
 - MantisBT 2.14 and higher - supported
+- Only https ssl certificate signed trusted ca is supported for MantisBT ( In the near future, a self-signed https certificate will be supported. )

@@ -97,3 +97,7 @@ function keyboard_bugs_get( $p_mantis_custom_filter, $p_page ) {
 
     return $t_inline_keyboard;
 }
+
+function keyboard_operation_select() {
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+}

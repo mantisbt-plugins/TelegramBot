@@ -86,8 +86,8 @@ print_manage_menu( 'manage_plugin_page.php' );
                                         $t_tg          = new \Longman\TelegramBot\Telegram( $t_api_key, $t_bot_name );
                                         $t_result      = Longman\TelegramBot\Request::getWebhookInfo();
                                         $t_webhook_url = $t_result->result->getUrl();
-                                    } catch( Longman\TelegramBot\Exception\TelegramException $e ) {
-                                        $t_webhook_url = $e->getMessage();
+                                    } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
+                                        $t_webhook_url = $$t_errors->getMessage();
                                     }
 
                                     if( $t_webhook_url ) {

@@ -54,8 +54,8 @@ $s_plugin_TelegramBot_bug_section_select = 'Выберите раздел с з�
 $s_plugin_TelegramBot_bug_select = 'Выберите задачу';
 $s_plugin_TelegramBot_file_upload_complete = 'Файл загружен в задачу: ';
 $s_plugin_TelegramBot_comment_add_complete = 'Комментарий добавлен к задаче: ';
+$s_plugin_TelegramBot_keyboard_button_list_of_sections = 'К списку разделов';
 
 $s_plugin_TelegramBot_error_file_size = 'Файл не должен превышать 20 Мб';
 $s_plugin_TelegramBot_error_content_type = 'Запрос не поддерживается ботом';
 $s_plugin_TelegramBot_error_user = 'Пользователь отключен или не существует.';
-

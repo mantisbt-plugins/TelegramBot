@@ -17,6 +17,8 @@
 
 function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_message_id = 0 ) {
 
+    global $g_cache_cookie_valid;
+
     $t_mantis_user_id = user_get_id_by_telegram_user_id( $p_telegram_user_id );
 
     if( $t_mantis_user_id == NULL ) {
@@ -33,6 +35,9 @@ function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_messag
         return FALSE;
     } else {
         current_user_set( $t_mantis_user_id );
+        $g_cache_cookie_valid = TRUE;
+
+        lang_push( lang_get_default() );
         return TRUE;
     }
 }

@@ -13,3 +13,49 @@
 # You should have received a copy of the GNU General Public License
 # along with Customer management plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
+
+$s_plugin_TelegramBot_name_plugin_description_page = 'Telegram Bot';
+$s_plugin_TelegramBot_description = 'Adds the user interaction function to the MantisBT via the Telegram messenger.';
+
+$s_plugin_TelegramBot_config_title = 'Settings';
+$s_plugin_TelegramBot_bot_name = 'Bot name (required for bot authorization when receiving messages)';
+$s_plugin_TelegramBot_api_key = 'API key (required for bot authorization when sending messages)';
+$s_plugin_TelegramBot_current_config = 'The bot will send updates to the following URL:';
+$s_plugin_TelegramBot_response_from_telegram = 'Telegram server response: ';
+
+$s_plugin_TelegramBot_bot_successfully_attached = 'The bot is successfully attached.';
+$s_plugin_TelegramBot_info_to_redirect_bot_page = 'Return to the chat, or wait for redirection.';
+$s_plugin_TelegramBot_user_relationship_question = 'Associate your account with a bot?';
+
+$s_plugin_TelegramBot_registration_message_text = 'In order to start using the bot it is necessary:
+- Have a valid account in %1$s.
+- Link your account by clicking on the button below.
+';
+$s_plugin_TelegramBot_registration_button_text = 'Confirm the binding';
+
+$s_plugin_TelegramBot_first_message = '
+The following actions are currently available with bugs: 
+- add comments
+- attach files
+
+Just send a comment or file to the chat and follow the instructions.';
+
+$s_plugin_TelegramBot_help_registration_bot_header = 'Instructions for setting up the bot';
+$s_plugin_TelegramBot_help_registration_bot_message = 'To activate the bot, you must:<br><br>
+1. Find a bot BotFather follow the link %1$s or by finding it in the instant messenger through a search <br>
+2. Send a message /newbot in the chat with BotFather <br>
+3. Send as "Short_Name_Bot" <br>
+4. Send as "login_bot_bot" (Note that the login must end in _bot) <br>
+5. After BotFather reports that the bot was created, copy the token and bot login to the appropriate fields below and apply the changes. <br>
+6. Next, you need to send the user a bot name or link in the form https://t.me/"login_your_bot"'; 
+
+
+$s_plugin_TelegramBot_bug_section_select = 'Select a section with bugs:';
+$s_plugin_TelegramBot_bug_select = 'Select a bug';
+$s_plugin_TelegramBot_file_upload_complete = 'The file is uploaded to bug: ';
+$s_plugin_TelegramBot_comment_add_complete = 'Comment added to bug: ';
+$s_plugin_TelegramBot_keyboard_button_list_of_sections = 'List of sections';
+
+$s_plugin_TelegramBot_error_file_size = 'The file should not exceed 20 MB';
+$s_plugin_TelegramBot_error_content_type = 'The request is not supported by this bot';
+$s_plugin_TelegramBot_error_user = 'The user is deactivated or does not exist.';

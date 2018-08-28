@@ -105,8 +105,8 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
 //END MESSAGE
 //CALLBACK
         case 'callback_query':
-            $t_callback_query = $t_update->getCallbackQuery();
-
+            $t_callback_query  = $t_update->getCallbackQuery();
+            $t_result_callback = $t_callback_query->answer();
             if( !auth_ensure_telegram_user_authenticated( $t_callback_query->getFrom()->getId() ) ) {
                 break;
             }
@@ -119,7 +119,7 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
 
             switch( $t_command[0] ) {
                 case 'report_bug':
-                    $t_data_send = telegram_report_bug( $t_data['report_bug'], $t_orgl_message->getChat()->getId(), $t_callback_query->getMessage()->getMessageId() );
+                    $t_data_send = telegram_bug_report( $t_data['report_bug'], $t_orgl_message->getChat()->getId(), $t_callback_query->getMessage()->getMessageId() );
                     break;
 
                 case 'action_select':
@@ -246,6 +246,7 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
                     }
                     break;
             }
+
 
             $t_result = Longman\TelegramBot\Request::editMessageText( $t_data_send );
             break;

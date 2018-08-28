@@ -50,11 +50,13 @@ $s_plugin_TelegramBot_help_registration_bot_message = 'Для активации
 6. Далее необходимо передать пользователя имя бота или ссылку в виде https://t.me/"логин_вашего_бота"'; 
 
 
+$s_plugin_TelegramBot_action_select = 'Выберите действие:';
 $s_plugin_TelegramBot_bug_section_select = 'Выберите раздел с задачами:';
 $s_plugin_TelegramBot_bug_select = 'Выберите задачу';
 $s_plugin_TelegramBot_content_upload_complete = 'Контент прикреплён к задаче: ';
 $s_plugin_TelegramBot_comment_add_complete = 'Комментарий добавлен к задаче: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'К списку разделов';
+$s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
 
 $s_plugin_TelegramBot_error_file_size = 'Файл не должен превышать 20 Мб';
 $s_plugin_TelegramBot_error_content_type = 'Запрос не поддерживается ботом';

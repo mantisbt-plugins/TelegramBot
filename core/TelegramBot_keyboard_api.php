@@ -34,6 +34,13 @@ function telegram_bot_get_keyboard_default_filter() {
         $t_inline_keyboard->addRow( $t_row );
     }
 
+    $t_inline_keyboard->addRow( [
+                              'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
+                              'callback_data' => json_encode( array(
+                                                        'action_select' => ''
+                              ) )
+    ] );
+
     return $t_inline_keyboard;
 }
 
@@ -98,6 +105,110 @@ function keyboard_bugs_get( $p_mantis_custom_filter, $p_page ) {
     return $t_inline_keyboard;
 }
 
-function keyboard_operation_select() {
+function keyboard_get_menu_operations() {
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    if( access_has_any_project_level( 'report_bug_threshold' ) ) {
+        $t_inline_keyboard->addRow( [
+                                  'text'          => lang_get( 'report_bug_link' ),
+                                  'callback_data' => json_encode( array(
+                                                            'report_bug' => array(
+                                                                                      'get_project' => 0,
+                                                                                      'page'        => 1,
+                                                                                      'from_page'   => 1
+                                                            )
+                                  ) )
+        ] );
+    }
+
+    $t_inline_keyboard->addRow( [
+                              'text'          => lang_get( 'add_bugnote_title' ),
+                              'callback_data' => json_encode( array(
+                                                        'get_default_category' => ''
+                              ) )
+    ] );
+
+    return $t_inline_keyboard;
+}
+
+function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1, $p_from_page = 1 ) {
+
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    $t_user_id = auth_get_current_user_id();
+
+    if( $p_selected_project == ALL_PROJECTS ) {
+        $t_project_ids = user_get_accessible_projects( $t_user_id );
+    } else {
+        $t_project_ids = user_get_accessible_subprojects( $t_user_id, $p_selected_project );
+    }
+
+    project_cache_array_rows( $t_project_ids );
+
+    for( $i = ($p_page * 10) - 10; $i < ($p_page * 10) && $i < count( $t_project_ids ); $i++ ) {
+
+        $t_child_project_ids = user_get_accessible_subprojects( $t_user_id, $t_project_ids[$i] );
+        $t_inline_keyboard->addRow( [
+                                  'text'          => project_get_field( $t_project_ids[$i], 'name' ),
+                                  'callback_data' => json_encode( array(
+                                                            'report_bug' => array(
+                                                                                      'set_project' => $t_project_ids[$i]
+                                                            )
+                                  ) )
+                ], count( $t_child_project_ids ) > 0 ? [
+                                          'text'          => '>>',
+                                          'callback_data' => json_encode( array(
+                                                                    'report_bug' => array(
+                                                                                              'get_project' => $t_project_ids[$i],
+                                                                                              'page'        => 1,
+                                                                                              'from_page'   => $p_page
+                                                                    )
+                                          ) )
+                        ] : []
+        );
+    }
+
+    if( $p_page > 1 ) {
+        $t_inline_keyboard->addRow( [
+                                  'text'          => '<<',
+                                  'callback_data' => json_encode( array(
+                                                            'report_bug' => array(
+                                                                                      'get_project' => $p_selected_project,
+                                                                                      'page'        => $p_page - 1,
+                                                                                      'from_page'   => $p_from_page
+                                                            )
+                                  ) )
+        ] );
+    }
+
+    if( $p_page <= 1 ) {
+        $t_parent_project_id = project_hierarchy_get_parent( $p_selected_project, TRUE );
+        if( $t_parent_project_id != 0 ) {
+            $t_inline_keyboard->addRow( [
+                                      'text'          => '<<',
+                                      'callback_data' => json_encode( array(
+                                                                'report_bug' => array(
+                                                                                          'get_project' => $t_parent_project_id,
+                                                                                          'page'        => $p_from_page,
+                                                                                          'from_page'   => $p_page
+                                                                )
+                                      ) )
+            ] );
+        }
+    }
+
+    if( (count( $t_project_ids ) / 10) > $p_page ) {
+        $t_inline_keyboard->addRow( [
+                                  'text'          => '>>',
+                                  'callback_data' => json_encode( array(
+                                                            'report_bug' => array(
+                                                                                      'get_project' => $p_selected_project,
+                                                                                      'page'        => $p_page + 1,
+                                                                                      'from_page'   => $p_from_page
+                                                            )
+                                  ) )
+        ] );
+    }
+
+    return $t_inline_keyboard;
 }

@@ -57,7 +57,7 @@ function helper_ensure_telegram_bot_registred_confirmed( $p_message ) {
     exit;
 }
 
-function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(), $p_duration = '0:00') {
+function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(), $p_duration = '0:00' ) {
 
     $f_bug_id   = $p_bug_id;
     $f_text     = $p_text;
@@ -98,4 +98,32 @@ function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(),
         $t_command = new IssueNoteAddCommand( $t_data );
         $t_command->execute();
     }
+}
+
+function telegram_report_bug( $p_current_action, $p_orgl_chat_id, $p_callback_msg_id ) {
+
+    $t_command = array_keys( $p_current_action );
+
+    switch( $t_command[0] ) {
+        case '' :
+        case 'get_project':
+//            $t_default_project = user_pref_get_pref( auth_get_current_user_id(), 'default_project' );
+
+            $t_inline_keyboard = keyboard_projects_get( $p_current_action['get_project'], $p_current_action['page'], $p_current_action['from_page'] );
+            $t_text            = lang_get( 'project_selection_title' );
+            break;
+        case 'set_project':
+            
+            $t_inline_keyboard = keyboard_projects_get( $p_current_action['set_project'], $p_current_action['page'] );
+//            $t_text            = lang_get( 'project_selection_title' );
+    }
+
+
+    $t_data_send = [
+                              'chat_id'      => $p_orgl_chat_id,
+                              'message_id'   => $p_callback_msg_id,
+                              'text'         => $t_text,
+                              'reply_markup' => $t_inline_keyboard,
+    ];
+    return $t_data_send;
 }

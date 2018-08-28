@@ -84,10 +84,10 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
                     }
 
                 case 'text':
-                    $t_inline_keyboard = telegram_bot_get_keyboard_default_filter();
+                    $t_inline_keyboard = keyboard_get_menu_operations();
                     $data              = [
                                               'chat_id'             => $t_message->getChat()->getId(),
-                                              'text'                => plugin_lang_get( 'bug_section_select' ),
+                                              'text'                => plugin_lang_get( 'action_select' ),
                                               'reply_markup'        => $t_inline_keyboard,
                                               'reply_to_message_id' => $t_message->getMessageId()
                     ];
@@ -118,6 +118,19 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
             $t_command = array_keys( $t_data );
 
             switch( $t_command[0] ) {
+                case 'report_bug':
+                    $t_data_send = telegram_report_bug( $t_data['report_bug'], $t_orgl_message->getChat()->getId(), $t_callback_query->getMessage()->getMessageId() );
+                    break;
+
+                case 'action_select':
+                    $t_inline_keyboard = keyboard_get_menu_operations();
+                    $t_data_send       = [
+                                              'chat_id'      => $t_orgl_message->getChat()->getId(),
+                                              'message_id'   => $t_callback_query->getMessage()->getMessageId(),
+                                              'text'         => plugin_lang_get( 'action_select' ),
+                                              'reply_markup' => $t_inline_keyboard,
+                    ];
+                    break;
 
                 case 'get_default_category':
                     $t_inline_keyboard = telegram_bot_get_keyboard_default_filter();
@@ -152,7 +165,7 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
                     $t_data_send       = [
                                               'chat_id'      => $t_orgl_message->getChat()->getId(),
                                               'message_id'   => $t_callback_query->getMessage()->getMessageId(),
-                                              'text'         => plugin_lang_get( bug_select ),
+                                              'text'         => plugin_lang_get( 'bug_select' ),
                                               'reply_markup' => $t_inline_keyboard,
                     ];
                     break;
@@ -182,6 +195,12 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
                             $t_download = Longman\TelegramBot\Request::getFile( [ 'file_id' => $t_file_orgl->getFileId() ] );
 
                             $t_file = $t_download->getResult();
+
+                            $t_data_send_action = [
+                                                      'chat_id' => $t_callback_query->getMessage()->getChat()->getId(),
+                                                      'action'  => 'upload_document'
+                            ];
+                            $t_rttt             = Longman\TelegramBot\Request::sendChatAction( $t_data_send_action );
 
                             Longman\TelegramBot\Request::downloadFile( $t_file );
 
@@ -228,7 +247,7 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
                     break;
             }
 
-            Longman\TelegramBot\Request::editMessageText( $t_data_send );
+            $t_result = Longman\TelegramBot\Request::editMessageText( $t_data_send );
             break;
 //END CALLBACK
     }

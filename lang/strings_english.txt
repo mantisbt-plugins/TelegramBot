@@ -35,8 +35,9 @@ $s_plugin_TelegramBot_registration_button_text = 'Confirm the binding';
 
 $s_plugin_TelegramBot_first_message = '
 The following actions are currently available with bugs: 
-- add comments
-- attach files
+- report bugs;
+- add comments;
+- attach files.
 
 Just send a comment or file to the chat and follow the instructions.';
 

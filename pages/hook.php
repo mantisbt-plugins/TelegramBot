@@ -23,10 +23,12 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
 
     $t_tg->setDownloadPath( plugin_config_get( 'download_path' ) );
 
+//    $dwdds = $t_tg->addCommandsPath( realpath( __DIR__ . '/../core/Commands/' ));
+//    $efvef = $t_tg->handle();
+
     $post = json_decode( Longman\TelegramBot\Request::getInput(), true );
 
-    $t_update = new Longman\TelegramBot\Entities\Update( $post, $botname );
-
+    $t_update      = new Longman\TelegramBot\Entities\Update( $post, $botname );
     $t_update_type = $t_update->getUpdateType();
 
     switch( $t_update_type ) {
@@ -88,25 +90,28 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
 
                     if( $t_bug_data_draft == NULL ) {
                         $data = telegram_action_select( $t_message->getChat()->getId(), $t_message->getMessageId() );
-                    } else {
-                        if( is_blank( $t_bug_data_draft['summary'] ) ) {
-
-                            $t_bug_data_draft['summary'] = $t_message->getText();
-                            plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
-
-                            $data = [
-                                                      'chat_id' => $t_message->getChat()->getId(),
-                                                      'text'    => plugin_lang_get( 'get_description' )
-                            ];
-                        } else {
-
-                            $t_bug_data_draft['description'] = $t_message->getText();
-
-                            $data = telegram_bug_add( $t_bug_data_draft, $t_message->getChat()->getId(), $t_message->getMessageId() );
-                        }
+                        break;
                     }
 
-                    break;
+                    if( is_blank( $t_bug_data_draft['summary'] ) ) {
+
+                        $t_bug_data_draft['summary'] = $t_message->getText();
+                        plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+
+                        $data = [
+                                                  'chat_id' => $t_message->getChat()->getId(),
+                                                  'text'    => plugin_lang_get( 'get_description' )
+                        ];
+                        break;
+                    }
+                    if( is_blank( $t_bug_data_draft['description'] ) ) {
+
+                        $t_bug_data_draft['description'] = $t_message->getText();
+
+                        $data = telegram_bug_add( $t_bug_data_draft, $t_message->getChat()->getId(), $t_message->getMessageId() );
+
+                        break;
+                    }
 
                 default :
                     $data = [
@@ -128,15 +133,11 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
 
             $t_data = json_decode( $t_callback_query->getData(), TRUE );
 
-//            $t_orgl_message    = $t_callback_query->getMessage()->getReplyToMessage();
-//            $t_orgl_message    = $t_callback_query->getMessage();
             $t_result_callback = $t_callback_query->answer();
             $t_command         = array_keys( $t_data );
 
             switch( $t_command[0] ) {
                 case 'rb':
-//                    $t_data_send = telegram_bug_report( $t_data['report_bug'], $t_orgl_message->getChat()->getId(), $t_callback_query->getMessage()->getMessageId() );
-
                     $t_data_send = telegram_bug_report( $t_data['rb'], $t_callback_query );
                     break;
 

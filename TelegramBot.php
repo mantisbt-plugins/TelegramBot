@@ -46,10 +46,12 @@ class TelegramBotPlugin extends MantisPlugin {
 
     function init() {
         require_once __DIR__ . '/api/vendor/autoload.php';
+        require_once 'core/TelegramBot_bug_api.php';
         require_once 'core/TelegramBot_authentication_api.php';
         require_once 'core/TelegramBot_user_api.php';
         require_once 'core/TelegramBot_helper_api.php';
         require_once 'core/TelegramBot_keyboard_api.php';
+        require_once 'core/TelegramBot_fields_api.php';
     }
 
     function config() {
@@ -57,7 +59,8 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'api_token'      => NULL,
                                   'bot_name'       => NULL,
                                   'bot_father_url' => 'https://t.me/BotFather',
-                                  'telegram_url'   => 'https://telegram.me/'
+                                  'telegram_url'   => 'https://telegram.me/',
+                                  'download_path'  => '/tmp/'
         );
     }
 

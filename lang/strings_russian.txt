@@ -61,3 +61,7 @@ $s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
 $s_plugin_TelegramBot_error_file_size = 'Файл не должен превышать 20 Мб';
 $s_plugin_TelegramBot_error_content_type = 'Запрос не поддерживается ботом';
 $s_plugin_TelegramBot_error_user = 'Пользователь отключен или не существует.';
+
+$s_plugin_TelegramBot_get_description = 'ВВЕДИТЕ ТЕКСТ ОПИСАНИЯ:';
+$s_plugin_TelegramBot_get_summary = 'ВВЕДИТЕ ТЕМУ:';
+$s_plugin_TelegramBot_bug_creation_complete = 'Создана %1$s: ';

@@ -7,7 +7,7 @@ Features
 --------
 A lot of things are in the plans, but at the moment the following functions are implemented:
 
-- Report bugs;
+- Report bugs (v. >= 1.1);
 - Attach files to bugs;
 - Send comments to bugs.
 

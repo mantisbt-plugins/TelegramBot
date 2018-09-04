@@ -7,6 +7,241 @@
  */
 
 /**
+ * Send a notification to user or set of users that were mentioned in an issue
+ * or an issue note.
+ *
+ * @param integer       $p_bug_id     Issue for which the reminder is sent.
+ * @param array         $p_mention_user_ids User id or list of user ids array.
+ * @param string        $p_message    Optional message to add to the e-mail.
+ * @param array         $p_removed_mention_user_ids  The users that were removed due to lack of access.
+ * @return array        List of users ids to whom the mentioned e-mail were actually sent
+ */
+function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_message, $p_removed_mention_user_ids = array() ) {
+    if( OFF == plugin_config_get( 'enable_telegram_message_notification' ) || plugin_config_get( 'api_key' ) == NULL ) {
+        plugin_log_event( 'telegram notifications disabled.' );
+        return array();
+    }
+
+    $t_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
+
+    $t_project_id = bug_get_field( $p_bug_id, 'project_id' );
+    $t_sender_id  = auth_get_current_user_id();
+    $t_sender     = user_get_name( $t_sender_id );
+
+    $t_project_name = project_get_field( bug_get_field( $p_bug_id, 'project_id' ), 'name' );
+
+    $t_bug_summary = bug_get_field( $p_bug_id, 'summary' );
+
+    $t_formatted_bug_id = bug_format_id( $p_bug_id );
+
+    $t_subject         = email_build_subject( $p_bug_id );
+    $t_date            = date( config_get( 'normal_date_format' ) );
+    $t_user_id         = auth_get_current_user_id();
+    $t_users_processed = array();
+
+    foreach( $p_removed_mention_user_ids as $t_removed_mention_user_id ) {
+        plugin_log_event( 'skipped mention telegram for U' . $t_removed_mention_user_id . ' (no access to issue or note).' );
+    }
+
+    $t_result = array();
+    foreach( $p_mention_user_ids as $t_mention_user_id ) {
+        # Don't trigger mention emails for self mentions
+        if( $t_mention_user_id == $t_user_id ) {
+            plugin_log_event( 'skipped mention telegram for U' . $t_mention_user_id . ' (self-mention).' );
+            continue;
+        }
+
+        # Don't process a user more than once
+        if( isset( $t_users_processed[$t_mention_user_id] ) ) {
+            continue;
+        }
+
+        $t_users_processed[$t_mention_user_id] = true;
+
+        # Don't telegram mention notifications to disabled users.
+        if( !user_is_enabled( $t_mention_user_id ) ) {
+            continue;
+        }
+
+        lang_push( user_pref_get_language( $t_mention_user_id, $t_project_id ) );
+
+        $t_telegram_user_id = telegram_user_get_id_by_user_id( $t_mention_user_id );
+
+        if( access_has_project_level( config_get( 'show_user_email_threshold' ), $t_project_id, $t_mention_user_id ) ) {
+            $t_sender_email = ' <' . user_get_email( $t_sender_id ) . '> ';
+        } else {
+            $t_sender_email = '';
+        }
+
+        $t_second_message = plugin_config_get( 'telegram_message_separator2' ) . "\n";
+        $t_second_message .= '[ ' . $t_project_name . ' ]' . "\n";
+        $t_second_message .= $t_formatted_bug_id . ': ' . $t_bug_summary . "\n";
+
+//        $t_complete_subject = sprintf( lang_get( 'mentioned_in' ), $t_subject );
+//        $t_header           = "\n" . lang_get( 'on_date' ) . ' ' . $t_date . ', ' . $t_sender . ' ' . $t_sender_email . lang_get( 'mentioned_you' ) . "\n\n";
+        $t_header   = $t_sender . ' ' . $t_sender_email . lang_get( 'mentioned_you' ) . "\n";
+        $t_contents = $t_header . $t_second_message . string_get_bug_view_url_with_fqdn( $p_bug_id ) . " \n\n" . $p_message;
+
+        $data = [
+                                  'chat_id' => $t_telegram_user_id,
+                                  'text'    => $t_contents
+        ];
+
+        $t_result_send = Longman\TelegramBot\Request::sendMessage( $data );
+        if( $t_result_send->getOk() ) {
+            $t_result[] = $t_mention_user_id;
+        }
+
+        lang_pop();
+    }
+
+    return $t_result;
+}
+
+/**
+ * Generates a formatted note to be used in email notifications.
+ *
+ * @param BugnoteData $p_bugnote The bugnote object.
+ * @param integer $p_project_id  The project id
+ * @param boolean $p_show_time_tracking true: show time tracking, false otherwise.
+ * @param string $p_horizontal_separator The horizontal line separator to use.
+ * @param string $p_date_format The date format to use.
+ * @return string The formatted note.
+ */
+function telegram_message_format_bugnote( $p_bugnote, $p_project_id, $p_show_time_tracking, $p_horizontal_separator, $p_date_format = null ) {
+    $t_date_format = ( $p_date_format === null ) ? config_get( 'normal_date_format' ) : $p_date_format;
+
+    # grab the project name
+    $t_project_name     = project_get_field( bug_get_field( $p_bugnote->bug_id, 'project_id' ), 'name' );
+    $t_bug_summary      = bug_get_field( $p_bugnote->bug_id, 'summary' );
+    # pad the bug id with zeros
+//    $t_bug_id       = bug_format_id( $p_bugnote->bug_id );
+//
+//    $t_last_modified = date( $t_date_format, $p_bugnote->last_modified );
+    $t_formatted_bug_id = bug_format_id( $p_bugnote->bug_id );
+    $t_bugnote_link     = string_process_bugnote_link( config_get( 'bugnote_link_tag' ) . $p_bugnote->id, false, false, true );
+
+    if( $p_show_time_tracking && $p_bugnote->time_tracking > 0 ) {
+        $t_time_tracking = "\n" . ' ' . lang_get( 'time_tracking' ) . ' ' . db_minutes_to_hhmm( $p_bugnote->time_tracking ) . "\n";
+    } else {
+        $t_time_tracking = '';
+    }
+
+    if( user_exists( $p_bugnote->reporter_id ) ) {
+        $t_access_level        = access_get_project_level( $p_project_id, $p_bugnote->reporter_id );
+        $t_access_level_string = ' (' . access_level_get_string( $t_access_level ) . ')';
+    } else {
+        $t_access_level_string = '';
+    }
+
+    $t_private = ( $p_bugnote->view_state == VS_PUBLIC ) ? '' : ' (' . lang_get( 'private' ) . ')';
+
+//	$t_string = ' (' . $t_formatted_bugnote_id . ') ' . user_get_name( $p_bugnote->reporter_id ) .
+//		$t_access_level_string . ' - ' . $t_last_modified . $t_private . "\n" .
+//		$t_time_tracking . ' ' . $t_bugnote_link;
+
+    $t_string  = user_get_name( $p_bugnote->reporter_id ) .
+            $t_access_level_string . $t_private . $t_time_tracking;
+    $t_message = plugin_lang_get( 'telegram_message_notification_title_for_action_bugnote_submitted' ) . "\n";
+    $t_message .= $t_string . " \n";
+    $t_message .= $p_horizontal_separator . " \n";
+    $t_message .= $p_bugnote->note . " \n";
+    $t_message .= $p_horizontal_separator . " \n";
+//    $t_message .= lang_get( 'email_project' ) . ': ' . $t_project_name . "\n";
+    $t_message .= '[ ' . $t_project_name . ' ]' . "\n";
+//    $t_message .= lang_get( 'email_bug' ) . ': ' . $t_formatted_bugnote_id . "\n";
+    $t_message .= $t_formatted_bug_id . ': ' . $t_bug_summary . "\n";
+    $t_message .= $t_bugnote_link . "\n";
+
+    return $t_message;
+}
+
+/**
+ * send notices when a new bugnote
+ * @param int $p_bugnote_id  The bugnote id.
+ * @param array $p_files The array of file information (keys: name, size)
+ * @param array $p_exclude_user_ids The id of users to exclude.
+ * @return void
+ */
+function telegram_message_bugnote_add_generic( $p_bugnote_id, $p_files = array(), $p_exclude_user_ids = array() ) {
+    if( OFF == plugin_config_get( 'enable_telegram_message_notification' ) || plugin_config_get( 'api_key' ) == NULL ) {
+        plugin_log_event( 'telegram notifications disabled.' );
+        return;
+    }
+
+    $t_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
+
+    ignore_user_abort( true );
+
+    $t_bugnote = bugnote_get( $p_bugnote_id );
+
+    plugin_log_event( sprintf( 'Note ~%d added to issue #%d', $p_bugnote_id, $t_bugnote->bug_id ) );
+
+    $t_project_id                     = bug_get_field( $t_bugnote->bug_id, 'project_id' );
+    $t_separator                      = plugin_config_get( 'telegram_message_separator2' );
+    $t_time_tracking_access_threshold = config_get( 'time_tracking_view_threshold' );
+    $t_view_attachments_threshold     = config_get( 'view_attachments_threshold' );
+    $t_message_id                     = 'telegram_message_notification_title_for_action_bugnote_submitted';
+
+//	$t_subject = email_build_subject( $t_bugnote->bug_id );
+    $t_recipients         = telegram_message_collect_recipients( $t_bugnote->bug_id, 'bugnote', /* extra_user_ids */ array(), $p_bugnote_id );
+    $t_recipients_verbose = array();
+
+    # send email to every recipient
+    foreach( $t_recipients as $t_user_id => $t_telegram_user_id ) {
+        if( in_array( $t_user_id, $p_exclude_user_ids ) ) {
+            plugin_log_event( sprintf( 'Issue = #%d, Note = ~%d, Type = %s, Msg = \'%s\', User = @U%d excluded, Telegram User = \'%s\'.', $t_bugnote->bug_id, $p_bugnote_id, 'bugnote', 'telegram_message_notification_title_for_action_bugnote_submitted', $t_user_id, $t_telegram_user_id ) );
+            continue;
+        }
+
+        # Load this here per user to allow overriding this per user, or even per user per project
+        if( plugin_config_get( 'telegram_message_notifications_verbose', /* default */ null, FALSE, $t_user_id, $t_project_id ) == ON ) {
+            $t_recipients_verbose[$t_user_id] = $t_telegram_user_id;
+            continue;
+        }
+
+        plugin_log_event( sprintf( 'Issue = #%d, Note = ~%d, Type = %s, Msg = \'%s\', User = @U%d, Telegram User = \'%s\'.', $t_bugnote->bug_id, $p_bugnote_id, 'bugnote', $t_message_id, $t_user_id, $t_telegram_user_id ) );
+
+        # load (push) user language
+        lang_push( user_pref_get_language( $t_user_id, $t_project_id ) );
+
+//        $t_message = plugin_lang_get( 'telegram_message_notification_title_for_action_bugnote_submitted' ) . "\n";
+
+        $t_show_time_tracking = access_has_bug_level( $t_time_tracking_access_threshold, $t_bugnote->bug_id, $t_user_id );
+        $t_formatted_note     = telegram_message_format_bugnote( $t_bugnote, $t_project_id, $t_show_time_tracking, $t_separator );
+        $t_message            = trim( $t_formatted_note ) . "\n";
+//        $t_message            .= $t_separator . "\n";
+        # Files attached
+        if( count( $p_files ) > 0 &&
+                access_has_bug_level( $t_view_attachments_threshold, $t_bugnote->bug_id, $t_user_id ) ) {
+            $t_message .= lang_get( 'bugnote_attached_files' ) . "\n";
+
+            foreach( $p_files as $t_file ) {
+                $t_message .= '- ' . $t_file['name'] . ' (' . number_format( $t_file['size'] ) .
+                        ' ' . lang_get( 'bytes' ) . ")\n";
+            }
+
+            $t_message .= $t_separator . "\n";
+        }
+
+        $t_contents = $t_message . "\n";
+
+        $data = [
+                                  'chat_id' => $t_telegram_user_id,
+                                  'text'    => $t_contents
+        ];
+
+        $t_result = Longman\TelegramBot\Request::sendMessage( $data );
+
+        lang_pop();
+    }
+
+    # Send emails out for users that select verbose notifications
+    telegram_message_generic_to_recipients(
+            $t_bugnote->bug_id, 'bugnote', $t_recipients_verbose, $t_message_id );
+}
+
+/**
  * if $p_visible_bug_data contains specified attribute the function
  * returns concatenated translated attribute name and original
  * attribute value. Else return empty string.
@@ -79,7 +314,6 @@ function telegram_message_format_bug_message( array $p_visible_bug_data ) {
 //        $p_visible_bug_data['email_status'] = get_enum_element( 'status', $t_status );
 //        $t_message                          .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_status' );
 //    }
-
 //    if( isset( $p_visible_bug_data['email_target_version'] ) ) {
 //        $t_message .= email_format_attribute( $p_visible_bug_data, 'email_target_version' );
 //    }
@@ -91,7 +325,6 @@ function telegram_message_format_bug_message( array $p_visible_bug_data ) {
 //        $t_message .= " \n";
 //    }
     # end foreach custom field
-
 //    if( isset( $t_status ) && config_get( 'bug_resolved_status_threshold' ) <= $t_status ) {
 //
 //        if( isset( $p_visible_bug_data['email_resolution'] ) ) {
@@ -105,11 +338,9 @@ function telegram_message_format_bug_message( array $p_visible_bug_data ) {
 //
 //    $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_date_submitted' );
 //    $t_message .= email_format_attribute( $p_visible_bug_data, 'email_last_modified' );
-
 //    if( isset( $p_visible_bug_data['email_due_date'] ) ) {
 //        $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_due_date' );
 //    }
-
 //    $t_message .= $t_telegram_message_separator1 . " \n";
 
     if( isset( $p_visible_bug_data['email_bug_view_url'] ) ) {

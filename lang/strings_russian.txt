@@ -83,7 +83,7 @@ $s_plugin_TelegramBot_telegram_message_notification_title_for_action_bug_updated
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_sponsorship_added = 'Предложена ОПЛАТА следующей задачи:';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_sponsorship_updated = 'Оплата следующей задачи изменена:';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_sponsorship_deleted = 'Оплата следующей задачи отменена:';
-$s_plugin_TelegramBot_telegram_message_notification_title_for_action_bugnote_submitted = 'К следующей задаче добавлен КОММЕНТАРИЙ:';
+$s_plugin_TelegramBot_telegram_message_notification_title_for_action_bugnote_submitted = 'КОММЕНТАРИЙ от:';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_duplicate_of_relationship_added = 'Следующая задача помечена как ДУБЛЬ задачи %1$s:';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_has_duplicate_relationship_added = 'Задача %1$s помечена как ДУБЛЬ следующей задачи:';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_related_to_relationship_added = 'Следующая задача помечен как СВЯЗАННАЯ С задачей %1$s:';

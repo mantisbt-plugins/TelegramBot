@@ -184,32 +184,44 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'telegram_message_separator1'               => str_pad( '', 27, '=' ),
                                   'telegram_message_separator2'               => str_pad( '', 55, '-' ),
                                   'telegram_message_padding_length'           => 13,
+                                  /**
+                                   * When enabled, the email notifications will send the full issue with
+                                   * a hint about the change type at the top, rather than using dedicated
+                                   * notifications that are focused on what changed.  This change can be
+                                   * overridden in the database per user.
+                                   *
+                                   * @global integer $g_email_notifications_verbose
+                                   */
+                                  'telegram_message_notifications_verbose'    => OFF,
         );
     }
 
     public function hooks() {
         return array(
-                                  'EVENT_REPORT_BUG' => 'telegram_message_bug_added'
+                                  'EVENT_REPORT_BUG'  => 'telegram_message_bug_added',
+                                  'EVENT_BUGNOTE_ADD' => 'telegram_message_bugnote_add'
         );
     }
 
     function telegram_message_bug_added( $p_type_event, $p_issue, $p_issue_id ) {
-//        log_event( LOG_EMAIL, sprintf( 'Issue #%d reported', $p_bug_id ) );
+        plugin_log_event( sprintf( 'Issue #%d reported', $p_bug_id ) );
         telegram_message_generic( $p_issue_id, 'new', 'telegram_message_notification_title_for_action_bug_submitted' );
+    }
 
+    function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id ) {
 
-//        $t_tg = new \Longman\TelegramBot\Telegram( $token, $botname );
-//
-//        $t_bugnote = bugnote_get($p_bugnote_id);
-//        $t_text       = bugnote_get_text($p_bugnote_id);
-//
-//        $data1 = [
-//                                  'chat_id'    => get_telegram_user_id_from_mantis_user_id( $t_bugnote->reporter_id ),
-////                                  'message_id' => $t_callback_query->getMessage()->getMessageId(),
-//                                  'text'       => $t_text
-//        ];
-//
-//        Longman\TelegramBot\Request::sendMessage( $data1 );
+        $t_bugnote_text = bugnote_get_text( $p_bugnote_id );
+
+        # Process the mentions that have access to the issue note
+        $t_mentioned_user_ids          = mention_get_users( $t_bugnote_text );
+        $t_filtered_mentioned_user_ids = access_has_bugnote_level_filter(
+                config_get( 'view_bug_threshold' ), $p_bugnote_id, $t_mentioned_user_ids );
+
+        $t_removed_mentions_user_ids = array_diff( $t_mentioned_user_ids, $t_filtered_mentioned_user_ids );
+
+        $t_user_ids_that_got_mention_notifications = telegram_message_user_mention( $p_bug_id, $t_filtered_mentioned_user_ids, $t_bugnote_text, $t_removed_mentions_user_ids );
+
+        telegram_message_bugnote_add_generic( $p_bugnote_id, array(), $t_user_ids_that_got_mention_notifications );
     }
 
 }

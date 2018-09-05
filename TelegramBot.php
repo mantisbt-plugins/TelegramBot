@@ -53,6 +53,10 @@ class TelegramBotPlugin extends MantisPlugin {
         require_once 'core/TelegramBot_keyboard_api.php';
         require_once 'core/TelegramBot_fields_api.php';
         require_once 'core/TelegramBot_message_api.php';
+        require_once 'core/TelegramBot_message_format_api.php';
+
+        global $g_skip_sending_bugnote;
+        $g_skip_sending_bugnote = FALSE;
     }
 
     function config() {
@@ -198,8 +202,10 @@ class TelegramBotPlugin extends MantisPlugin {
 
     public function hooks() {
         return array(
-                                  'EVENT_REPORT_BUG'  => 'telegram_message_bug_added',
-                                  'EVENT_BUGNOTE_ADD' => 'telegram_message_bugnote_add'
+                                  'EVENT_REPORT_BUG'      => 'telegram_message_bug_added',
+                                  'EVENT_BUGNOTE_ADD'     => 'telegram_message_bugnote_add',
+                                  'EVENT_UPDATE_BUG_DATA' => 'telegram_message_skip_sending',
+                                  'EVENT_UPDATE_BUG'      => 'telegram_message_update_bug'
         );
     }
 
@@ -209,6 +215,12 @@ class TelegramBotPlugin extends MantisPlugin {
     }
 
     function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id ) {
+        global $g_skip_sending_bugnote;
+
+        if( $g_skip_sending_bugnote == TRUE ) {
+            $g_skip_sending_bugnote = FALSE;
+            return;
+        }
 
         $t_bugnote_text = bugnote_get_text( $p_bugnote_id );
 
@@ -222,6 +234,63 @@ class TelegramBotPlugin extends MantisPlugin {
         $t_user_ids_that_got_mention_notifications = telegram_message_user_mention( $p_bug_id, $t_filtered_mentioned_user_ids, $t_bugnote_text, $t_removed_mentions_user_ids );
 
         telegram_message_bugnote_add_generic( $p_bugnote_id, array(), $t_user_ids_that_got_mention_notifications );
+    }
+
+    function telegram_message_skip_sending( $p_type_event, $p_updated_bug, $p_existing_bug ) {
+        global $g_skip_sending_bugnote;
+        $g_skip_sending_bugnote = TRUE;
+
+        return $p_updated_bug;
+    }
+
+    function telegram_message_update_bug( $p_type_event, $p_existing_bug, $p_updated_bug ) {
+
+        # Determine whether the new status will reopen, resolve or close the issue.
+        # Note that multiple resolved or closed states can exist and thus we need to
+        # look at a range of statuses when performing this check.
+        $t_resolved_status = config_get( 'bug_resolved_status_threshold' );
+        $t_closed_status   = config_get( 'bug_closed_status_threshold' );
+        $t_resolve_issue   = false;
+        $t_close_issue     = false;
+        $t_reopen_issue    = false;
+        if( $p_existing_bug->status < $t_resolved_status &&
+                $p_updated_bug->status >= $t_resolved_status &&
+                $p_updated_bug->status < $t_closed_status
+        ) {
+            $t_resolve_issue = true;
+        } else if( $p_existing_bug->status < $t_closed_status &&
+                $p_updated_bug->status >= $t_closed_status
+        ) {
+            $t_close_issue = true;
+        } else if( $p_existing_bug->status >= $t_resolved_status &&
+                $p_updated_bug->status <= config_get( 'bug_reopen_status' )
+        ) {
+            $t_reopen_issue = true;
+        }
+
+        # Send a notification of changes via email.
+        if( $t_resolve_issue ) {
+            plugin_log_event( sprintf( 'Issue #%d resolved', $p_existing_bug->id ) );
+            telegram_message_generic( $p_existing_bug->id, 'resolved', 'telegram_message_notification_title_for_status_bug_resolved' );
+            telegram_message_relationship_child_resolved( $p_existing_bug->id );
+        } else if( $t_close_issue ) {
+            plugin_log_event( sprintf( 'Issue #%d closed', $p_existing_bug->id ) );
+            telegram_message_generic( $p_existing_bug->id, 'closed', 'telegram_message_notification_title_for_status_bug_closed' );
+            telegram_message_relationship_child_closed( $p_existing_bug->id );
+        } else if( $t_reopen_issue ) {
+            plugin_log_event( sprintf( 'Issue #%d reopened', $p_existing_bug->id ) );
+            telegram_message_generic( $p_existing_bug->id, 'reopened', 'telegram_message_notification_title_for_action_bug_reopened' );
+        } else if( $p_existing_bug->handler_id != $p_updated_bug->handler_id ) {
+            telegram_message_owner_changed( $p_existing_bug->id, $p_existing_bug->handler_id, $p_updated_bug->handler_id );
+        } else if( $p_existing_bug->status != $p_updated_bug->status ) {
+            $t_new_status_label = MantisEnum::getLabel( config_get( 'status_enum_string' ), $p_updated_bug->status );
+            $t_new_status_label = str_replace( ' ', '_', $t_new_status_label );
+            plugin_log_event( sprintf( 'Issue #%d status changed', $p_existing_bug->id ) );
+            telegram_message_generic( $p_existing_bug->id, $t_new_status_label, 'telegram_message_notification_title_for_status_bug_' . $t_new_status_label );
+        } else {
+            plugin_log_event( sprintf( 'Issue #%d updated', $p_existing_bug->id ) );
+            telegram_message_generic( $p_existing_bug->id, 'updated', 'telegram_message_notification_title_for_action_bug_updated' );
+        }
     }
 
 }

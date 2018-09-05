@@ -15,6 +15,26 @@
 # along with Customer management plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
+function telegram_session_send_message( $p_telegram_user_id, $p_data ) {
+    global $g_tg;
+
+    if( $g_tg == NULL ) {
+        $g_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
+    }
+
+    
+    $p_data['chat_id'] = $p_telegram_user_id;
+
+    $t_result_send = Longman\TelegramBot\Request::sendMessage( $p_data );
+
+    if( $t_result_send->getOk() ) {
+        return TRUE;
+    } else {
+//        telegram_bot_user_mapping_delete( $p_user_id );
+        return FALSE;
+    }
+}
+
 function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_message_id = 0 ) {
 
     global $g_cache_cookie_valid;

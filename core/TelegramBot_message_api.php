@@ -7,14 +7,47 @@
  */
 
 /**
+ * Send notices when a bug handler is changed.
+ * @param int $p_bug_id
+ * @param int $p_prev_handler_id
+ * @param int $p_new_handler_id
+ * @return null
+ */
+function telegram_message_owner_changed( $p_bug_id, $p_prev_handler_id, $p_new_handler_id ) {
+    if( $p_prev_handler_id == 0 && $p_new_handler_id != 0 ) {
+        plugin_log_event( sprintf( 'Issue #%d assigned to user @U%d.', $p_bug_id, $p_new_handler_id ) );
+    } else if( $p_prev_handler_id != 0 && $p_new_handler_id == 0 ) {
+        plugin_log_event( sprintf( 'Issue #%d is no longer assigned to @U%d.', $p_bug_id, $p_prev_handler_id ) );
+    } else {
+        plugin_log_event(
+                sprintf(
+                        'Issue #%d is assigned to @U%d instead of @U%d.', $p_bug_id, $p_new_handler_id, $p_prev_handler_id )
+        );
+    }
+
+    $t_message_id = $p_new_handler_id == NO_USER ?
+            'telegram_message_notification_title_for_action_bug_unassigned' :
+            'telegram_message_notification_title_for_action_bug_assigned';
+
+    $t_extra_user_ids_to_telegram = array();
+    if( $p_prev_handler_id !== NO_USER && $p_prev_handler_id != $p_new_handler_id ) {
+        if( telegram_message_notify_flag( 'owner', 'handler' ) == ON ) {
+            $t_extra_user_ids_to_telegram[] = $p_prev_handler_id;
+        }
+    }
+
+    telegram_message_generic( $p_bug_id, 'owner', $t_message_id, /* headers */ null, $t_extra_user_ids_to_telegram );
+}
+
+/**
  * Send a notification to user or set of users that were mentioned in an issue
  * or an issue note.
  *
  * @param integer       $p_bug_id     Issue for which the reminder is sent.
  * @param array         $p_mention_user_ids User id or list of user ids array.
- * @param string        $p_message    Optional message to add to the e-mail.
+ * @param string        $p_message    Optional message to add to the telegram message.
  * @param array         $p_removed_mention_user_ids  The users that were removed due to lack of access.
- * @return array        List of users ids to whom the mentioned e-mail were actually sent
+ * @return array        List of users ids to whom the mentioned telegram message were actually sent
  */
 function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_message, $p_removed_mention_user_ids = array() ) {
     if( OFF == plugin_config_get( 'enable_telegram_message_notification' ) || plugin_config_get( 'api_key' ) == NULL ) {
@@ -22,7 +55,7 @@ function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_messa
         return array();
     }
 
-    $t_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
+//    $t_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
 
     $t_project_id = bug_get_field( $p_bug_id, 'project_id' );
     $t_sender_id  = auth_get_current_user_id();
@@ -34,8 +67,8 @@ function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_messa
 
     $t_formatted_bug_id = bug_format_id( $p_bug_id );
 
-    $t_subject         = email_build_subject( $p_bug_id );
-    $t_date            = date( config_get( 'normal_date_format' ) );
+//    $t_subject         = email_build_subject( $p_bug_id );
+//    $t_date            = date( config_get( 'normal_date_format' ) );
     $t_user_id         = auth_get_current_user_id();
     $t_users_processed = array();
 
@@ -45,9 +78,14 @@ function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_messa
 
     $t_result = array();
     foreach( $p_mention_user_ids as $t_mention_user_id ) {
-        # Don't trigger mention emails for self mentions
+        # Don't trigger mention etelegramss for self mentions
         if( $t_mention_user_id == $t_user_id ) {
             plugin_log_event( 'skipped mention telegram for U' . $t_mention_user_id . ' (self-mention).' );
+            continue;
+        }
+
+        $t_telegram_user_id = telegram_user_get_id_by_user_id( $t_mention_user_id );
+        if( $t_telegram_user_id == NULL ) {
             continue;
         }
 
@@ -65,7 +103,7 @@ function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_messa
 
         lang_push( user_pref_get_language( $t_mention_user_id, $t_project_id ) );
 
-        $t_telegram_user_id = telegram_user_get_id_by_user_id( $t_mention_user_id );
+//        $t_telegram_user_id = telegram_user_get_id_by_user_id( $t_mention_user_id );
 
         if( access_has_project_level( config_get( 'show_user_email_threshold' ), $t_project_id, $t_mention_user_id ) ) {
             $t_sender_email = ' <' . user_get_email( $t_sender_id ) . '> ';
@@ -82,13 +120,13 @@ function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_messa
         $t_header   = $t_sender . ' ' . $t_sender_email . lang_get( 'mentioned_you' ) . "\n";
         $t_contents = $t_header . $t_second_message . string_get_bug_view_url_with_fqdn( $p_bug_id ) . " \n\n" . $p_message;
 
-        $data = [
-                                  'chat_id' => $t_telegram_user_id,
-                                  'text'    => $t_contents
+        $t_data = [
+                                  'text' => $t_contents
         ];
 
-        $t_result_send = Longman\TelegramBot\Request::sendMessage( $data );
-        if( $t_result_send->getOk() ) {
+
+        $t_result_send = telegram_session_send_message( $t_telegram_user_id, $t_data );
+        if( $t_result_send ) {
             $t_result[] = $t_mention_user_id;
         }
 
@@ -96,64 +134,6 @@ function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_messa
     }
 
     return $t_result;
-}
-
-/**
- * Generates a formatted note to be used in email notifications.
- *
- * @param BugnoteData $p_bugnote The bugnote object.
- * @param integer $p_project_id  The project id
- * @param boolean $p_show_time_tracking true: show time tracking, false otherwise.
- * @param string $p_horizontal_separator The horizontal line separator to use.
- * @param string $p_date_format The date format to use.
- * @return string The formatted note.
- */
-function telegram_message_format_bugnote( $p_bugnote, $p_project_id, $p_show_time_tracking, $p_horizontal_separator, $p_date_format = null ) {
-    $t_date_format = ( $p_date_format === null ) ? config_get( 'normal_date_format' ) : $p_date_format;
-
-    # grab the project name
-    $t_project_name     = project_get_field( bug_get_field( $p_bugnote->bug_id, 'project_id' ), 'name' );
-    $t_bug_summary      = bug_get_field( $p_bugnote->bug_id, 'summary' );
-    # pad the bug id with zeros
-//    $t_bug_id       = bug_format_id( $p_bugnote->bug_id );
-//
-//    $t_last_modified = date( $t_date_format, $p_bugnote->last_modified );
-    $t_formatted_bug_id = bug_format_id( $p_bugnote->bug_id );
-    $t_bugnote_link     = string_process_bugnote_link( config_get( 'bugnote_link_tag' ) . $p_bugnote->id, false, false, true );
-
-    if( $p_show_time_tracking && $p_bugnote->time_tracking > 0 ) {
-        $t_time_tracking = "\n" . ' ' . lang_get( 'time_tracking' ) . ' ' . db_minutes_to_hhmm( $p_bugnote->time_tracking ) . "\n";
-    } else {
-        $t_time_tracking = '';
-    }
-
-    if( user_exists( $p_bugnote->reporter_id ) ) {
-        $t_access_level        = access_get_project_level( $p_project_id, $p_bugnote->reporter_id );
-        $t_access_level_string = ' (' . access_level_get_string( $t_access_level ) . ')';
-    } else {
-        $t_access_level_string = '';
-    }
-
-    $t_private = ( $p_bugnote->view_state == VS_PUBLIC ) ? '' : ' (' . lang_get( 'private' ) . ')';
-
-//	$t_string = ' (' . $t_formatted_bugnote_id . ') ' . user_get_name( $p_bugnote->reporter_id ) .
-//		$t_access_level_string . ' - ' . $t_last_modified . $t_private . "\n" .
-//		$t_time_tracking . ' ' . $t_bugnote_link;
-
-    $t_string  = user_get_name( $p_bugnote->reporter_id ) .
-            $t_access_level_string . $t_private . $t_time_tracking;
-    $t_message = plugin_lang_get( 'telegram_message_notification_title_for_action_bugnote_submitted' ) . "\n";
-    $t_message .= $t_string . " \n";
-    $t_message .= $p_horizontal_separator . " \n";
-    $t_message .= $p_bugnote->note . " \n";
-    $t_message .= $p_horizontal_separator . " \n";
-//    $t_message .= lang_get( 'email_project' ) . ': ' . $t_project_name . "\n";
-    $t_message .= '[ ' . $t_project_name . ' ]' . "\n";
-//    $t_message .= lang_get( 'email_bug' ) . ': ' . $t_formatted_bugnote_id . "\n";
-    $t_message .= $t_formatted_bug_id . ': ' . $t_bug_summary . "\n";
-    $t_message .= $t_bugnote_link . "\n";
-
-    return $t_message;
 }
 
 /**
@@ -187,7 +167,7 @@ function telegram_message_bugnote_add_generic( $p_bugnote_id, $p_files = array()
     $t_recipients         = telegram_message_collect_recipients( $t_bugnote->bug_id, 'bugnote', /* extra_user_ids */ array(), $p_bugnote_id );
     $t_recipients_verbose = array();
 
-    # send email to every recipient
+    # send telegram message to every recipient
     foreach( $t_recipients as $t_user_id => $t_telegram_user_id ) {
         if( in_array( $t_user_id, $p_exclude_user_ids ) ) {
             plugin_log_event( sprintf( 'Issue = #%d, Note = ~%d, Type = %s, Msg = \'%s\', User = @U%d excluded, Telegram User = \'%s\'.', $t_bugnote->bug_id, $p_bugnote_id, 'bugnote', 'telegram_message_notification_title_for_action_bugnote_submitted', $t_user_id, $t_telegram_user_id ) );
@@ -227,180 +207,17 @@ function telegram_message_bugnote_add_generic( $p_bugnote_id, $p_files = array()
         $t_contents = $t_message . "\n";
 
         $data = [
-                                  'chat_id' => $t_telegram_user_id,
-                                  'text'    => $t_contents
+                                  'text' => $t_contents
         ];
 
-        $t_result = Longman\TelegramBot\Request::sendMessage( $data );
+        $t_result = telegram_session_send_message( $t_telegram_user_id, $data );
 
         lang_pop();
     }
 
-    # Send emails out for users that select verbose notifications
+    # Send telegram messages out for users that select verbose notifications
     telegram_message_generic_to_recipients(
             $t_bugnote->bug_id, 'bugnote', $t_recipients_verbose, $t_message_id );
-}
-
-/**
- * if $p_visible_bug_data contains specified attribute the function
- * returns concatenated translated attribute name and original
- * attribute value. Else return empty string.
- * @param array  $p_visible_bug_data Visible Bug Data array.
- * @param string $p_attribute_id     Attribute ID.
- * @return string
- */
-function telegraml_message_format_attribute( array $p_visible_bug_data, $p_attribute_id ) {
-    if( array_key_exists( $p_attribute_id, $p_visible_bug_data ) ) {
-        return utf8_str_pad( lang_get( $p_attribute_id ) . ': ', plugin_config_get( 'telegram_message_padding_length' ), ' ', STR_PAD_RIGHT ) . $p_visible_bug_data[$p_attribute_id] . "\n";
-//        return lang_get( $p_attribute_id ) . ':' . PHP_EOL . plugin_config_get( 'telegram_message_separator2' ) . PHP_EOL . $p_visible_bug_data[$p_attribute_id] . PHP_EOL . plugin_config_get( 'telegram_message_separator2' ) . PHP_EOL;
-    }
-    return '';
-}
-
-/**
- * Build the bug info part of the message
- * @param array $p_visible_bug_data Bug data array to format.
- * @return string
- */
-function telegram_message_format_bug_message( array $p_visible_bug_data ) {
-    $t_normal_date_format   = config_get( 'normal_date_format' );
-    $t_complete_date_format = config_get( 'complete_date_format' );
-
-    $t_telegram_message_separator1     = plugin_config_get( 'telegram_message_separator1' );
-    $t_telegram_message_separator2     = plugin_config_get( 'telegram_message_separator2' );
-    $t_telegram_message_padding_length = plugin_config_get( 'telegram_message_padding_length' );
-
-    $p_visible_bug_data['email_date_submitted'] = date( $t_complete_date_format, $p_visible_bug_data['email_date_submitted'] );
-    $p_visible_bug_data['email_last_modified']  = date( $t_complete_date_format, $p_visible_bug_data['email_last_modified'] );
-
-    $t_message = $t_telegram_message_separator1 . " \n";
-
-    $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_project' );
-    $t_message .= $t_telegram_message_separator2 . " \n";
-    $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_summary' );
-    $t_message .= $t_telegram_message_separator2 . " \n";
-    $t_message .= lang_get( 'email_description' ) . ": \n" . $p_visible_bug_data['email_description'] . "\n";
-
-    $t_message .= $t_telegram_message_separator1 . " \n";
-
-    $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_reporter' );
-    $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_handler' );
-    $t_message .= $t_telegram_message_separator1 . " \n";
-
-//    $t_message .= email_format_attribute( $p_visible_bug_data, 'email_bug' );
-//    $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_category' );
-//
-//    if( isset( $p_visible_bug_data['email_tag'] ) ) {
-//        $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_tag' );
-//    }
-//
-//    if( isset( $p_visible_bug_data['email_reproducibility'] ) ) {
-//        $p_visible_bug_data['email_reproducibility'] = get_enum_element( 'reproducibility', $p_visible_bug_data['email_reproducibility'] );
-//        $t_message                                   .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_reproducibility' );
-//    }
-//
-//    if( isset( $p_visible_bug_data['email_severity'] ) ) {
-//        $p_visible_bug_data['email_severity'] = get_enum_element( 'severity', $p_visible_bug_data['email_severity'] );
-//        $t_message                            .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_severity' );
-//    }
-//
-//    if( isset( $p_visible_bug_data['email_priority'] ) ) {
-//        $p_visible_bug_data['email_priority'] = get_enum_element( 'priority', $p_visible_bug_data['email_priority'] );
-//        $t_message                            .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_priority' );
-//    }
-//
-//    if( isset( $p_visible_bug_data['email_status'] ) ) {
-//        $t_status                           = $p_visible_bug_data['email_status'];
-//        $p_visible_bug_data['email_status'] = get_enum_element( 'status', $t_status );
-//        $t_message                          .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_status' );
-//    }
-//    if( isset( $p_visible_bug_data['email_target_version'] ) ) {
-//        $t_message .= email_format_attribute( $p_visible_bug_data, 'email_target_version' );
-//    }
-//
-//    # custom fields formatting
-//    foreach( $p_visible_bug_data['custom_fields'] as $t_custom_field_name => $t_custom_field_data ) {
-//        $t_message .= utf8_str_pad( lang_get_defaulted( $t_custom_field_name, null ) . ': ', $t_email_padding_length, ' ', STR_PAD_RIGHT );
-//        $t_message .= string_custom_field_value_for_email( $t_custom_field_data['value'], $t_custom_field_data['type'] );
-//        $t_message .= " \n";
-//    }
-    # end foreach custom field
-//    if( isset( $t_status ) && config_get( 'bug_resolved_status_threshold' ) <= $t_status ) {
-//
-//        if( isset( $p_visible_bug_data['email_resolution'] ) ) {
-//            $p_visible_bug_data['email_resolution'] = get_enum_element( 'resolution', $p_visible_bug_data['email_resolution'] );
-//            $t_message                              .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_resolution' );
-//        }
-//
-//        $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_fixed_in_version' );
-//    }
-//    $t_message .= $t_telegram_message_separator1 . " \n";
-//
-//    $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_date_submitted' );
-//    $t_message .= email_format_attribute( $p_visible_bug_data, 'email_last_modified' );
-//    if( isset( $p_visible_bug_data['email_due_date'] ) ) {
-//        $t_message .= telegraml_message_format_attribute( $p_visible_bug_data, 'email_due_date' );
-//    }
-//    $t_message .= $t_telegram_message_separator1 . " \n";
-
-    if( isset( $p_visible_bug_data['email_bug_view_url'] ) ) {
-        $t_message .= $p_visible_bug_data['email_bug_view_url'] . " \n";
-        $t_message .= $t_telegram_message_separator1 . " \n";
-    }
-
-
-//    if( isset( $p_visible_bug_data['email_steps_to_reproduce'] ) && !is_blank( $p_visible_bug_data['email_steps_to_reproduce'] ) ) {
-//        $t_message .= "\n" . lang_get( 'email_steps_to_reproduce' ) . ": \n" . $p_visible_bug_data['email_steps_to_reproduce'] . "\n";
-//    }
-//
-//    if( isset( $p_visible_bug_data['email_additional_information'] ) && !is_blank( $p_visible_bug_data['email_additional_information'] ) ) {
-//        $t_message .= "\n" . lang_get( 'email_additional_information' ) . ": \n" . $p_visible_bug_data['email_additional_information'] . "\n";
-//    }
-//
-//    if( isset( $p_visible_bug_data['relations'] ) ) {
-//        if( $p_visible_bug_data['relations'] != '' ) {
-//            $t_message .= $t_email_separator1 . "\n" . utf8_str_pad( lang_get( 'bug_relationships' ), 20 ) . utf8_str_pad( lang_get( 'id' ), 8 ) . lang_get( 'summary' ) . "\n" . $t_email_separator2 . "\n" . $p_visible_bug_data['relations'];
-//        }
-//    }
-//    # Sponsorship
-//    if( isset( $p_visible_bug_data['sponsorship_total'] ) && ( $p_visible_bug_data['sponsorship_total'] > 0 ) ) {
-//        $t_message .= $t_email_separator1 . " \n";
-//        $t_message .= sprintf( lang_get( 'total_sponsorship_amount' ), sponsorship_format_amount( $p_visible_bug_data['sponsorship_total'] ) ) . "\n\n";
-//
-//        if( isset( $p_visible_bug_data['sponsorships'] ) ) {
-//            foreach( $p_visible_bug_data['sponsorships'] as $t_sponsorship ) {
-//                $t_date_added = date( config_get( 'normal_date_format' ), $t_sponsorship->date_submitted );
-//
-//                $t_message .= $t_date_added . ': ';
-//                $t_message .= user_get_name( $t_sponsorship->user_id );
-//                $t_message .= ' (' . sponsorship_format_amount( $t_sponsorship->amount ) . ')' . " \n";
-//            }
-//        }
-//    }
-//
-//    $t_message .= $t_email_separator1 . " \n\n";
-//    # format bugnotes
-//    foreach( $p_visible_bug_data['bugnotes'] as $t_bugnote ) {
-//        # Show time tracking is always true, since data has already been filtered out when creating the bug visible data.
-//        $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
-//                        /* show_time_tracking */ true, $t_email_separator2, $t_normal_date_format ) . "\n";
-//    }
-//    # format history
-//    if( array_key_exists( 'history', $p_visible_bug_data ) ) {
-//        $t_message .= lang_get( 'bug_history' ) . " \n";
-//        $t_message .= utf8_str_pad( lang_get( 'date_modified' ), 17 ) . utf8_str_pad( lang_get( 'username' ), 15 ) . utf8_str_pad( lang_get( 'field' ), 25 ) . utf8_str_pad( lang_get( 'change' ), 20 ) . " \n";
-//
-//        $t_message .= $t_email_separator1 . " \n";
-//
-//        foreach( $p_visible_bug_data['history'] as $t_raw_history_item ) {
-//            $t_localized_item = history_localize_item( $t_raw_history_item['field'], $t_raw_history_item['type'], $t_raw_history_item['old_value'], $t_raw_history_item['new_value'], false );
-//
-//            $t_message .= utf8_str_pad( date( $t_normal_date_format, $t_raw_history_item['date'] ), 17 ) . utf8_str_pad( $t_raw_history_item['username'], 15 ) . utf8_str_pad( $t_localized_item['note'], 25 ) . utf8_str_pad( $t_localized_item['change'], 20 ) . "\n";
-//        }
-//        $t_message .= $t_email_separator1 . " \n\n";
-//    }
-
-    return $t_message;
 }
 
 /**
@@ -409,7 +226,7 @@ function telegram_message_format_bug_message( array $p_visible_bug_data ) {
  * @param array   $p_visible_bug_data       Array of bug data information.
  * @param string  $p_message_id             A message identifier.
  * @param integer $p_user_id                A valid user identifier.
- * @param array   $p_header_optional_params Array of additional email headers.
+ * @param array   $p_header_optional_params Array of additional telegram message headers.
  * @return void
  */
 function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_message_id, $p_user_id, array $p_header_optional_params = null ) {
@@ -427,9 +244,9 @@ function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_me
     # build message
     $t_message = plugin_lang_get( $p_message_id );
 
-//    if( is_array( $p_header_optional_params ) ) {
-//        $t_message = vsprintf( $t_message, $p_header_optional_params );
-//    }
+    if( is_array( $p_header_optional_params ) ) {
+        $t_message .= vsprintf( $t_message, $p_header_optional_params );
+    }
 
     if( ( $t_message !== null ) && (!is_blank( $t_message ) ) ) {
         $t_message .= " \n";
@@ -437,14 +254,11 @@ function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_me
 
     $t_message .= telegram_message_format_bug_message( $p_visible_bug_data );
 
-    $t_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
-
     $data = [
-                              'chat_id' => $t_telegram_user_id,
-                              'text'    => $t_message
+                              'text' => $t_message
     ];
 
-    $t_result = Longman\TelegramBot\Request::sendMessage( $data );
+    $t_result = telegram_session_send_message( $t_telegram_user_id, $data );
 
     return;
 }
@@ -454,7 +268,7 @@ function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_me
  *
  * @param integer $p_bug_id                  A bug identifier
  * @param string  $p_notify_type             Notification type
- * @param array   $p_recipients              Array of recipients (key: user id, value: email address)
+ * @param array   $p_recipients              Array of recipients (key: user id, value: telegram id)
  * @param integer $p_message_id              Message identifier
  * @param array   $p_header_optional_params  Optional Parameters (default null)
  * @return void
@@ -683,7 +497,7 @@ function telegram_message_collect_recipients( $p_bug_id, $p_notify_type, array $
     # and put telegram user id to $t_recipients[user_id]
     foreach( $t_recipients as $t_id => $t_ignore ) {
         # Possibly eliminate the current user
-        if( ( auth_get_current_user_id() == $t_id ) && ( OFF == config_get( 'telegram_message_receive_own' ) ) ) {
+        if( ( auth_get_current_user_id() == $t_id ) && ( OFF == plugin_config_get( 'telegram_message_receive_own' ) ) ) {
             plugin_log_event( sprintf( 'Issue = #%d, drop @U%d (own action)', $p_bug_id, $t_id ) );
             continue;
         }
@@ -787,4 +601,59 @@ function telegram_message_notify_flag( $p_action, $p_flag ) {
     }
 
     return OFF;
+}
+
+/**
+ * send notices to all the handlers of the parent bugs when a child bug is RESOLVED
+ * @param integer $p_bug_id A bug identifier.
+ * @return void
+ */
+function telegram_message_relationship_child_resolved( $p_bug_id ) {
+    telegram_message_relationship_child_resolved_closed( $p_bug_id, 'telegram_message_notification_title_for_action_relationship_child_resolved' );
+}
+
+/**
+ * send notices to all the handlers of the parent bugs when a child bug is CLOSED
+ * @param integer $p_bug_id A bug identifier.
+ * @return void
+ */
+function telegram_message_relationship_child_closed( $p_bug_id ) {
+    telegram_message_relationship_child_resolved_closed( $p_bug_id, 'telegram_message_notification_title_for_action_relationship_child_closed' );
+}
+
+/**
+ * send notices to all the handlers of the parent bugs still open when a child bug is resolved/closed
+ *
+ * @param integer $p_bug_id     A bug identifier.
+ * @param integer $p_message_id A message identifier.
+ * @return void
+ */
+function telegram_message_relationship_child_resolved_closed( $p_bug_id, $p_message_id ) {
+    # retrieve all the relationships in which the bug is the destination bug
+    $t_relationship       = relationship_get_all_dest( $p_bug_id );
+    $t_relationship_count = count( $t_relationship );
+    if( $t_relationship_count == 0 ) {
+        # no parent bug found
+        return;
+    }
+
+    if( $p_message_id == 'telegram_message_notification_title_for_action_relationship_child_closed' ) {
+        plugin_log_event( sprintf( 'Issue #%d child issue closed', $p_bug_id ) );
+    } else {
+        plugin_log_event( sprintf( 'Issue #%d child issue resolved', $p_bug_id ) );
+    }
+
+    for( $i = 0; $i < $t_relationship_count; $i++ ) {
+        if( $t_relationship[$i]->type == BUG_DEPENDANT ) {
+            $t_src_bug_id = $t_relationship[$i]->src_bug_id;
+            $t_status     = bug_get_field( $t_src_bug_id, 'status' );
+            if( $t_status < config_get( 'bug_resolved_status_threshold' ) ) {
+
+                # sent the notification just for parent bugs not resolved/closed
+                $t_opt   = array();
+                $t_opt[] = bug_format_id( $p_bug_id );
+                telegram_message_generic( $t_src_bug_id, 'handler', $p_message_id, $t_opt );
+            }
+        }
+    }
 }

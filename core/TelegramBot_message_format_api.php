@@ -205,8 +205,9 @@ function telegram_message_format_bug_message( array $p_visible_bug_data ) {
     # format bugnote
 
     $t_bugnotes_last_id = bugnote_get_latest_id( $p_visible_bug_data['email_bug'] );
-    $t_bugnote          = bugnote_get( $t_bugnotes_last_id );
-    if( $t_bugnote != NULL ) {
+
+    if( $t_bugnotes_last_id != NULL ) {
+        $t_bugnote = bugnote_get( $t_bugnotes_last_id );
         $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
 //        $t_message .= telegram_message_format_bugnote( $p_visible_bug_data['bugnotes'][$t_bugnotes_count - 1], $p_visible_bug_data['email_project_id'],
                         /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";

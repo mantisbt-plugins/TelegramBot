@@ -533,7 +533,7 @@ function telegram_add_comment( $p_current_action, Longman\TelegramBot\Entities\C
                             break;
                         case 'photo':
                             $t_content_photo = $t_orgl_message->getPhoto();
-                            $t_file_orgl     = $t_content_photo[3];
+                            $t_file_orgl     = $t_content_photo[count( $t_content_photo ) - 1];
                             break;
                         case 'document':
                             $t_file_orgl     = $t_orgl_message->getDocument();

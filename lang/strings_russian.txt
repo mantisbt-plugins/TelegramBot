@@ -28,18 +28,30 @@ $s_plugin_TelegramBot_info_to_redirect_bot_page = 'Вернитесь в чат,
 $s_plugin_TelegramBot_user_relationship_question = 'Связать ваш аккаунт с ботом?';
 
 $s_plugin_TelegramBot_registration_message_text = 'Для того чтобы начать использовать бот необходимо:
-- Иметь действующий аккаунт в %1$s.
-- Привязать Ваш аккаунт нажав на кнопку ниже.
+1. Иметь действующий аккаунт в %1$s.
+2. Привязать Ваш аккаунт нажав на кнопку ниже.
 ';
 $s_plugin_TelegramBot_registration_button_text = 'Подтвердить привязку';
 
 $s_plugin_TelegramBot_first_message = '
+Вы успешно подписались на чат-бот
+%1$s
+Если вы хотите отписаться, то просто отправьте 
+комманду /stop и следуйте дальнейшим инструкциям.
+
 В данный момент доступны следующие действия с задачами: 
 - создавать задачи;
 - добавлять комментарии;
-- прикреплять файлы.
+- прикреплять файлы;
+- получать уведомления.
+
+Настройки уведомлений %2$s
 
 Просто отправьте комментарий или файл в чат и следуйте дальнейшим инструкциям.';
+
+$s_plugin_TelegramBot_end_message = '
+Вы отписаны от чат-бота.
+Чтобы подписаться отправьте любое сообщение и следуйте дальнейшим инструкциям.';
 
 $s_plugin_TelegramBot_help_registration_bot_header = 'Инструкция по настройке бота';
 $s_plugin_TelegramBot_help_registration_bot_message = 'Для активации бота необходимо:<br><br>
@@ -119,3 +131,19 @@ $s_plugin_TelegramBot_telegram_message_additional_information = 'Дополни�
 $s_plugin_TelegramBot_telegram_message_steps_to_reproduce = 'Шаги по воспроизведению';
 $s_plugin_TelegramBot_telegram_message_tag = 'Теги';
 $s_plugin_TelegramBot_telegram_message_due_date = 'Дата';
+
+$s_plugin_TelegramBot_telegram_message_on_new = 'Уведомлять о создании';
+$s_plugin_TelegramBot_telegram_message_on_assigned = 'Уведомлять о назначении';
+$s_plugin_TelegramBot_telegram_message_on_feedback = 'Уведомлять о запросе обратной связи';
+$s_plugin_TelegramBot_telegram_message_on_resolved = 'Уведомлять о решении';
+$s_plugin_TelegramBot_telegram_message_on_closed = 'Уведомлять о закрытии';
+$s_plugin_TelegramBot_telegram_message_on_reopened = 'Сообщать о переоткрытии';
+$s_plugin_TelegramBot_telegram_message_on_bugnote_added = 'Уведомлять о добавлении комментария';
+$s_plugin_TelegramBot_telegram_message_on_status_change = 'Уведомлять об изменении состояния';
+$s_plugin_TelegramBot_telegram_message_on_priority_change = 'Уведомлять об изменении приоритета';
+$s_plugin_TelegramBot_telegram_message_bugnote_limit = 'Ограничение уведомлений';
+$s_plugin_TelegramBot_telegram_message_full_issue_details = 'Отправить все подробности задачи при комментировании';
+
+$s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Настройки телеграм';
+$s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Настройки телеграм бота';
+$s_plugin_TelegramBot_account_telegram_prefs_subscribe_bot = 'Для того чтобы подписать на бота найдите его ( %1$s ) в Telegram или перейдите по ссылке: ';

@@ -35,12 +35,12 @@ if( $f_is_confirmed ) {
     }
     telegram_bot_user_mapping_add( $t_current_user_id, $f_telegram_user_id );
 
-    $t_tg     = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
     $data     = [
                               'chat_id' => $f_telegram_user_id,
-                              'text'    => plugin_lang_get( 'first_message' )
+                              'text'    => sprintf( plugin_lang_get( 'first_message' ), config_get( 'window_title' ) . ' ( ' . config_get( 'path' ) . ' )', ' ( ' . config_get( 'path' ) . plugin_page( 'account_telegram_prefs_page', TRUE ) . ' )'
+                              ),
     ];
-    $t_result = Longman\TelegramBot\Request::sendMessage( $data );
+    $t_result = RequestMantis::sendMessage( $data );
 
     $t_redirect_url = plugin_config_get( 'telegram_url' ) . plugin_config_get( 'bot_name' );
     echo '<div class="col-md-12 col-xs-12">';

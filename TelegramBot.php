@@ -22,7 +22,7 @@ class TelegramBotPlugin extends MantisPlugin {
         $this->name        = 'TelegramBot';
         $this->description = plugin_lang_get( 'description' );
 
-        $this->version  = '1.1.2-dev';
+        $this->version  = '1.1.2';
         $this->requires = array(
                                   'MantisCore' => '2.14.0',
         );

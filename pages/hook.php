@@ -51,11 +51,21 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
                         case 'start':
                             $data = [
                                                       'chat_id' => $t_message->getFrom()->getId(),
-                                                      'text'    => plugin_lang_get( 'first_message' )
+                                                      'text'    => sprintf( plugin_lang_get( 'first_message' ), config_get( 'window_title' ) . ' ( ' . config_get( 'path' ) . ' )', ' ( ' . config_get( 'path' ) . plugin_page( 'account_telegram_prefs_page', TRUE ) . ' )'
+                                                      ),
                             ];
 
                             break;
                         case 'stop':
+                            $t_user_id = user_get_id_by_telegram_user_id( $t_message->getFrom()->getId() );
+
+                            telegram_bot_user_mapping_delete( $t_user_id );
+
+                            $data = [
+                                                      'chat_id' => $t_message->getFrom()->getId(),
+                                                      'text'    => plugin_lang_get( 'end_message' )
+                            ];
+
                             break;
                     }
                     break;

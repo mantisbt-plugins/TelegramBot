@@ -143,10 +143,11 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                         break;
                     case 'photo':
                         $t_content_photo = $t_orgl_message->getPhoto();
-                        $t_file_orgl     = $t_content_photo[3];
+                        $t_file_orgl     = $t_content_photo[count( $t_content_photo ) - 1];
+
                         break;
                     case 'document':
-                        $t_file_orgl     = $t_orgl_message->getDocument();
+                        $t_file_orgl = $t_orgl_message->getDocument();
                         break;
                 }
 

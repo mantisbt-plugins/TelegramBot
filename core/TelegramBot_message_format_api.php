@@ -1,10 +1,19 @@
 <?php
 
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# TelegramBot for MantisBT is free software: 
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License as published by the Free Software Foundation, 
+# either version 2 of the License, or (at your option) any later version.
+#
+# TelegramBot plugin for for MantisBT is distributed in the hope 
+# that it will be useful, but WITHOUT ANY WARRANTY; without even the 
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Customer management plugin for MantisBT.  
+# If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * Generates a formatted note to be used in email notifications.
@@ -52,14 +61,16 @@ function telegram_message_format_bugnote( $p_bugnote, $p_project_id, $p_show_tim
             $t_access_level_string . $t_private . $t_time_tracking;
     $t_message = plugin_lang_get( 'telegram_message_notification_title_for_action_bugnote_submitted' ) . "\n";
     $t_message .= $t_string . " \n";
-    $t_message .= $p_horizontal_separator . " \n";
-    $t_message .= $p_bugnote->note . " \n";
-    $t_message .= $p_horizontal_separator . " \n";
-//    $t_message .= lang_get( 'email_project' ) . ': ' . $t_project_name . "\n";
+//    $t_message .= $p_horizontal_separator . " \n";
+    //    $t_message .= lang_get( 'email_project' ) . ': ' . $t_project_name . "\n";
     $t_message .= '[ ' . $t_project_name . ' ]' . "\n";
 //    $t_message .= lang_get( 'email_bug' ) . ': ' . $t_formatted_bugnote_id . "\n";
     $t_message .= $t_formatted_bug_id . ': ' . $t_bug_summary . "\n";
     $t_message .= $t_bugnote_link . "\n";
+    $t_message .= $p_horizontal_separator . " \n";
+    $t_message .= $p_bugnote->note . " \n";
+
+
 
     return $t_message;
 }
@@ -206,18 +217,18 @@ function telegram_message_format_bug_message( array $p_visible_bug_data ) {
 
     $t_bugnotes_last_id = bugnote_get_latest_id( $p_visible_bug_data['email_bug'] );
 
-    if( $t_bugnotes_last_id != NULL ) {
-        $t_bugnote = bugnote_get( $t_bugnotes_last_id );
-        $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
+//    if( $t_bugnotes_last_id != NULL ) {
+//        $t_bugnote = bugnote_get( $t_bugnotes_last_id );
+//        $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
 //        $t_message .= telegram_message_format_bugnote( $p_visible_bug_data['bugnotes'][$t_bugnotes_count - 1], $p_visible_bug_data['email_project_id'],
+//    /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
+//    }
+    foreach( $p_visible_bug_data['bugnotes'] as $t_bugnote ) {
+        # Show time tracking is always true, since data has already been filtered out when creating the bug visible data.
+        $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
+//        $t_message .= telegram_message_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
                         /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
     }
-//        foreach( $p_visible_bug_data['bugnotes'] as $t_bugnote ) {
-//            # Show time tracking is always true, since data has already been filtered out when creating the bug visible data.
-//            $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
-////        $t_message .= telegram_message_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
-//                            /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
-//        }
 //    # format history
 //    if( array_key_exists( 'history', $p_visible_bug_data ) ) {
 //        $t_message .= lang_get( 'bug_history' ) . " \n";

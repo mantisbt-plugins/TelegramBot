@@ -15,17 +15,34 @@
 # along with Customer management plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
-function telegram_session_send_message( $p_telegram_user_id, $p_data ) {
+class RequestMantis extends \Longman\TelegramBot\Request {
+
+    public static function sendMessage( array $data ) {
+        telegram_session_start();
+        return parent::sendMessage( $data );
+    }
+
+    public static function __callStatic( $action, array $data ) {
+        telegram_session_start();
+        return parent::__callStatic( $action, $data );
+    }
+
+}
+
+function telegram_session_start() {
     global $g_tg;
 
     if( $g_tg == NULL ) {
         $g_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
     }
+}
 
-    
+function telegram_session_send_message( $p_telegram_user_id, $p_data ) {
+//    telegram_session_start();
+
     $p_data['chat_id'] = $p_telegram_user_id;
 
-    $t_result_send = Longman\TelegramBot\Request::sendMessage( $p_data );
+    $t_result_send = RequestMantis::sendMessage( $p_data );
 
     if( $t_result_send->getOk() ) {
         return TRUE;
@@ -51,7 +68,7 @@ function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_messag
                                   'text'    => plugin_lang_get( 'error_user' )
         ];
 
-        Longman\TelegramBot\Request::sendMessage( $data_signup_break );
+        RequestMantis::sendMessage( $data_signup_break );
         return FALSE;
     } else {
         current_user_set( $t_mantis_user_id );
@@ -75,5 +92,5 @@ function user_telegram_signup( $p_telegram_user_id ) {
                               'reply_markup' => $t_signup_keyboard,
     ];
 
-    Longman\TelegramBot\Request::sendMessage( $data_signup );
+    RequestMantis::sendMessage( $data_signup );
 }

@@ -55,8 +55,9 @@ class TelegramBotPlugin extends MantisPlugin {
         require_once 'core/TelegramBot_message_api.php';
         require_once 'core/TelegramBot_message_format_api.php';
 
-        global $g_skip_sending_bugnote;
-        $g_skip_sending_bugnote = FALSE;
+        global $g_skip_sending_bugnote, $g_account_telegram_menu_active;
+        $g_skip_sending_bugnote         = FALSE;
+        $g_account_telegram_menu_active = FALSE;
     }
 
     function config() {
@@ -163,15 +164,15 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'telegram_message_on_status'                => OFF,
                                   'telegram_message_on_priority'              => OFF,
                                   //
-                                  'telegram_message_on_priority_min_severity' => 10,
-                                  'telegram_message_on_status_min_severity'   => 10,
-                                  'telegram_message_on_bugnote_min_severity'  => 10,
-                                  'telegram_message_on_reopened_min_severity' => 10,
-                                  'telegram_message_on_closed_min_severity'   => 10,
-                                  'telegram_message_on_resolved_min_severity' => 10,
-                                  'telegram_message_on_feedback_min_severity' => 10,
-                                  'telegram_message_on_assigned_min_severity' => 10,
-                                  'telegram_message_on_new_min_severity'      => 10,
+                                  'telegram_message_on_priority_min_severity' => 0,
+                                  'telegram_message_on_status_min_severity'   => 0,
+                                  'telegram_message_on_bugnote_min_severity'  => 0,
+                                  'telegram_message_on_reopened_min_severity' => 0,
+                                  'telegram_message_on_closed_min_severity'   => 0,
+                                  'telegram_message_on_resolved_min_severity' => 0,
+                                  'telegram_message_on_feedback_min_severity' => 0,
+                                  'telegram_message_on_assigned_min_severity' => 0,
+                                  'telegram_message_on_new_min_severity'      => 0,
                                   //
                                   'telegram_message_bugnote_limit'            => 0,
                                   /**
@@ -205,7 +206,8 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'EVENT_REPORT_BUG'      => 'telegram_message_bug_added',
                                   'EVENT_BUGNOTE_ADD'     => 'telegram_message_bugnote_add',
                                   'EVENT_UPDATE_BUG_DATA' => 'telegram_message_skip_sending',
-                                  'EVENT_UPDATE_BUG'      => 'telegram_message_update_bug'
+                                  'EVENT_UPDATE_BUG'      => 'telegram_message_update_bug',
+                                  'EVENT_MENU_ACCOUNT'    => 'telegram_account_page_menu'
         );
     }
 
@@ -290,6 +292,17 @@ class TelegramBotPlugin extends MantisPlugin {
         } else {
             plugin_log_event( sprintf( 'Issue #%d updated', $p_existing_bug->id ) );
             telegram_message_generic( $p_existing_bug->id, 'updated', 'telegram_message_notification_title_for_action_bug_updated' );
+        }
+    }
+
+    function telegram_account_page_menu( $p_type_event ) {
+
+
+        global $g_account_telegram_menu_active;
+        if( $g_account_telegram_menu_active == TRUE ) {
+            return '</li><li class="active"><a href=' . plugin_page( 'account_telegram_prefs_page' ) . '>' . plugin_lang_get( 'account_telegram_prefs_page_header' ) . '</a></li><li>';
+        } else {
+            return '<a href=' . plugin_page( 'account_telegram_prefs_page' ) . '>' . plugin_lang_get( 'account_telegram_prefs_page_header' ) . '</a>';
         }
     }
 

@@ -26,6 +26,8 @@ $s_plugin_TelegramBot_response_from_telegram = 'Ответ сервера Telegr
 $s_plugin_TelegramBot_bot_successfully_attached = 'Бот успешно привязан.';
 $s_plugin_TelegramBot_info_to_redirect_bot_page = 'Вернитесь в чат, либо дождитесь переадресации.';
 $s_plugin_TelegramBot_user_relationship_question = 'Связать ваш аккаунт с ботом?';
+$s_plugin_TelegramBot_user_relationship_yes = 'ДА';
+$s_plugin_TelegramBot_user_relationship_no = 'НЕТ';
 
 $s_plugin_TelegramBot_registration_message_text = 'Для того чтобы начать использовать бот необходимо:
 1. Иметь действующий аккаунт в %1$s.

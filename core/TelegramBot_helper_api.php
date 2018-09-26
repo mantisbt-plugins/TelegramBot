@@ -37,7 +37,7 @@ function helper_ensure_telegram_bot_registred_confirmed( $p_message ) {
     print_hidden_inputs( $_POST );
     print_hidden_inputs( $_GET );
     echo '<input type="hidden" name="_confirmed" value="1" />', "\n";
-    echo '<input type="submit" class="btn btn-primary btn-white btn-round" value="ДА" />';
+    echo '<input type="submit" class="btn btn-primary btn-white btn-round" value="' . plugin_lang_get( 'user_relationship_yes' ) . '" />';
     echo "\n</form>";
 
     echo '<form method="post" class="center" action="">' . "\n";
@@ -46,7 +46,7 @@ function helper_ensure_telegram_bot_registred_confirmed( $p_message ) {
     print_hidden_inputs( $_POST );
     print_hidden_inputs( $_GET );
     echo '<input type="hidden" name="_confirmed" value="0" />', "\n";
-    echo '<input type="submit" class="btn btn-primary btn-white btn-round" value="НЕТ" />';
+    echo '<input type="submit" class="btn btn-primary btn-white btn-round" value="' . plugin_lang_get( 'user_relationship_no' ) . '" />';
     echo "\n</form>";
 
 

@@ -26,6 +26,8 @@ $s_plugin_TelegramBot_response_from_telegram = 'Telegram server response: ';
 $s_plugin_TelegramBot_bot_successfully_attached = 'The bot is successfully attached.';
 $s_plugin_TelegramBot_info_to_redirect_bot_page = 'Return to the chat, or wait for redirection.';
 $s_plugin_TelegramBot_user_relationship_question = 'Associate your account with a bot?';
+$s_plugin_TelegramBot_user_relationship_yes = 'YES';
+$s_plugin_TelegramBot_user_relationship_no = 'NO';
 
 $s_plugin_TelegramBot_registration_message_text = 'In order to start using the bot it is necessary:
 1. Have a valid account in %1$s.

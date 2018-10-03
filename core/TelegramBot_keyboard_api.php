@@ -419,3 +419,68 @@ function keyboard_summary_get() {
 
     return $t_inline_keyboard;
 }
+
+function keyboard_bug_status_change_is( $p_bug_id ) {
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    # User must have rights to change status to use this button
+    if( !access_has_bug_level( config_get( 'update_bug_status_threshold' ), $p_bug_id ) ) {
+        return $t_inline_keyboard;
+    }
+
+    $t_inline_keyboard->addRow( [
+                              'text'          => lang_get( 'status_group_bugs_button' ),
+                              'callback_data' => json_encode( array(
+                                                        'get_status' => array( 'bug_id' => $p_bug_id )
+                              ) )
+    ] );
+
+    return $t_inline_keyboard;
+}
+
+/**
+ * Print Change Status to: button
+ * This code is similar to print_status_option_list except
+ * there is no masking, except for the current state
+ *
+ * @param BugData $p_bug A valid bug object.
+ * @return void
+ */
+function keyboard_buttons_bug_change_status( BugData $p_bug ) {
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+    $t_current_access  = access_get_project_level( $p_bug->project_id );
+
+    # User must have rights to change status to use this button
+    if( !access_has_bug_level( config_get( 'update_bug_status_threshold' ), $p_bug->id ) ) {
+        return;
+    }
+
+    $t_enum_list = get_status_option_list(
+            $t_current_access, $p_bug->status, false,
+            # Add close if user is bug's reporter, still has rights to report issues
+            # (to prevent users downgraded to viewers from updating issues) and
+            # reporters are allowed to close their own issues
+            ( bug_is_user_reporter( $p_bug->id, auth_get_current_user_id() ) && access_has_bug_level( config_get( 'report_bug_threshold' ), $p_bug->id ) && ON == config_get( 'allow_reporter_close' )
+            ), $p_bug->project_id );
+
+    if( count( $t_enum_list ) > 0 ) {
+        # resort the list into ascending order after noting the key from the first element (the default)
+
+        ksort( $t_enum_list );
+
+        # space at beginning of line is important
+        foreach( $t_enum_list as $t_key => $t_val ) {
+            $t_inline_keyboard->addRow( [
+                                      'text'          => $t_val,
+                                      'callback_data' => json_encode( array(
+                                                                'set_status' => array(
+                                                                                          'bug_id' => $p_bug->id,
+                                                                                          'new_s'  => $t_key
+                                                                )
+                                      ) )
+            ] );
+        }
+    }
+
+    return $t_inline_keyboard;
+}

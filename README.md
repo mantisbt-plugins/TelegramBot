@@ -15,6 +15,7 @@ A lot of things are in the plans, but at the moment the following functions are 
     - change the status of the bug;
     - adding a comment to the bug;
     - mention of the user in the commentary.
+- Respond to chat alerts about events using the built-in function "Reply to message". The answer will be added as a comment to the bug (v. >= 1.3).
 
 Download
 --------

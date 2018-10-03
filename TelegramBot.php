@@ -22,7 +22,7 @@ class TelegramBotPlugin extends MantisPlugin {
         $this->name        = 'TelegramBot';
         $this->description = plugin_lang_get( 'description' );
 
-        $this->version  = '1.2.1';
+        $this->version  = '1.3.0-dev';
         $this->requires = array(
                                   'MantisCore' => '2.14.0',
         );
@@ -40,7 +40,16 @@ class TelegramBotPlugin extends MantisPlugin {
                                   array( "CreateTableSQL", array( plugin_table( "user_relationship" ), "
                                       mantis_user_id INT(10) NOTNULL PRIMARY,
                                       telegram_user_id INT(10) NOTNULL                                        
-				" ) )
+				" ) ),
+                                  // version 1.3.0
+                                  array( 'CreateTableSQL', array( plugin_table( 'message_relationship' ), "
+                                      id INT(10) NOTNULL AUTOINCREMENT PRIMARY,                                     
+                                      bug_id INT(10) UNSIGNED NOTNULL,
+                                      chat_id BIGINT UNSIGNED NOTNULL,
+                                      msg_id INT(10) UNSIGNED NOTNULL
+				" ) ),
+                                  array( 'CreateIndexSQL', array( 'idx_msgid_chatid', plugin_table( 'message_relationship' ), array( 'msg_id', 'chat_id' ) ) ),
+                                  array( 'CreateIndexSQL', array( 'idx_chatid', plugin_table( 'message_relationship' ), 'chat_id' ) ),
         );
     }
 

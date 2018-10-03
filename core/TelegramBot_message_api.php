@@ -134,9 +134,13 @@ function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_messa
         ];
 
 
-        $t_result_send = telegram_session_send_message( $t_telegram_user_id, $t_data );
-        if( $t_result_send ) {
-            $t_result[] = $t_mention_user_id;
+        $t_results_send = telegram_session_send_message( $t_telegram_user_id, $t_data );
+        foreach( $t_results_send as $t_result_count ) {
+            if( $t_result_count ) {
+                $t_result[] = $t_mention_user_id;
+                telegram_message_realatationship_add( $p_bug_id, $t_telegram_user_id, $t_result_count->getProperty( 'message_id' ) );
+                break;
+            }
         }
 
         lang_pop();
@@ -219,7 +223,13 @@ function telegram_message_bugnote_add_generic( $p_bugnote_id, $p_files = array()
                                   'text' => $t_contents
         ];
 
-        $t_result = telegram_session_send_message( $t_telegram_user_id, $data );
+        $t_results = telegram_session_send_message( $t_telegram_user_id, $data );
+
+        foreach( $t_results as $t_result ) {
+            if( $t_result->isOk() ) {
+                telegram_message_realatationship_add( $t_bugnote->bug_id, $t_telegram_user_id, $t_result->getResult()->getMessageId() );
+            }
+        }
 
         lang_pop();
     }
@@ -267,7 +277,13 @@ function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_me
                               'text' => $t_message
     ];
 
-    $t_result = telegram_session_send_message( $t_telegram_user_id, $data );
+    $t_results = telegram_session_send_message( $t_telegram_user_id, $data );
+
+    foreach( $t_results as $t_result ) {
+        if( $t_result->isOk() ) {
+            telegram_message_realatationship_add( $p_visible_bug_data['email_bug'], $t_telegram_user_id, $t_result->getResult()->getMessageId() );
+        }
+    }
 
     return;
 }
@@ -665,4 +681,50 @@ function telegram_message_relationship_child_resolved_closed( $p_bug_id, $p_mess
             }
         }
     }
+}
+
+function telegram_message_realatationship_add( $p_bug_id, $p_chat_id, $p_msg_id ) {
+    $t_message_relationship_table = plugin_table( 'message_relationship' );
+
+    $query = "INSERT INTO $t_message_relationship_table
+                                                ( bug_id, chat_id, msg_id )
+                                              VALUES
+                                                ( " . db_param() . ',' . db_param() . ',' . db_param() . ')';
+
+    db_query( $query, array( $p_bug_id, $p_chat_id, $p_msg_id ) );
+
+    return TRUE;
+}
+
+function telegram_message_realatationship_delete( $p_chat_id ) {
+
+    $t_message_relationship_table = plugin_table( 'message_relationship' );
+
+    $query = "DELETE FROM $t_message_relationship_table";
+
+    $query .= " WHERE chat_id=" . db_param();
+
+    $t_fields[] = $p_chat_id;
+
+    db_query( $query, $t_fields );
+
+    return true;
+}
+
+function bug_get_id_from_message_id( $p_chat_id, $p_msg_id ) {
+
+    $t_message_relationship_table = plugin_table( 'message_relationship' );
+
+    db_param_push();
+
+    $t_query = "SELECT bug_id
+			FROM $t_message_relationship_table
+			WHERE chat_id=" . db_param() . " AND msg_id=" . db_param();
+
+    $t_result = db_query( $t_query, array( $p_chat_id, $p_msg_id ) );
+
+    $t_row    = db_fetch_array( $t_result );
+    $t_bug_id = $t_row['bug_id'];
+
+    return (int) $t_bug_id;
 }

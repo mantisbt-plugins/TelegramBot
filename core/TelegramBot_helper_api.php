@@ -468,10 +468,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
     return $t_data_send;
 }
 
-function telegram_add_comment( $p_current_action, Longman\TelegramBot\Entities\CallbackQuery $p_callback_query ) {
-
-    $t_callback_msg_id = $p_callback_query->getMessage()->getMessageId();
-    $t_orgl_chat_id    = $p_callback_query->getMessage()->getReplyToMessage()->getChat()->getId();
+function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_message ) {
 
     $t_command = array_keys( $p_current_action );
 
@@ -479,8 +476,6 @@ function telegram_add_comment( $p_current_action, Longman\TelegramBot\Entities\C
         case 'get_default_category':
             $t_inline_keyboard = telegram_bot_get_keyboard_default_filter();
             $t_data_send       = [
-                                      'chat_id'      => $t_orgl_chat_id,
-                                      'message_id'   => $t_callback_msg_id,
                                       'text'         => plugin_lang_get( 'bug_section_select' ),
                                       'reply_markup' => $t_inline_keyboard,
             ];
@@ -509,8 +504,6 @@ function telegram_add_comment( $p_current_action, Longman\TelegramBot\Entities\C
 
             $t_inline_keyboard = keyboard_bugs_get( $t_custom_filter, $p_current_action['get_bugs'][$t_command_get_bugs[0]]['page'] );
             $t_data_send       = [
-                                      'chat_id'      => $t_orgl_chat_id,
-                                      'message_id'   => $t_callback_msg_id,
                                       'text'         => plugin_lang_get( 'bug_select' ),
                                       'reply_markup' => $t_inline_keyboard,
             ];
@@ -519,7 +512,7 @@ function telegram_add_comment( $p_current_action, Longman\TelegramBot\Entities\C
         case 'set_bug':
             $t_bug_id = $p_current_action['set_bug'];
 
-            $t_orgl_message = $p_callback_query->getMessage()->getReplyToMessage();
+            $t_orgl_message = $p_reply_to_message;
             $t_content_type = $t_orgl_message->getType();
 
             switch( $t_content_type ) {
@@ -544,19 +537,17 @@ function telegram_add_comment( $p_current_action, Longman\TelegramBot\Entities\C
 
                     $t_file = $t_download->getResult();
 
-                    $t_data_send_action = [
-                                              'chat_id' => $t_orgl_chat_id,
-                                              'action'  => 'upload_document'
-                    ];
-                    $t_rttt             = Longman\TelegramBot\Request::sendChatAction( $t_data_send_action );
-                    $t_upload_is_error  = FALSE;
+//                    $t_data_send_action = [
+//                                              'chat_id' => $t_orgl_chat_id,
+//                                              'action'  => 'upload_document'
+//                    ];
+//                    $t_rttt             = Longman\TelegramBot\Request::sendChatAction( $t_data_send_action );
+                    $t_upload_is_error = FALSE;
                     try {
                         Longman\TelegramBot\Request::downloadFile( $t_file );
                     } catch( Longman\TelegramBot\Exception\TelegramException $e ) {
                         $t_data_send       = [
-                                                  'chat_id'    => $t_orgl_chat_id,
-                                                  'message_id' => $t_callback_msg_id,
-                                                  'text'       => $e->getMessage()
+                                                  'text' => $e->getMessage()
                         ];
                         $t_upload_is_error = TRUE;
                         break;
@@ -587,11 +578,12 @@ function telegram_add_comment( $p_current_action, Longman\TelegramBot\Entities\C
                 bugnote_add_from_telegram( $t_bug_id, $t_text, $t_file_for_attach );
 
                 $t_data_send = [
-                                          'chat_id'    => $t_orgl_chat_id,
-                                          'message_id' => $t_callback_msg_id,
-                                          'text'       => plugin_lang_get( 'content_upload_complete' ) . $p_current_action['set_bug']
+                                          'text'         => plugin_lang_get( 'content_upload_complete' ) . $p_current_action['set_bug'],
+//                                          'reply_markup' => keyboard_bug_status_change_is( $t_bug_id )
                 ];
             } catch( Mantis\Exceptions\MantisException $t_error ) {
+                $t_file_is_deleted = unlink( $t_file_path );
+
                 $t_params = $t_error->getParams();
                 if( !empty( $t_params ) ) {
                     call_user_func_array( 'error_parameters', $t_params );
@@ -599,9 +591,7 @@ function telegram_add_comment( $p_current_action, Longman\TelegramBot\Entities\C
 
                 $t_error_text = error_string( $t_error->getCode() );
                 $t_data_send  = [
-                                          'chat_id'    => $t_orgl_chat_id,
-                                          'message_id' => $t_callback_msg_id,
-                                          'text'       => $t_error_text
+                                          'text' => $t_error_text
                 ];
             }
             break;

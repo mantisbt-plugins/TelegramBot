@@ -45,7 +45,8 @@ The following actions are currently available with bugs:
 - report bugs;
 - add comments;
 - attach files;
-- receive notifications.
+- receive notifications;
+- respond to messages through the built-in Telegram "reply to message".
 
 Notification settings %2$s
 

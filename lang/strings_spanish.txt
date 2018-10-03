@@ -45,7 +45,8 @@ Las siguientes acciones están actualmente disponibles con errores:
 - report bugs;
 - add comments;
 - attach files;
-- receive notifications.
+- receive notifications;
+- responder a los mensajes a través del telegrama incorporado "responder al mensaje".
 
 Configuración de las notificaciones %2$s
 

@@ -19,7 +19,20 @@ class RequestMantis extends \Longman\TelegramBot\Request {
 
     public static function sendMessage( array $data ) {
         telegram_session_start();
-        return parent::sendMessage( $data );
+
+        $text = $data['text'];
+
+        $response = array();
+        do {
+            //Chop off and send the first message
+            $data['text'] = mb_substr( $text, 0, 4096 );
+            $response[]   = self::send( 'sendMessage', $data );
+
+            //Prepare the next message
+            $text = mb_substr( $text, 4096 );
+        } while( mb_strlen( $text, 'UTF-8' ) > 0 );
+
+        return $response;
     }
 
     public static function __callStatic( $action, array $data ) {
@@ -42,14 +55,9 @@ function telegram_session_send_message( $p_telegram_user_id, $p_data ) {
 
     $p_data['chat_id'] = $p_telegram_user_id;
 
-    $t_result_send = RequestMantis::sendMessage( $p_data );
+    $t_results_send = RequestMantis::sendMessage( $p_data );
 
-    if( $t_result_send->getOk() ) {
-        return TRUE;
-    } else {
-//        telegram_bot_user_mapping_delete( $p_user_id );
-        return FALSE;
-    }
+    return $t_results_send;
 }
 
 function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_message_id = 0 ) {

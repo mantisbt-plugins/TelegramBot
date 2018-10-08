@@ -1,5 +1,4 @@
 <?php
-
 # Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
@@ -50,7 +49,8 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
 
     $t_pref = user_pref_get( $p_user_id );
 
-    $t_telegram_message_full_issue = (int) plugin_config_get( 'telegram_message_notifications_verbose' );
+    $t_telegram_message_full_issue              = (int) plugin_config_get( 'telegram_message_notifications_verbose' );
+    $t_telegram_message_included_all_bugnote_is = (int) plugin_config_get( 'telegram_message_included_all_bugnote_is' );
 
 # Account Preferences Form BEGIN
     ?>
@@ -281,6 +281,19 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                                     </label>
                                                 </td>
                                             </tr>
+                                            <tr>
+                                                <td class="category">
+                                                    <?php echo plugin_lang_get( 'telegram_message_included_all_bugnote_is' ) ?>
+                                                </td>
+                                                <td>
+                                                    <label class="inline">
+                                                        <input type="checkbox" class="ace input-sm"
+                                                               id="included-all-bugnote" name="telegram_message_included_all_bugnote_is"
+                                                               <?php check_checked( $t_telegram_message_included_all_bugnote_is, ON ); ?> />
+                                                        <span class="lbl"></span>
+                                                    </label>
+                                                </td>
+                                            </tr>
 
                                         <?php } else { ?>
 
@@ -303,6 +316,7 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                             <input type="hidden" name="telegram_message_on_status_min_severity"   value="<?php echo plugin_config_get( 'telegram_message_on_status_min_severity' ) ?>" />
                                             <input type="hidden" name="telegram_message_on_priority_min_severity" value="<?php echo plugin_config_get( 'telegram_message_on_priority_min_severity' ) ?>" />
                                             <input type="hidden" name="telegram_message_full_issue" value="<?php echo $t_telegram_message_full_issue ?>" />
+                                            <input type="hidden" name="telegram_message_included_all_bugnote_is" value="<?php echo $t_telegram_message_included_all_bugnote_is ?>" />
                                         <?php } ?>
 
                                     </table>

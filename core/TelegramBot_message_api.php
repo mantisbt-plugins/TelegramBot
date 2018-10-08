@@ -271,7 +271,7 @@ function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_me
         $t_message .= " \n";
     }
 
-    $t_message .= telegram_message_format_bug_message( $p_visible_bug_data );
+    $t_message .= telegram_message_format_bug_message( $p_visible_bug_data, TRUE, $p_user_id );
 
     $data = [
                               'text' => $t_message

@@ -207,6 +207,7 @@ class TelegramBotPlugin extends MantisPlugin {
                                    * @global integer $g_email_notifications_verbose
                                    */
                                   'telegram_message_notifications_verbose'    => OFF,
+                                  'telegram_message_included_all_bugnote_is'  => OFF,
         );
     }
 

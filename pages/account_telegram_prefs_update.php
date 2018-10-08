@@ -57,6 +57,7 @@ plugin_config_set( 'telegram_message_on_reopened_min_severity', gpc_get_int( 'te
 plugin_config_set( 'telegram_message_on_bugnote_min_severity', gpc_get_int( 'telegram_message_on_bugnote_min_severity' ), $f_user_id, ALL_PROJECTS );
 plugin_config_set( 'telegram_message_on_status_min_severity', gpc_get_int( 'telegram_message_on_status_min_severity' ), $f_user_id, ALL_PROJECTS );
 plugin_config_set( 'telegram_message_on_priority_min_severity', gpc_get_int( 'telegram_message_on_priority_min_severity' ), $f_user_id, ALL_PROJECTS );
+plugin_config_set( 'telegram_message_included_all_bugnote_is', gpc_get_bool( 'telegram_message_included_all_bugnote_is' ) ? 1 : 0, $f_user_id, ALL_PROJECTS );
 
 # Save user preference with regards to getting full issue details in notifications or not.
 $t_telegram_message_full_issue         = gpc_get_bool( 'telegram_message_full_issue' ) ? 1 : 0;

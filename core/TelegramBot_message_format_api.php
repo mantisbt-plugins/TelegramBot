@@ -96,7 +96,7 @@ function telegraml_message_format_attribute( array $p_visible_bug_data, $p_attri
  * @param array $p_visible_bug_data Bug data array to format.
  * @return string
  */
-function telegram_message_format_bug_message( array $p_visible_bug_data, $p_include_bugnote = TRUE ) {
+function telegram_message_format_bug_message( array $p_visible_bug_data, $p_include_bugnote = TRUE, $p_user_id = NULL ) {
     $t_normal_date_format   = config_get( 'normal_date_format' );
     $t_complete_date_format = config_get( 'complete_date_format' );
 
@@ -214,21 +214,32 @@ function telegram_message_format_bug_message( array $p_visible_bug_data, $p_incl
 
     $t_message .= $t_telegram_message_separator1 . " \n\n";
     # format bugnote
-//    $t_bugnotes_last_id = bugnote_get_latest_id( $p_visible_bug_data['email_bug'] );
-//    if( $t_bugnotes_last_id != NULL ) {
-//        $t_bugnote = bugnote_get( $t_bugnotes_last_id );
-//        $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
-//        $t_message .= telegram_message_format_bugnote( $p_visible_bug_data['bugnotes'][$t_bugnotes_count - 1], $p_visible_bug_data['email_project_id'],
-//    /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
-//    }
     if( $p_include_bugnote ) {
-        foreach( $p_visible_bug_data['bugnotes'] as $t_bugnote ) {
-            # Show time tracking is always true, since data has already been filtered out when creating the bug visible data.
-            $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
+        if( plugin_config_get( 'telegram_message_included_all_bugnote_is', NULL, FALSE, $p_user_id, NULL ) ) {
+            foreach( $p_visible_bug_data['bugnotes'] as $t_bugnote ) {
+                # Show time tracking is always true, since data has already been filtered out when creating the bug visible data.
+                $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
 //        $t_message .= telegram_message_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
-                            /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
+                                /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
+            }
+        } else {
+            $t_bugnotes_last_id = bugnote_get_latest_id( $p_visible_bug_data['email_bug'] );
+            if( $t_bugnotes_last_id != NULL ) {
+                $t_bugnote = bugnote_get( $t_bugnotes_last_id );
+                $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
+//        $t_message .= telegram_message_format_bugnote( $p_visible_bug_data['bugnotes'][$t_bugnotes_count - 1], $p_visible_bug_data['email_project_id'],
+                                /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
+            }
         }
     }
+//    if( $p_include_bugnote ) {
+//        foreach( $p_visible_bug_data['bugnotes'] as $t_bugnote ) {
+//            # Show time tracking is always true, since data has already been filtered out when creating the bug visible data.
+//            $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
+////        $t_message .= telegram_message_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
+//                            /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
+//        }
+//    }
 //    # format history
 //    if( array_key_exists( 'history', $p_visible_bug_data ) ) {
 //        $t_message .= lang_get( 'bug_history' ) . " \n";

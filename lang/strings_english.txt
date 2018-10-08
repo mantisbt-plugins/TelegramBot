@@ -148,6 +148,7 @@ $s_plugin_TelegramBot_telegram_message__on_status_change = 'E-mail on Status Cha
 $s_plugin_TelegramBot_telegram_message__on_priority_change = 'E-mail on Priority Change';
 $s_plugin_TelegramBot_telegram_message__bugnote_limit = 'E-mail Notes Limit';
 $s_plugin_TelegramBot_telegram_message__full_issue_details = 'E-mail Full Issue Details';
+$s_plugin_TelegramBot_telegram_message_included_all_bugnote_is = 'Include all comments in the notification when status changes';
 
 $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Telegram settings';
 $s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Settings bot Telegram';

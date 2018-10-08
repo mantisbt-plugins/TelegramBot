@@ -146,6 +146,7 @@ $s_plugin_TelegramBot_telegram_message_on_status_change = 'Уведомлять 
 $s_plugin_TelegramBot_telegram_message_on_priority_change = 'Уведомлять об изменении приоритета';
 $s_plugin_TelegramBot_telegram_message_bugnote_limit = 'Ограничение уведомлений';
 $s_plugin_TelegramBot_telegram_message_full_issue_details = 'Отправить все подробности задачи при комментировании';
+$s_plugin_TelegramBot_telegram_message_included_all_bugnote_is = 'Включать все комментарии в уведомление при изменении статуса';
 
 $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Настройки телеграм';
 $s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Настройки телеграм бота';

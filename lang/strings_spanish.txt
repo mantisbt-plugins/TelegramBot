@@ -153,3 +153,4 @@ $s_plugin_TelegramBot_telegram_message_included_all_bugnote_is = 'Incluir todos 
 $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Telegram settings';
 $s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Settings bot Telegram';
 $s_plugin_TelegramBot_account_telegram_prefs_subscribe_bot = 'To sign on to the bot, find it ( %1$s ) in Telegram or follow the link: ';
+$s_plugin_TelegramBot_account_telegram_prefs_associated_users_head = 'Usuarios conectados:';

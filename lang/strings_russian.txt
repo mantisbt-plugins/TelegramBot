@@ -151,3 +151,4 @@ $s_plugin_TelegramBot_telegram_message_included_all_bugnote_is = 'Включат
 $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Настройки телеграм';
 $s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Настройки телеграм бота';
 $s_plugin_TelegramBot_account_telegram_prefs_subscribe_bot = 'Для того чтобы подписать на бота найдите его ( %1$s ) в Telegram или перейдите по ссылке: ';
+$s_plugin_TelegramBot_account_telegram_prefs_associated_users_head = 'Подключенные пользователи:';

@@ -115,6 +115,24 @@ print_manage_menu( 'manage_plugin_page.php' );
                                 }
                                 ?>
 
+                                <tr <?php echo helper_alternate_class() ?>>
+                                    <th class="category" width="5%">
+                                        <?php echo plugin_lang_get( 'account_telegram_prefs_associated_users_head' ) ?>
+                                    </th>
+                                    <td class="left" colspan="1"> 
+
+                                        <p>
+                                            <?php
+                                            $t_associated_user_ids = telegram_bot_associated_all_users_get();
+                                            foreach( $t_associated_user_ids as $t_user_id ) {
+                                                echo user_get_field( $t_user_id, 'username' ) . '</br>';
+                                            }
+                                            ?>
+                                        </p>                                        
+
+                                    </td>
+                                </tr>
+
                                 <tr>
                                     <td class="center" colspan="2">
                                         <input type="submit" class="button" value="<?php echo lang_get( 'change_configuration' ) ?>" />

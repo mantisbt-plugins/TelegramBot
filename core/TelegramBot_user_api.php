@@ -38,12 +38,24 @@ function telegram_bot_user_mapping_add( $p_user_id, $p_telegram_user_id ) {
 
     $t_user_relationship_table = plugin_table( 'user_relationship' );
 
-    $query = "INSERT INTO $t_user_relationship_table
+    $t_telegram_user_is_associated = telegram_user_is_associated_mantis_user( $p_telegram_user_id );
+    $t_mantis_user_is_associated   = user_is_associated_with_telegram( $t_user_id );
+
+    if( $t_telegram_user_is_associated ) {
+        $t_query    = "UPDATE $t_user_relationship_table SET mantis_user_id = " . db_param() . " WHERE telegram_user_id = " . db_param();
+        $t_db_param = array( $t_user_id, $t_telegram_user_id );
+    } else if( $t_mantis_user_is_associated ) {
+        $t_query    = "UPDATE $t_user_relationship_table SET telegram_user_id = " . db_param() . " WHERE mantis_user_id = " . db_param();
+        $t_db_param = array( $t_telegram_user_id, $t_user_id );
+    } else {
+        $t_query    = "INSERT INTO $t_user_relationship_table
                                                 ( mantis_user_id, telegram_user_id )
                                               VALUES
                                                 ( " . db_param() . ',' . db_param() . ')';
+        $t_db_param = array( $t_user_id, $t_telegram_user_id );
+    }
 
-    db_query( $query, array( $t_user_id, $t_telegram_user_id ) );
+    db_query( $t_query, $t_db_param );
 
     return true;
 }
@@ -102,6 +114,17 @@ function telegram_user_is_associated_mantis_user( $p_telegram_user_id ) {
     $t_user_id = user_get_id_by_telegram_user_id( $p_telegram_user_id );
 
     if( $t_user_id == 0 ) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
+function user_is_associated_with_telegram( $p_mantis_user_id ) {
+
+    $t_telegram_user_id = telegram_user_get_id_by_user_id( $p_mantis_user_id );
+
+    if( $t_telegram_user_id == 0 ) {
         return false;
     } else {
         return true;

@@ -15,6 +15,22 @@
 # along with Customer management plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
+function telegram_bot_associated_all_users_get() {
+    $t_user_relationship_table = plugin_table( 'user_relationship' );
+
+    db_param_push();
+
+    $t_query   = "SELECT mantis_user_id 
+			FROM " . $t_user_relationship_table;
+    $t_results = db_query( $t_query );
+
+    foreach( $t_results as $t_result ) {
+        $t_row[] = $t_result['mantis_user_id'];
+    }
+
+    return $t_row;
+}
+
 function telegram_bot_user_mapping_add( $p_user_id, $p_telegram_user_id ) {
 
     $t_user_id          = (int) $p_user_id;

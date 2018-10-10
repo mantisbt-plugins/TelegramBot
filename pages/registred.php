@@ -15,7 +15,7 @@
 # along with Customer management plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
-auth_reauthenticate();
+auth_ensure_user_authenticated();
 
 $f_telegram_user_id = gpc_get_int( 'telegram_user_id' );
 $f_is_confirmed     = gpc_get_bool( '_confirmed', FALSE );
@@ -30,9 +30,6 @@ if( $f_is_confirmed ) {
 
     $t_current_user_id = auth_get_current_user_id();
 
-    if( user_get_id_by_telegram_user_id( $f_telegram_user_id ) == $t_current_user_id ) {
-        telegram_bot_user_mapping_delete( $t_current_user_id );
-    }
     telegram_bot_user_mapping_add( $t_current_user_id, $f_telegram_user_id );
 
     $data     = [

@@ -18,7 +18,7 @@ Features
 Download
 --------
 Please download the stable version.
-(https://github.com/brlumen/TelegramBot/releases)
+(https://github.com/mantisbt-plugins/TelegramBot/releases/latest)
 
 
 How to install

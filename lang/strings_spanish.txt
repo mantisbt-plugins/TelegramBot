@@ -76,7 +76,6 @@ $s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
 
 $s_plugin_TelegramBot_error_file_size = 'The file should not exceed 20 MB';
 $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this bot';
-$s_plugin_TelegramBot_error_user = 'The user is deactivated or does not exist.';
 
 $s_plugin_TelegramBot_get_description = 'ENTER DESCRIPTION TEXT:';
 $s_plugin_TelegramBot_get_summary = 'ENTER SUMMARY TEXT:';

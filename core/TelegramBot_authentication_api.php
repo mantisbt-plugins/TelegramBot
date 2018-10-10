@@ -70,13 +70,7 @@ function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_messag
         user_telegram_signup( $p_telegram_user_id, $p_message_id );
         return FALSE;
     } else if( !user_is_enabled( $t_mantis_user_id ) || !user_exists( $t_mantis_user_id ) ) {
-
-        $data_signup_break = [
-                                  'chat_id' => $t_message->getChat()->getId(),
-                                  'text'    => plugin_lang_get( 'error_user' )
-        ];
-
-        RequestMantis::sendMessage( $data_signup_break );
+        user_telegram_signup( $p_telegram_user_id, $p_message_id );
         return FALSE;
     } else {
         current_user_set( $t_mantis_user_id );

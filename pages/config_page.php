@@ -87,7 +87,7 @@ print_manage_menu( 'manage_plugin_page.php' );
                                         $t_result      = Longman\TelegramBot\Request::getWebhookInfo();
                                         $t_webhook_url = $t_result->result->getUrl();
                                     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
-                                        $t_webhook_url = $$t_errors->getMessage();
+                                        $t_webhook_url = $t_errors->getMessage();
                                     }
 
                                     if( $t_webhook_url ) {

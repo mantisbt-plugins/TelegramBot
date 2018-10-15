@@ -136,9 +136,9 @@ function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_messa
 
         $t_results_send = telegram_session_send_message( $t_telegram_user_id, $t_data );
         foreach( $t_results_send as $t_result_count ) {
-            if( $t_result_count ) {
+            if( $t_result_count->isOk() ) {
                 $t_result[] = $t_mention_user_id;
-                telegram_message_realatationship_add( $p_bug_id, $t_telegram_user_id, $t_result_count->getProperty( 'message_id' ) );
+                telegram_message_realatationship_add( $p_bug_id, $t_telegram_user_id, $t_result_count->getResult()->getMessageId() );
                 break;
             }
         }

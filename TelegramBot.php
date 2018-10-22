@@ -34,20 +34,42 @@ class TelegramBotPlugin extends MantisPlugin {
     }
 
     function schema() {
+        /**
+         * Standard table creation options
+         * Array key is the ADOdb datadict driver's name
+         */
+        $t_table_options = array(
+                                  'mysql' => 'DEFAULT CHARSET=utf8',
+                                  'pgsql' => 'WITHOUT OIDS',
+        );
+
+        # Special handling for Oracle (oci8):
+        # - Field cannot be null with oci because empty string equals NULL
+        # - Oci uses a different date literal syntax
+        # - Default BLOBs to empty_blob() function
+        if( db_is_oracle() ) {
+            $t_notnull      = '';
+            $t_blob_default = 'DEFAULT " empty_blob() "';
+        } else {
+            $t_notnull      = 'NOTNULL';
+            $t_blob_default = '';
+        }
 
         return array(
                                   // version 0.0.1
-                                  array( "CreateTableSQL", array( plugin_table( "user_relationship" ), "
-                                      mantis_user_id INT(10) NOTNULL PRIMARY,
-                                      telegram_user_id INT(10) NOTNULL                                        
-				" ) ),
+                                  array( 'CreateTableSQL', array( plugin_table( 'user_relationship' ), "
+                                      mantis_user_id    I   $t_notnull  PRIMARY,
+                                      telegram_user_id  I   $t_notnull",
+                                                                                      $t_table_options
+                                                            ) ),
                                   // version 1.3.0
                                   array( 'CreateTableSQL', array( plugin_table( 'message_relationship' ), "
-                                      id INT(10) NOTNULL AUTOINCREMENT PRIMARY,                                     
-                                      bug_id INT(10) UNSIGNED NOTNULL,
-                                      chat_id BIGINT UNSIGNED NOTNULL,
-                                      msg_id INT(10) UNSIGNED NOTNULL
-				" ) ),
+                                      id                I   $t_notnull  AUTOINCREMENT   PRIMARY,                                     
+                                      bug_id            I   UNSIGNED    $t_notnull,
+                                      chat_id           N   UNSIGNED    $t_notnull,
+                                      msg_id            I   UNSIGNED    $t_notnull",
+                                                                                      $t_table_options
+                                                            ) ),
                                   array( 'CreateIndexSQL', array( 'idx_msgid_chatid', plugin_table( 'message_relationship' ), array( 'msg_id', 'chat_id' ) ) ),
                                   array( 'CreateIndexSQL', array( 'idx_chatid', plugin_table( 'message_relationship' ), 'chat_id' ) ),
         );

@@ -22,7 +22,7 @@ class TelegramBotPlugin extends MantisPlugin {
         $this->name        = 'TelegramBot';
         $this->description = plugin_lang_get( 'description' );
 
-        $this->version  = '1.3.2-dev';
+        $this->version  = '1.3.3-dev';
         $this->requires = array(
                                   'MantisCore' => '2.14.0',
         );
@@ -98,6 +98,8 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'bot_father_url'                            => 'https://t.me/BotFather',
                                   'telegram_url'                              => 'https://telegram.me/',
                                   'download_path'                             => '/tmp/',
+				  'proxy_address'				=> '',
+				  'time_out_server_response'			=> 30,
                                   /**
                                    * The following two config options allow you to control who should get email
                                    * notifications on different actions/statuses.  The first option

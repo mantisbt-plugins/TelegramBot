@@ -19,16 +19,11 @@ $f_token = gpc_get_string( 'token' );
 
 if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_token == plugin_config_get( 'api_key' ) ) {
 
-    $t_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
-
-    $t_tg->setDownloadPath( plugin_config_get( 'download_path' ) );
-
-//    $dwdds = $t_tg->addCommandsPath( realpath( __DIR__ . '/../core/Commands/' ));
-//    $efvef = $t_tg->handle();
+	telegram_session_start();
 
     $post = json_decode( Longman\TelegramBot\Request::getInput(), true );
 
-    $t_update      = new Longman\TelegramBot\Entities\Update( $post, $botname );
+    $t_update      = new Longman\TelegramBot\Entities\Update( $post );
     $t_update_type = $t_update->getUpdateType();
 
     if( $t_update_type == 'message' ) {
@@ -179,23 +174,6 @@ if( plugin_config_get( 'api_key' ) && plugin_config_get( 'bot_name' ) && $f_toke
                     $t_orgl_message = $t_callback_query->getMessage();
                     $t_data_send    = telegram_action_select( $t_orgl_message->getChat()->getId(), $t_orgl_message->getMessageId() );
                     break;
-//                case 'get_status':
-//                    $t_bug                     = bug_get( $t_data['get_status']['bug_id'] );
-//                    $t_data_send               = [
-//                                              'reply_markup' => keyboard_buttons_bug_change_status( $t_bug ),
-//                    ];
-//                    $t_data_send['chat_id']    = $t_message->getReplyToMessage()->getChat()->getId();
-//                    $t_data_send['message_id'] = $t_message->getMessageId();
-//                    
-//                    $t_visible_bug_data = email_build_visible_bug_data( user_get_id_by_telegram_user_id( $t_message->getReplyToMessage()->getChat()->getId() ), $t_bug->id );
-//                    $t_message = telegram_message_format_bug_message( $t_visible_bug_data, FALSE );
-//                    $t_message .= lang_get( 'bug_status_to_button' );
-//                    $t_data_send['text']       = $t_message;
-//                    break;
-//                case 'set_status':
-//                    
-//
-//                    break;
             }
 
 

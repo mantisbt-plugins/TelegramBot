@@ -20,6 +20,8 @@ $s_plugin_TelegramBot_description = 'Adds the user interaction function to the M
 $s_plugin_TelegramBot_config_title = 'Settings';
 $s_plugin_TelegramBot_bot_name = 'Bot name (required for bot authorization when receiving messages)';
 $s_plugin_TelegramBot_api_key = 'API key (required for bot authorization when sending messages)';
+$s_plugin_TelegramBot_proxy_address_header = 'SOCKS5 proxy server address: socks5://';
+$s_plugin_TelegramBot_time_out_server_response_header = 'Server response timeout (30 seconds by default):';
 $s_plugin_TelegramBot_current_config = 'The bot will send updates to the following URL:';
 $s_plugin_TelegramBot_response_from_telegram = 'Telegram server response: ';
 

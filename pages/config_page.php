@@ -75,6 +75,24 @@ print_manage_menu( 'manage_plugin_page.php' );
                                         <textarea name="api_key" id="api_key" class="form-control" rows="1" required><?php echo plugin_config_get( 'api_key' ) == NULL ? '' : plugin_config_get( 'api_key' ) ?></textarea>
                                     </td>
                                 </tr>
+				
+				<tr <?php echo helper_alternate_class() ?>>
+                                    <th class="category" width="5%">
+					<?php echo plugin_lang_get( 'time_out_server_response_header' ) ?>
+                                    </th>
+                                    <td class="center" colspan="1"> 
+                                        <input type="number" name="time_out_server_response" id="proxy_address" class="form-control" min="0" value="<?php echo plugin_config_get( 'time_out_server_response' ) == NULL ? '' : plugin_config_get( 'time_out_server_response' ) ?>">
+                                    </td>
+                                </tr>
+				
+				<tr <?php echo helper_alternate_class() ?>>
+                                    <th class="category" width="5%">
+					<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
+                                    </th>
+                                    <td class="center" colspan="1"> 
+                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
+                                    </td>
+                                </tr>
 
                                 <?php
                                 $t_bot_name = plugin_config_get( 'bot_name' );
@@ -83,7 +101,7 @@ print_manage_menu( 'manage_plugin_page.php' );
                                 if( $t_bot_name && $t_api_key ) {
 
                                     try {
-                                        $t_tg          = new \Longman\TelegramBot\Telegram( $t_api_key, $t_bot_name );
+					telegram_session_start();
                                         $t_result      = Longman\TelegramBot\Request::getWebhookInfo();
                                         $t_webhook_url = $t_result->result->getUrl();
                                     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {

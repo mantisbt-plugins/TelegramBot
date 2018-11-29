@@ -42,12 +42,27 @@ class RequestMantis extends \Longman\TelegramBot\Request {
 
 }
 
-function telegram_session_start() {
-    global $g_tg;
+function telegram_set_webhook() {
+	global $g_tg;
+	telegram_session_start();
 
-    if( $g_tg == NULL ) {
-        $g_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
-    }
+	return $g_tg->setWebhook( config_get_global( 'path' ) . plugin_page( 'hook', TRUE ) . '&token=' . plugin_config_get( 'api_key' ) );
+}
+
+function telegram_session_start() {
+	global $g_tg;
+
+	if( $g_tg == NULL ) {
+		$g_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
+		
+		\Longman\TelegramBot\Request::setClient( new \GuzzleHttp\Client( [
+					  'base_uri'	 => 'https://api.telegram.org',
+					  'timeout'	 => plugin_config_get( 'time_out_server_response' ),
+					  'proxy'	 => 'socks5://' . plugin_config_get( 'proxy_address' ),
+		] ) );
+		
+		$g_tg->setDownloadPath( plugin_config_get( 'download_path' ) );
+	}
 }
 
 function telegram_session_send_message( $p_telegram_user_id, $p_data ) {

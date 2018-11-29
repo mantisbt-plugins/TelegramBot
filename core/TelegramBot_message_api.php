@@ -64,8 +64,6 @@ function telegram_message_user_mention( $p_bug_id, $p_mention_user_ids, $p_messa
         return array();
     }
 
-//    $t_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
-
     $t_project_id = bug_get_field( $p_bug_id, 'project_id' );
     $t_sender_id  = auth_get_current_user_id();
     $t_sender     = user_get_name( $t_sender_id );
@@ -162,7 +160,7 @@ function telegram_message_bugnote_add_generic( $p_bugnote_id, $p_files = array()
         return;
     }
 
-    $t_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
+    telegram_session_start();
 
     ignore_user_abort( true );
 

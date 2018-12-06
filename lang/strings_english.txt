@@ -24,6 +24,10 @@ $s_plugin_TelegramBot_proxy_address_header = 'SOCKS5 proxy server address: socks
 $s_plugin_TelegramBot_time_out_server_response_header = 'Server response timeout (30 seconds by default):';
 $s_plugin_TelegramBot_current_config = 'The bot will send updates to the following URL:';
 $s_plugin_TelegramBot_response_from_telegram = 'Telegram server response: ';
+$s_plugin_TelegramBot_debug_connection_log_path_title = 'Path to log file';
+$s_plugin_TelegramBot_debug_connection_enabled = 'Enable connection debug mode?';
+$s_plugin_TelegramBot_config_page = 'General settings';
+$s_plugin_TelegramBot_monitor_page = 'Users monitor';
 
 $s_plugin_TelegramBot_bot_successfully_attached = 'The bot is successfully attached.';
 $s_plugin_TelegramBot_info_to_redirect_bot_page = 'Return to the chat, or wait for redirection.';

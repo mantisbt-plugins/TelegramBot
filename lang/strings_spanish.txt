@@ -24,6 +24,10 @@ $s_plugin_TelegramBot_proxy_address_header = 'Dirección del servidor proxy SOCK
 $s_plugin_TelegramBot_time_out_server_response_header = 'Tiempo de espera de respuesta del servidor (30 segundos de forma predeterminada):';
 $s_plugin_TelegramBot_current_config = 'El bot enviará actualizaciones a la siguiente URL:';
 $s_plugin_TelegramBot_response_from_telegram = 'Respuesta del servidor de Telegram: ';
+$s_plugin_TelegramBot_debug_connection_log_path_title = 'Ruta al archivo de registro';
+$s_plugin_TelegramBot_debug_connection_enabled = 'Habilitar el modo de depuración de conexión?';
+$s_plugin_TelegramBot_config_page = 'Ajustes generales';
+$s_plugin_TelegramBot_monitor_page = 'Monitor de usuario';
 
 $s_plugin_TelegramBot_bot_successfully_attached = 'El robot está conectado correctamente.';
 $s_plugin_TelegramBot_info_to_redirect_bot_page = 'Regrese al chat, o espere la redirección.';

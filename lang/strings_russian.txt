@@ -24,6 +24,10 @@ $s_plugin_TelegramBot_proxy_address_header = 'Адрес socks5 прокси с�
 $s_plugin_TelegramBot_time_out_server_response_header = 'Таймаут ожидания ответа сервера (по умолчанию 30 сек): ';
 $s_plugin_TelegramBot_current_config = 'Бот будет отправлять обновления на следующий URL:';
 $s_plugin_TelegramBot_response_from_telegram = 'Ответ сервера Telegram: ';
+$s_plugin_TelegramBot_debug_connection_log_path_title = 'Путь к лог файлу';
+$s_plugin_TelegramBot_debug_connection_enabled = 'Включить режим отладки подключения?';
+$s_plugin_TelegramBot_config_page = 'Общие настройки';
+$s_plugin_TelegramBot_monitor_page = 'Монитор пользователей';
 
 $s_plugin_TelegramBot_bot_successfully_attached = 'Бот успешно привязан.';
 $s_plugin_TelegramBot_info_to_redirect_bot_page = 'Вернитесь в чат, либо дождитесь переадресации.';

@@ -44,7 +44,7 @@ if( plugin_config_get( 'time_out_server_response' ) != $f_time_out_server_respon
 }
 
 if( $f_debug_connection_enabled == ON ) {
-	if( is_writable( $f_debug_connection_log_path ) ) {
+	if( fopen( $f_debug_connection_log_path, 'a' ) ) {
 		plugin_config_set( 'debug_connection_enabled', $f_debug_connection_enabled );
 		plugin_config_set( 'debug_connection_log_path', $f_debug_connection_log_path );
 	} else {

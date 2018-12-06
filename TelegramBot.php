@@ -22,7 +22,7 @@ class TelegramBotPlugin extends MantisPlugin {
         $this->name        = 'TelegramBot';
         $this->description = plugin_lang_get( 'description' );
 
-        $this->version  = '1.3.3';
+        $this->version  = '1.4.0';
         $this->requires = array(
                                   'MantisCore' => '2.14.0',
         );
@@ -85,6 +85,7 @@ class TelegramBotPlugin extends MantisPlugin {
         require_once 'core/TelegramBot_fields_api.php';
         require_once 'core/TelegramBot_message_api.php';
         require_once 'core/TelegramBot_message_format_api.php';
+	require_once 'core/TelegramBot_menu_api.php';
 
         global $g_skip_sending_bugnote, $g_account_telegram_menu_active;
         $g_skip_sending_bugnote         = FALSE;
@@ -100,6 +101,8 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'download_path'                             => '/tmp/',
 				  'proxy_address'				=> '',
 				  'time_out_server_response'			=> 30,
+				  'debug_connection_log_path'			=> '/tmp/TelegramBot_debug.log',
+				  'debug_connection_enabled'			=> OFF,
                                   /**
                                    * The following two config options allow you to control who should get email
                                    * notifications on different actions/statuses.  The first option

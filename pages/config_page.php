@@ -86,14 +86,30 @@ telegrambot_print_menu_config( 'config_page' );
                                     </td>
                                 </tr>
 				
-				<tr <?php echo helper_alternate_class() ?>>
-                                    <th class="category" width="5%">
-					<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
-                                    </th>
-                                    <td class="center" colspan="1"> 
-                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
-                                    </td>
-                                </tr>
+				<?php
+				$t_curl_version = curl_version();
+//				$t_curl_version = '7.19.7';
+				if( $t_curl_version['version'] >= '7.21.7' ) { ?>
+					<tr <?php echo helper_alternate_class() ?>>
+	                                    <th class="category" width="5%">
+						<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
+	                                    </th>
+	                                    <td class="center" colspan="1"> 
+	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
+	                                    </td>
+	                                </tr>
+				<?php				
+				} else { ?>
+						<tr <?php echo helper_alternate_class() ?>>
+						    <th class="category" width="5%">
+							<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
+						    </th>
+						    <td class="center" colspan="1"> 
+							<textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" disabled="true"><?php echo plugin_lang_get( 'ERROR_CURL_VERSION' ) ?></textarea>
+						    </td>
+						</tr>
+					<?php
+				} ?>
 				
 				<tr <?php echo helper_alternate_class() ?>>
                                     <th class="category" width="5%">

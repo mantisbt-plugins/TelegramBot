@@ -55,11 +55,15 @@ function telegram_session_start() {
 	if( $g_tg == NULL ) {
 		$g_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
 		
-		\Longman\TelegramBot\Request::setClient( new \GuzzleHttp\Client( [
+		$g_tg_options = [
 					  'base_uri'	 => 'https://api.telegram.org',
 					  'timeout'	 => plugin_config_get( 'time_out_server_response' ),
-					  'proxy'	 => 'socks5://' . plugin_config_get( 'proxy_address' ),
-		] ) );
+		];
+		
+		if( !empty( plugin_config_get( 'proxy_address' ) ) ) {
+			$g_tg_options['proxy'] = 'socks5://' . plugin_config_get( 'proxy_address' );
+		}
+		\Longman\TelegramBot\Request::setClient( new \GuzzleHttp\Client( $g_tg_options ) );
 		
 		$g_tg->setDownloadPath( plugin_config_get( 'download_path' ) );
 	}

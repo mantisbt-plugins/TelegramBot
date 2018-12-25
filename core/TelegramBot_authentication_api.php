@@ -54,14 +54,25 @@ function telegram_session_start() {
 
 	if( $g_tg == NULL ) {
 		$g_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );
-		
-		\Longman\TelegramBot\Request::setClient( new \GuzzleHttp\Client( [
-					  'base_uri'	 => 'https://api.telegram.org',
-					  'timeout'	 => plugin_config_get( 'time_out_server_response' ),
-					  'proxy'	 => 'socks5://' . plugin_config_get( 'proxy_address' ),
-		] ) );
-		
+
+		$t_proxy_address = plugin_config_get( 'proxy_address' );
+
+		$t_client_prop = array();
+
+		$t_client_prop['base_uri']	 = 'https://api.telegram.org';
+		$t_client_prop['timeout']	 = plugin_config_get( 'time_out_server_response' );
+
+		if( !is_blank( $t_proxy_address ) ) {
+			$t_client_prop['proxy'] = 'socks5://' . $t_proxy_address;
+		}
+
+		\Longman\TelegramBot\Request::setClient( new \GuzzleHttp\Client( $t_client_prop ) );
+
 		$g_tg->setDownloadPath( plugin_config_get( 'download_path' ) );
+
+		if( plugin_config_get( 'debug_connection_enabled' ) == ON ) {
+			Longman\TelegramBot\TelegramLog::initDebugLog( plugin_config_get( 'debug_connection_log_path' ) );
+		}
 	}
 }
 

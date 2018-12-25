@@ -20,6 +20,7 @@ access_ensure_global_level( config_get( 'manage_plugin_threshold' ) );
 layout_page_header( plugin_lang_get( 'name_plugin_description_page' ) );
 layout_page_begin( 'manage_overview_page.php' );
 print_manage_menu( 'manage_plugin_page.php' );
+telegrambot_print_menu_config( 'config_page' );
 ?>
 
 <div class="col-md-12 col-xs-12">
@@ -85,69 +86,49 @@ print_manage_menu( 'manage_plugin_page.php' );
                                     </td>
                                 </tr>
 				
+				<?php
+				$t_curl_version = curl_version();
+//				$t_curl_version = '7.19.7';
+				if( $t_curl_version['version'] >= '7.21.7' ) { ?>
+					<tr <?php echo helper_alternate_class() ?>>
+	                                    <th class="category" width="5%">
+						<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
+	                                    </th>
+	                                    <td class="center" colspan="1"> 
+	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
+	                                    </td>
+	                                </tr>
+				<?php				
+				} else { ?>
+						<tr <?php echo helper_alternate_class() ?>>
+						    <th class="category" width="5%">
+							<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
+						    </th>
+						    <td class="center" colspan="1"> 
+							<textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" disabled="true"><?php echo plugin_lang_get( 'ERROR_CURL_VERSION' ) ?></textarea>
+						    </td>
+						</tr>
+					<?php
+				} ?>
+				
 				<tr <?php echo helper_alternate_class() ?>>
                                     <th class="category" width="5%">
-					<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
+					<?php echo plugin_lang_get( 'debug_connection_log_path_title' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
+                                        <textarea name="debug_connection_log_path" id="debug_connection_log_path" class="form-control" rows="1"><?php echo plugin_config_get( 'debug_connection_log_path' ) ?></textarea>
                                     </td>
                                 </tr>
-
-                                <?php
-                                $t_bot_name = plugin_config_get( 'bot_name' );
-                                $t_api_key  = plugin_config_get( 'api_key' );
-
-                                if( $t_bot_name && $t_api_key ) {
-
-                                    try {
-					telegram_session_start();
-                                        $t_result      = Longman\TelegramBot\Request::getWebhookInfo();
-                                        $t_webhook_url = $t_result->result->getUrl();
-                                    } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
-                                        $t_webhook_url = $t_errors->getMessage();
-                                    }
-
-                                    if( $t_webhook_url ) {
-                                        ?>
-
-                                        <tr <?php echo helper_alternate_class() ?>>
-                                            <td class="category" width="50%">
-                                                <?php echo plugin_lang_get( 'current_config' ) ?>
-                                            </td>
-
-                                            <td colspan="2">
-
-                                                <div class = "fallback">
-        <!--                                                    <pre>-->
-                                                    <?php
-                                                    print_r( $t_webhook_url );
-                                                    ?>
-                                                    <!--</pre>-->
-                                                </div>
-
-                                            </td>
-                                        </tr>
-                                        <?php
-                                    }
-                                }
-                                ?>
-
-                                <tr <?php echo helper_alternate_class() ?>>
+								
+				<tr <?php echo helper_alternate_class() ?>>
                                     <th class="category" width="5%">
-                                        <?php echo plugin_lang_get( 'account_telegram_prefs_associated_users_head' ) ?>
+					<?php echo plugin_lang_get( 'debug_connection_enabled' ) ?>
                                     </th>
-                                    <td class="left" colspan="1"> 
-
-                                        <p>
-                                            <?php
-                                            $t_associated_user_ids = telegram_bot_associated_all_users_get();
-                                            foreach( $t_associated_user_ids as $t_user_id ) {
-                                                echo user_get_field( $t_user_id, 'username' ) . '</br>';
-                                            }
-                                            ?>
-                                        </p>                                        
-
+                                    <td> 
+                                        <label class="inline">
+					    <input type="checkbox" class="ace" id="debug_connection_enabled" name="debug_connection_enabled" <?php check_checked( (int)plugin_config_get( 'debug_connection_enabled' ), ON ); ?> />
+					    <span class="lbl"></span>
+					</label>
                                     </td>
                                 </tr>
 

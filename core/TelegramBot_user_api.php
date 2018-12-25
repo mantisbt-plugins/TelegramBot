@@ -24,6 +24,8 @@ function telegram_bot_associated_all_users_get() {
 			FROM " . $t_user_relationship_table;
     $t_results = db_query( $t_query );
 
+    $t_row = array();
+    
     foreach( $t_results as $t_result ) {
         $t_row[] = $t_result['mantis_user_id'];
     }

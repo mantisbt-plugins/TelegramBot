@@ -79,7 +79,7 @@ $s_plugin_TelegramBot_bug_select = 'Select a bug';
 $s_plugin_TelegramBot_content_upload_complete = 'The content is attached to the bug: ';
 $s_plugin_TelegramBot_comment_add_complete = 'Comment added to bug: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'List of sections';
-$s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
+$s_plugin_TelegramBot_keyboard_button_back = 'A la lista de acciones';
 
 $s_plugin_TelegramBot_error_file_size = 'The file should not exceed 20 MB';
 $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this bot';
@@ -143,17 +143,17 @@ $s_plugin_TelegramBot_telegram_message_steps_to_reproduce = 'Steps to Reproduce'
 $s_plugin_TelegramBot_telegram_message_tag = 'Tags';
 $s_plugin_TelegramBot_telegram_message_due_date = 'Due Date';
 
-$s_plugin_TelegramBot_telegram_message__on_new = 'E-mail on New';
-$s_plugin_TelegramBot_telegram_message__on_assigned = 'E-mail on Change of Handler';
-$s_plugin_TelegramBot_telegram_message__on_feedback = 'E-mail on Feedback';
-$s_plugin_TelegramBot_telegram_message__on_resolved = 'E-mail on Resolved';
-$s_plugin_TelegramBot_telegram_message__on_closed = 'E-mail on Closed';
-$s_plugin_TelegramBot_telegram_message__on_reopened = 'E-mail on Reopened';
-$s_plugin_TelegramBot_telegram_message__on_bugnote_added = 'E-mail on Note Added';
-$s_plugin_TelegramBot_telegram_message__on_status_change = 'E-mail on Status Change';
-$s_plugin_TelegramBot_telegram_message__on_priority_change = 'E-mail on Priority Change';
-$s_plugin_TelegramBot_telegram_message__bugnote_limit = 'E-mail Notes Limit';
-$s_plugin_TelegramBot_telegram_message__full_issue_details = 'E-mail Full Issue Details';
+$s_plugin_TelegramBot_telegram_message_on_new = 'Notificación sobre Nuevo';
+$s_plugin_TelegramBot_telegram_message_on_assigned = 'Notificación sobre cambio de manejador';
+$s_plugin_TelegramBot_telegram_message_on_feedback = 'Notificación sobre los comentarios';
+$s_plugin_TelegramBot_telegram_message_on_resolved = 'Notificación de Resuelto';
+$s_plugin_TelegramBot_telegram_message_on_closed = 'Notificación de Cerrado';
+$s_plugin_TelegramBot_telegram_message_on_reopened = 'Notificación de reapertura';
+$s_plugin_TelegramBot_telegram_message_on_bugnote_added = 'Notificación en nota agregada';
+$s_plugin_TelegramBot_telegram_message_on_status_change = 'Notificación de cambio de estado';
+$s_plugin_TelegramBot_telegram_message_on_priority_change = 'Notificación sobre cambio de prioridad';
+$s_plugin_TelegramBot_telegram_message_bugnote_limit = 'Límite de notas de notificación';
+$s_plugin_TelegramBot_telegram_message_full_issue_details = 'Detalles completos de la notificación';
 $s_plugin_TelegramBot_telegram_message_included_all_bugnote_is = 'Incluir todos los comentarios en la notificación cuando cambie el estado.';
 
 $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Telegram settings';

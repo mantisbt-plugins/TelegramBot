@@ -262,7 +262,7 @@ function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_me
     $t_message = plugin_lang_get( $p_message_id );
 
     if( is_array( $p_header_optional_params ) ) {
-        $t_message .= vsprintf( $t_message, $p_header_optional_params );
+        $t_message = vsprintf( $t_message, $p_header_optional_params );
     }
 
     if( ( $t_message !== null ) && (!is_blank( $t_message ) ) ) {

@@ -18,6 +18,7 @@ $s_plugin_TelegramBot_name_plugin_description_page = 'Telegram Bot';
 $s_plugin_TelegramBot_description = 'Agrega interacción del usuario a MantisBT a través de Telegram.';
 
 $s_plugin_TelegramBot_config_title = 'Settings';
+$s_plugin_TelegramBot_manage_config_message_page = 'Configurar notificaciones';
 $s_plugin_TelegramBot_bot_name = 'Nombre del bot (requerido para la autorización del bot)';
 $s_plugin_TelegramBot_api_key = 'Clave de API (requerida para la autorización del bot al enviar mensajes)';
 $s_plugin_TelegramBot_proxy_address_header = 'Dirección del servidor proxy SOCKS5: socks5://';

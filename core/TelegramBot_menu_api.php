@@ -9,6 +9,7 @@ function telegrambot_print_menu_config( $p_page = '' ) {
 	$t_pages = array(
 				  'config_page',
 				  'monitor_page',
+                                  'manage_config_message_page',
 	);
 
 	if( access_has_global_level( config_get( 'manage_plugin_threshold' ) ) ) {

@@ -161,3 +161,7 @@ $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Telegram settings';
 $s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Settings bot Telegram';
 $s_plugin_TelegramBot_account_telegram_prefs_subscribe_bot = 'To sign on to the bot, find it ( %1$s ) in Telegram or follow the link: ';
 $s_plugin_TelegramBot_account_telegram_prefs_associated_users_head = 'Usuarios conectados:';
+$s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook no está configurado.';
+$s_plugin_TelegramBot_monitor_page_pending_update_count = 'Número de actualizaciones pendientes de entrega:';
+$s_plugin_TelegramBot_monitor_page_last_error_date = 'Fecha del error más reciente que ocurrió al intentar entregar una actualización a través de webhook';
+$s_plugin_TelegramBot_monitor_page_last_error_message = 'Mensaje de error para el error más reciente que ocurrió al intentar entregar una actualización a través de webhook';

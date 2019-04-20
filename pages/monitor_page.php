@@ -55,31 +55,52 @@ telegrambot_print_menu_config( 'monitor_page' );
 					telegram_session_start();
                                         $t_result      = Longman\TelegramBot\Request::getWebhookInfo();
                                         $t_webhook_url = $t_result->result->getUrl();
+                                        $t_pending_update_count = $t_result->result->getPendingUpdateCount();
+                                        $t_last_error_date = $t_result->result->getLastErrorDate();
+                                        $t_last_error_message = $t_result->result->getLastErrorMessage();
+                                        $t_max_connection_current_settings = $t_result->result->getMaxConnections();
+                                        $t_current_subscribe_updates = $t_result->result->getAllowedUpdates();
                                     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
                                         $t_webhook_url = $t_errors->getMessage();
                                     }
 
-                                    if( $t_webhook_url ) {
-                                        ?>
+                                        echo '<tr' . helper_alternate_class() . '>';
+                                        echo '<td class="category" width="50%">';
+                                        echo plugin_lang_get( 'current_config' );
+                                        echo '</td>';
+                                        echo '<td colspan="2">';
+                                        echo is_blank( $t_webhook_url ) ? plugin_lang_get( 'monitor_page_url_not_set' ) : $t_webhook_url;
+                                        echo '</td>';
+                                        echo '</tr>';
+                                        
+                                    if( isset( $t_result ) ) {
+                                        echo '<tr' . helper_alternate_class() . '>';
+                                        echo '<td class="category" width="50%">';
+                                        echo plugin_lang_get( 'monitor_page_pending_update_count' );
+                                        echo '</td>';
+                                        echo '<td colspan="2">';
+                                        echo $t_pending_update_count;
+                                        echo '</td>';
+                                        echo '</tr>';
+                                        
+                                        echo '<tr' . helper_alternate_class() . '>';
+                                        echo '<td class="category" width="50%">';
+                                        echo plugin_lang_get( 'monitor_page_last_error_date' );
+                                        echo '</td>';
+                                        echo '<td colspan="2">';
+                                        echo $t_last_error_date !== null ? date( config_get_global( 'normal_date_format' ), $t_last_error_date ) : '';
+                                        echo '</td>';
+                                        echo '</tr>';
 
-                                        <tr <?php echo helper_alternate_class() ?>>
-                                            <td class="category" width="50%">
-                                                <?php echo plugin_lang_get( 'current_config' ) ?>
-                                            </td>
+                                        echo '<tr' . helper_alternate_class() . '>';
+                                        echo '<td class="category" width="50%">';
+                                        echo plugin_lang_get( 'monitor_page_last_error_message' );
+                                        echo '</td>';
+                                        echo '<td colspan="2">';
+                                        echo $t_last_error_message !== null ? $t_last_error_message : '';
+                                        echo '</td>';
+                                        echo '</tr>';                                        
 
-                                            <td colspan="2">
-
-                                                <div class = "fallback">
-        <!--                                                    <pre>-->
-                                                    <?php
-                                                    print_r( $t_webhook_url );
-                                                    ?>
-                                                    <!--</pre>-->
-                                                </div>
-
-                                            </td>
-                                        </tr>
-                                        <?php
                                     }
                                 }
                                 ?>

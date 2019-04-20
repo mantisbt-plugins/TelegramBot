@@ -159,3 +159,7 @@ $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Настройки �
 $s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Настройки телеграм бота';
 $s_plugin_TelegramBot_account_telegram_prefs_subscribe_bot = 'Для того чтобы подписать на бота найдите его ( %1$s ) в Telegram или перейдите по ссылке: ';
 $s_plugin_TelegramBot_account_telegram_prefs_associated_users_head = 'Подключенные пользователи:';
+$s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook не установлен.';
+$s_plugin_TelegramBot_monitor_page_pending_update_count = 'Количество обновлений, ожидающих доставки:';
+$s_plugin_TelegramBot_monitor_page_last_error_date = 'Дата последней ошибки, которая произошла при попытке доставить обновление через webhook';
+$s_plugin_TelegramBot_monitor_page_last_error_message = 'Сообщение об ошибке для самой последней доставки, которая произошла при попытке доставить обновление через webhook';

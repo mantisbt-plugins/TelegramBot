@@ -163,3 +163,6 @@ $s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook не установл�
 $s_plugin_TelegramBot_monitor_page_pending_update_count = 'Количество обновлений, ожидающих доставки:';
 $s_plugin_TelegramBot_monitor_page_last_error_date = 'Дата последней ошибки, которая произошла при попытке доставить обновление через webhook';
 $s_plugin_TelegramBot_monitor_page_last_error_message = 'Сообщение об ошибке для самой последней доставки, которая произошла при попытке доставить обновление через webhook';
+$s_plugin_TelegramBot_command_not_found = 'Команда не найдена.';
+
+$s_plugin_TelegramBot_BAD_REQUEST = 'ОШИБКА В ТЕЛЕ ЗАПРОСА.';

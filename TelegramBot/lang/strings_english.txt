@@ -165,3 +165,6 @@ $s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook is not set up.';
 $s_plugin_TelegramBot_monitor_page_pending_update_count = 'Number of updates awaiting delivery:';
 $s_plugin_TelegramBot_monitor_page_last_error_date = 'Date for the most recent error that happened when trying to deliver an update via webhook';
 $s_plugin_TelegramBot_monitor_page_last_error_message = 'Error message for the most recent error that happened when trying to deliver an update via webhook';
+$s_plugin_TelegramBot_command_not_found = 'Command not found.';
+
+$s_plugin_TelegramBot_BAD_REQUEST = 'ERROR IN THE BODY OF THE REQUEST.';

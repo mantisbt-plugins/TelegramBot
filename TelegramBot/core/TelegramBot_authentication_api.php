@@ -26,7 +26,12 @@ class RequestMantis extends \Longman\TelegramBot\Request {
         do {
             //Chop off and send the first message
             $data['text'] = mb_substr( $text, 0, 4096 );
-            $response[]   = self::send( 'sendMessage', $data );
+            
+            try {
+                $response[] = self::send( 'sendMessage', $data );
+            } catch( Exception $t_error ) {
+                plugin_log_event( 'ERROR! "' . $t_error->getMessage() );
+            }
 
             //Prepare the next message
             $text = mb_substr( $text, 4096 );
@@ -72,6 +77,8 @@ function telegram_session_start() {
 
 		if( plugin_config_get( 'debug_connection_enabled' ) == ON ) {
 			Longman\TelegramBot\TelegramLog::initDebugLog( plugin_config_get( 'debug_connection_log_path' ) );
+                        Longman\TelegramBot\TelegramLog::initErrorLog( plugin_config_get( 'debug_connection_log_path' ) );
+                        Longman\TelegramBot\TelegramLog::initUpdateLog( plugin_config_get( 'debug_connection_log_path' ) );
 		}
 	}
 }
@@ -86,24 +93,26 @@ function telegram_session_send_message( $p_telegram_user_id, $p_data ) {
     return $t_results_send;
 }
 
-function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_message_id = 0 ) {
+function auth_ensure_telegram_user_authenticated( $p_telegram_user_id ) {
 
     global $g_cache_cookie_valid;
 
     $t_mantis_user_id = user_get_id_by_telegram_user_id( $p_telegram_user_id );
 
-    if( $t_mantis_user_id == NULL ) {
-        user_telegram_signup( $p_telegram_user_id, $p_message_id );
-        return FALSE;
+    if( $t_mantis_user_id == 0 ) {
+        user_telegram_signup( $p_telegram_user_id );
+        plugin_log_event( 'Authorisation Error! Telegram user id#' . $p_telegram_user_id . ' is not mapped to any mantisbt user.' );
+        exit();
     } else if( !user_is_enabled( $t_mantis_user_id ) || !user_exists( $t_mantis_user_id ) ) {
-        user_telegram_signup( $p_telegram_user_id, $p_message_id );
-        return FALSE;
+        user_telegram_signup( $p_telegram_user_id );
+        plugin_log_event( 'Authorisation Error! User ' . user_get_username( $t_mantis_user_id ) . ' is disabled or deleted.' );
+        exit();
     } else {
         current_user_set( $t_mantis_user_id );
+        plugin_log_event( 'Authorisation success! Server telegrams successfully logged in as user: ' . user_get_username( $t_mantis_user_id ) );
         $g_cache_cookie_valid = TRUE;
 
         lang_push( lang_get_default() );
-        return TRUE;
     }
 }
 

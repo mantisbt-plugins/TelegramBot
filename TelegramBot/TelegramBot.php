@@ -97,7 +97,7 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'api_token'                                 => NULL,
                                   'bot_name'                                  => NULL,
                                   'bot_father_url'                            => 'https://t.me/BotFather',
-                                  'telegram_url'                              => 'https://telegram.me/',
+                                  'telegram_url'                              => 'tg://resolve?domain=',
                                   'download_path'                             => '/tmp/',
 				  'proxy_address'				=> '',
 				  'time_out_server_response'			=> 30,
@@ -245,6 +245,12 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'EVENT_UPDATE_BUG_DATA' => 'telegram_message_skip_sending',
                                   'EVENT_UPDATE_BUG'      => 'telegram_message_update_bug',
                                   'EVENT_MENU_ACCOUNT'    => 'telegram_account_page_menu'
+        );
+    }
+    
+    public function errors() {
+        return array(
+                                  'BAD_REQUEST' => plugin_lang_get( 'BAD_REQUEST' ),
         );
     }
 

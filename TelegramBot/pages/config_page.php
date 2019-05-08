@@ -95,7 +95,7 @@ telegrambot_print_menu_config( 'config_page' );
 						<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
 	                                    </th>
 	                                    <td class="center" colspan="1"> 
-	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
+	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
 	                                    </td>
 	                                </tr>
 				<?php				

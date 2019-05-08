@@ -6,6 +6,16 @@ Overview
 --------
 This is a bot for the Telegram messenger.
 
+Screenshots
+-----------
+
+![alt text](doc/Firs_screen.png)
+![alt text](doc/Telegram_client_validate_link_screen.png)
+![alt text](doc/MantisBT_Telegram-Client_redirect_after_confirmation.png)
+![alt text](doc/Telegram_Client_send_text.png)
+![alt text](doc/Telegram_Client_sample_message_.png)
+![alt text](doc/Telegram_Client_sample_note_message.png)
+
 Features
 --------
 - Report bugs (v. >= 1.1);

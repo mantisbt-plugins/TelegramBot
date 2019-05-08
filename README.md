@@ -1,4 +1,7 @@
 # MantisBT TelegramBot Plugin
+
+[![Join the chat at https://gitter.im/mantisbt-plugins/TelegramBot](https://badges.gitter.im/mantisbt-plugins/TelegramBot.svg)](https://gitter.im/mantisbt-plugins/TelegramBot?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Overview
 --------
 This is a bot for the Telegram messenger.

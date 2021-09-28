@@ -80,7 +80,7 @@ $s_plugin_TelegramBot_bug_select = 'Select a bug';
 $s_plugin_TelegramBot_content_upload_complete = 'The content is attached to the bug: ';
 $s_plugin_TelegramBot_comment_add_complete = 'Comment added to bug: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'List of sections';
-$s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
+$s_plugin_TelegramBot_keyboard_button_back = 'Back to the action list';
 
 $s_plugin_TelegramBot_error_file_size = 'The file should not exceed 20 MB';
 $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this bot';
@@ -88,7 +88,6 @@ $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this
 $s_plugin_TelegramBot_get_description = 'ENTER DESCRIPTION TEXT:';
 $s_plugin_TelegramBot_get_summary = 'ENTER SUMMARY TEXT:';
 $s_plugin_TelegramBot_bug_creation_complete = 'Created %1$s: ';
-
 
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_new = 'The following issue is now in status NEW (again)';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_feedback = 'The following issue requires your FEEDBACK.';
@@ -121,7 +120,6 @@ $s_plugin_TelegramBot_telegram_message_notification_title_for_action_relationshi
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_relationship_child_closed = 'The RELATED issue %1$s has been CLOSED.';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_related_issue_deleted = 'The RELATED issue %1$s has been DELETED.';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_monitor = 'Issue %1$s is now monitored by user %2$s.';
-
 $s_plugin_TelegramBot_telegram_message_reporter = 'Reported By';
 $s_plugin_TelegramBot_telegram_message_handler = 'Assigned To';
 $s_plugin_TelegramBot_telegram_message_project = 'Project';

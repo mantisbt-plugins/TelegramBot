@@ -94,12 +94,15 @@ class TelegramBotPlugin extends MantisPlugin {
 
     function config() {
         return array(
-                                  'api_token'                                 => NULL,
-                                  'bot_name'                                  => NULL,
-                                  'bot_father_url'                            => 'https://t.me/BotFather',
-                                  'telegram_url'                              => 'tg://resolve?domain=',
-                                  'download_path'                             => '/tmp/',
-				  'proxy_address'				=> '',
+                                  'api_key'                                     => '',
+                                  'bot_name'                                    => '',
+                                  'use_cert'                                    => OFF,
+                                  'bot_cert'                                    => '',
+                                  'reinstall_webhook'                           => ON,
+                                  'bot_father_url'                              => 'https://t.me/BotFather',
+                                  'telegram_url'                                => 'tg://resolve?domain=',
+                                  'download_path'                               => '/tmp/',
+				  'proxy_address'                               => '',
 				  'time_out_server_response'			=> 30,
 				  'debug_connection_log_path'			=> '/tmp/TelegramBot_debug.log',
 				  'debug_connection_enabled'			=> OFF,

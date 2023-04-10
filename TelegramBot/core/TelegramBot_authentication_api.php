@@ -50,8 +50,24 @@ class RequestMantis extends \Longman\TelegramBot\Request {
 function telegram_set_webhook() {
 	global $g_tg;
 	telegram_session_start();
+        
+        $t_options = array();
+        
+        if( plugin_config_get( 'use_cert' ) == ON ) {
+            $t_tmp_file = tmpfile();
+            fwrite( $t_tmp_file, plugin_config_get('bot_cert') );
 
-	return $g_tg->setWebhook( config_get_global( 'path' ) . plugin_page( 'hook', TRUE ) . '&token=' . plugin_config_get( 'api_key' ) );
+            $t_options['certificate'] = stream_get_meta_data( $t_tmp_file )['uri'];
+        }
+        
+	return $g_tg->setWebhook( config_get_global( 'path' ) . plugin_page( 'hook', TRUE ) . '&token=' . plugin_config_get( 'api_key' ), $t_options );
+}
+
+function telegram_webhook_delete() {
+        global $g_tg;
+	telegram_session_start();
+        
+        return $g_tg->deleteWebhook();
 }
 
 function telegram_session_start() {
@@ -74,6 +90,7 @@ function telegram_session_start() {
 		\Longman\TelegramBot\Request::setClient( new \GuzzleHttp\Client( $t_client_prop ) );
 
 		$g_tg->setDownloadPath( plugin_config_get( 'download_path' ) );
+                $g_tg->useGetUpdatesWithoutDatabase();
 
 		if( plugin_config_get( 'debug_connection_enabled' ) == ON ) {
 			Longman\TelegramBot\TelegramLog::initDebugLog( plugin_config_get( 'debug_connection_log_path' ) );
@@ -93,26 +110,31 @@ function telegram_session_send_message( $p_telegram_user_id, $p_data ) {
     return $t_results_send;
 }
 
-function auth_ensure_telegram_user_authenticated( $p_telegram_user_id ) {
-
+function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_telegram_user_lang_code = null ) {
+    
     global $g_cache_cookie_valid;
 
+    plugin_log_event( 'Telegram user ' . $p_telegram_user_id . ' request language: "'.$p_telegram_user_lang_code.'"' );
+    
     $t_mantis_user_id = user_get_id_by_telegram_user_id( $p_telegram_user_id );
 
     if( $t_mantis_user_id == 0 ) {
+        lang_push( telegram_lang_map_auto( $p_telegram_user_lang_code ) );
         user_telegram_signup( $p_telegram_user_id );
-        plugin_log_event( 'Authorisation Error! Telegram user id#' . $p_telegram_user_id . ' is not mapped to any mantisbt user.' );
-        exit();
+        plugin_log_event( 'Authorization Error! Telegram user id#' . $p_telegram_user_id . ' is not mapped to any mantisbt user.' );
+        return false;
     } else if( !user_is_enabled( $t_mantis_user_id ) || !user_exists( $t_mantis_user_id ) ) {
+        lang_push( telegram_lang_map_auto( $p_telegram_user_lang_code ) );
         user_telegram_signup( $p_telegram_user_id );
-        plugin_log_event( 'Authorisation Error! User ' . user_get_username( $t_mantis_user_id ) . ' is disabled or deleted.' );
-        exit();
+        plugin_log_event( 'Authorization Error! User ' . user_get_username( $t_mantis_user_id ) . ' is disabled or deleted.' );
+        return false;
     } else {
         current_user_set( $t_mantis_user_id );
-        plugin_log_event( 'Authorisation success! Server telegrams successfully logged in as user: ' . user_get_username( $t_mantis_user_id ) );
+        plugin_log_event( 'Authorization success! Server telegrams successfully logged in as user: ' . user_get_username( $t_mantis_user_id ) );
         $g_cache_cookie_valid = TRUE;
 
-        lang_push( lang_get_default() );
+        lang_push( telegram_lang_get_default( $p_telegram_user_lang_code ) );
+        return true;
     }
 }
 

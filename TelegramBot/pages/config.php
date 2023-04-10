@@ -20,12 +20,50 @@ form_security_validate( 'config' );
 
 global $g_tg;
 
-$f_bot_name			 = gpc_get_string( 'bot_name' );
+$f_bot_name			 = gpc_get_string( 'bot_username' );
 $f_api_key			 = gpc_get_string( 'api_key' );
+$f_reinstall_webhook             = gpc_get_bool('reinstall_webhook');
+$f_use_cert                      = gpc_get_bool('use_cert');
+$f_bot_cert_file                 = gpc_get_file( 'bot_cert_file' );
 $f_proxy_address		 = gpc_get_string( 'proxy_address', '' );
 $f_time_out_server_response	 = gpc_get_int( 'time_out_server_response' );
 $f_debug_connection_log_path	 = gpc_get_string( 'debug_connection_log_path', '' );
 $f_debug_connection_enabled	 = gpc_get_bool( 'debug_connection_enabled', FALSE );
+
+if( $f_bot_cert_file !== null && $f_bot_cert_file['error'] !== 4 ) {
+        $t_tmp_file = $f_bot_cert_file['tmp_name'];
+
+	file_ensure_uploaded( $f_bot_cert_file );
+        
+	$t_file_name = $f_bot_cert_file['name'];
+
+	if( strcasecmp( pathinfo( $t_file_name, PATHINFO_EXTENSION ), 'crt' ) != 0 ) {
+		throw new ClientException(
+			sprintf( "File '%s' type not allowed", $t_file_name ),
+			ERROR_FILE_NOT_ALLOWED
+		);
+	}
+
+	$t_file_size = filesize( $t_tmp_file );
+	if( 0 == $t_file_size ) {
+		throw new ClientException(
+			sprintf( "File '%s' not uploaded", $t_file_name ),
+			ERROR_FILE_NO_UPLOAD_FAILURE );
+	}
+
+	$t_max_file_size = (int)min( ini_get_number( 'upload_max_filesize' ), ini_get_number( 'post_max_size' ), config_get( 'max_file_size' ) );
+	if( $t_file_size > $t_max_file_size ) {
+		throw new ClientException(
+			sprintf( "File '%s' too big", $t_file_name ),
+			ERROR_FILE_TOO_BIG );
+	}
+        
+        $c_content = db_prepare_binary_string( fread( fopen( $t_tmp_file, 'rb' ), $t_file_size ) );
+        
+        plugin_config_set( 'bot_cert', $c_content );
+        
+        unlink($t_tmp_file);
+}
 
 if( plugin_config_get( 'bot_name' ) != $f_bot_name ) {
 	plugin_config_set( 'bot_name', $f_bot_name );
@@ -33,6 +71,14 @@ if( plugin_config_get( 'bot_name' ) != $f_bot_name ) {
 
 if( plugin_config_get( 'api_key' ) != $f_api_key ) {
 	plugin_config_set( 'api_key', $f_api_key );
+}
+
+if( plugin_config_get( 'reinstall_webhook' ) != $f_reinstall_webhook ) {
+	plugin_config_set( 'reinstall_webhook', $f_reinstall_webhook );
+}
+
+if( plugin_config_get( 'use_cert' ) != $f_use_cert ) {
+	plugin_config_set( 'use_cert', $f_use_cert );
 }
 
 if( plugin_config_get( 'proxy_address' ) != $f_proxy_address ) {
@@ -60,12 +106,22 @@ if( $f_debug_connection_enabled == ON ) {
 form_security_purge( plugin_page( 'config', true ) );
 
 $t_redirect_url = plugin_page( 'config_page', true );
-layout_page_header( null, $t_redirect_url );
-layout_page_begin( $t_redirect_url );
+layout_page_header();
+layout_page_begin();
 
-try {
-	html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_set_webhook()->getDescription() );
-} catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
-	html_operation_failure( $t_redirect_url, $t_errors->getMessage() );
+if( $f_reinstall_webhook == ON ) {
+    try {
+            html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_set_webhook()->getDescription() );
+    } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
+            plugin_config_set( 'reinstall_webhook', OFF );
+            html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
+    }
+} else {
+//    html_operation_successful( $t_redirect_url );
+    try {
+            html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_webhook_delete()->getDescription() );
+    } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
+            html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
+    }
 }
 layout_page_end();

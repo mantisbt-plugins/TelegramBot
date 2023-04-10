@@ -18,9 +18,19 @@ $s_plugin_TelegramBot_name_plugin_description_page = 'Telegram Bot';
 $s_plugin_TelegramBot_description = 'Adds the user interaction function to the MantisBT via the Telegram messenger.';
 
 $s_plugin_TelegramBot_config_title = 'Settings';
+$s_plugin_TelegramBot_credential_config_title = 'Credential settings';
+$s_plugin_TelegramBot_connection_config_title = 'Connection outgoin settings';
+$s_plugin_TelegramBot_config_get_update_title = 'Get update settings';
 $s_plugin_TelegramBot_manage_config_message_page = 'Configure Notifications';
 $s_plugin_TelegramBot_bot_name = 'Bot name (required for bot authorization when receiving messages)';
+$s_plugin_TelegramBot_config_bot_username = 'Bot username:';
+$s_plugin_TelegramBot_config_bot_username_notice = 'It must end in "bot". Like this, for example: TetrisBot or tetris_bot.';
 $s_plugin_TelegramBot_api_key = 'API key (required for bot authorization when sending messages)';
+$s_plugin_TelegramBot_config_api_key = 'API token:';
+$s_plugin_TelegramBot_reinstall_webhook = 'Getting updates method: ';
+$s_plugin_TelegramBot_use_bot_cert_is = 'Use a self-signed certificate?';
+$s_plugin_TelegramBot_bot_cert = 'Uploaded self-signed certificate:';
+$s_plugin_TelegramBot_bot_cert_help = 'The certificate supplied should be PEM encoded (ASCII BASE64). The pem,crt or cer file should only contain the public key (including BEGIN and END portions).';
 $s_plugin_TelegramBot_proxy_address_header = 'SOCKS5 proxy server address: socks5://';
 $s_plugin_TelegramBot_time_out_server_response_header = 'Server response timeout (30 seconds by default):';
 $s_plugin_TelegramBot_current_config = 'The bot will send updates to the following URL:';
@@ -165,6 +175,7 @@ $s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook is not set up.';
 $s_plugin_TelegramBot_monitor_page_pending_update_count = 'Number of updates awaiting delivery:';
 $s_plugin_TelegramBot_monitor_page_last_error_date = 'Date for the most recent error that happened when trying to deliver an update via webhook';
 $s_plugin_TelegramBot_monitor_page_last_error_message = 'Error message for the most recent error that happened when trying to deliver an update via webhook';
+$s_plugin_TelegramBot_monitor_page_is_self_signed_cert = 'A custom certificate was provided for webhook certificate checks?';
 $s_plugin_TelegramBot_command_not_found = 'Command not found.';
 
 $s_plugin_TelegramBot_BAD_REQUEST = 'ERROR IN THE BODY OF THE REQUEST.';

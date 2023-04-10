@@ -60,11 +60,12 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         $t_last_error_message = $t_result->result->getLastErrorMessage();
                                         $t_max_connection_current_settings = $t_result->result->getMaxConnections();
                                         $t_current_subscribe_updates = $t_result->result->getAllowedUpdates();
+                                        $t_is_self_signed_cert = $t_result->result->getHasCustomCertificate();
                                     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
                                         $t_webhook_url = $t_errors->getMessage();
                                     }
 
-                                        echo '<tr' . helper_alternate_class() . '>';
+                                        echo '<tr>';
                                         echo '<td class="category" width="50%">';
                                         echo plugin_lang_get( 'current_config' );
                                         echo '</td>';
@@ -74,7 +75,7 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         echo '</tr>';
                                         
                                     if( isset( $t_result ) ) {
-                                        echo '<tr' . helper_alternate_class() . '>';
+                                        echo '<tr>';
                                         echo '<td class="category" width="50%">';
                                         echo plugin_lang_get( 'monitor_page_pending_update_count' );
                                         echo '</td>';
@@ -83,7 +84,7 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         echo '</td>';
                                         echo '</tr>';
                                         
-                                        echo '<tr' . helper_alternate_class() . '>';
+                                        echo '<tr>';
                                         echo '<td class="category" width="50%">';
                                         echo plugin_lang_get( 'monitor_page_last_error_date' );
                                         echo '</td>';
@@ -92,20 +93,29 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         echo '</td>';
                                         echo '</tr>';
 
-                                        echo '<tr' . helper_alternate_class() . '>';
+                                        echo '<tr>';
                                         echo '<td class="category" width="50%">';
                                         echo plugin_lang_get( 'monitor_page_last_error_message' );
                                         echo '</td>';
                                         echo '<td colspan="2">';
                                         echo $t_last_error_message !== null ? $t_last_error_message : '';
                                         echo '</td>';
-                                        echo '</tr>';                                        
+                                        echo '</tr>';
 
+                                        echo '<tr>';
+                                        echo '<td class="category" width="50%">';
+                                        echo plugin_lang_get( 'monitor_page_is_self_signed_cert' );
+                                        echo '</td>';
+                                        echo '<td colspan="2">';
+                                        echo $t_is_self_signed_cert == true ? lang_get('yes') : lang_get('no');
+                                        echo '</td>';
+                                        echo '</tr>';
+                                        
                                     }
                                 }
                                 ?>
 
-                                <tr <?php echo helper_alternate_class() ?>>
+                                <tr>
                                     <th class="category" width="5%">
                                         <?php echo plugin_lang_get( 'account_telegram_prefs_associated_users_head' ) ?>
                                     </th>

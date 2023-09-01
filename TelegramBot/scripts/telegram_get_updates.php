@@ -54,11 +54,11 @@ telegram_session_start();
 $t_updates = $g_tg->handleGetUpdates();
 $t_results = $t_updates->getResult();
 echo "Received " . count( $t_results ) . " updates.\n";
-echo "Start process updates...";
+echo "Start process updates...\n\n";
 
 define( 'UPDATE_PROCESS_INC_ALLOW', true );
 include( dirname( dirname( __FILE__ )) . '/pages/update_process_inc.php' );
 
-echo "Done.\n";
+echo "\nDone.\n\n";
 
 exit( 0 );

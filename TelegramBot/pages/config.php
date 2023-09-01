@@ -1,5 +1,5 @@
 <?php
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2023 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -20,15 +20,16 @@ form_security_validate( 'config' );
 
 global $g_tg;
 
-$f_bot_name			 = gpc_get_string( 'bot_username' );
-$f_api_key			 = gpc_get_string( 'api_key' );
-$f_reinstall_webhook             = gpc_get_bool('reinstall_webhook');
-$f_use_cert                      = gpc_get_bool('use_cert');
-$f_bot_cert_file                 = gpc_get_file( 'bot_cert_file' );
-$f_proxy_address		 = gpc_get_string( 'proxy_address', '' );
-$f_time_out_server_response	 = gpc_get_int( 'time_out_server_response' );
-$f_debug_connection_log_path	 = gpc_get_string( 'debug_connection_log_path', '' );
-$f_debug_connection_enabled	 = gpc_get_bool( 'debug_connection_enabled', FALSE );
+$f_bot_name			= gpc_get_string   ( 'bot_username' );
+$f_api_key			= gpc_get_string   ( 'api_key' );
+$f_reinstall_webhook            = gpc_get_bool     ( 'reinstall_webhook' );
+$f_use_cert                     = gpc_get_bool     ( 'use_cert' );
+$f_bot_cert_file                = gpc_get_file     ( 'bot_cert_file', null );
+$f_proxy_address		= gpc_get_string   ( 'proxy_address', '' );
+$f_time_out_server_response	= gpc_get_int      ( 'time_out_server_response' );
+$f_debug_connection_log_path    = gpc_get_string   ( 'debug_connection_log_path', '' );
+$f_debug_connection_enabled	= gpc_get_bool     ( 'debug_connection_enabled', FALSE );
+$f_cli_g_path                   = gpc_get_string   ( 'cli_g_path', '' );
 
 if( $f_bot_cert_file !== null && $f_bot_cert_file['error'] !== 4 ) {
         $t_tmp_file = $f_bot_cert_file['tmp_name'];
@@ -37,7 +38,11 @@ if( $f_bot_cert_file !== null && $f_bot_cert_file['error'] !== 4 ) {
         
 	$t_file_name = $f_bot_cert_file['name'];
 
-	if( strcasecmp( pathinfo( $t_file_name, PATHINFO_EXTENSION ), 'crt' ) != 0 ) {
+	if( 
+                strcasecmp( pathinfo( $t_file_name, PATHINFO_EXTENSION ), 'crt' ) != 0
+                && strcasecmp( pathinfo( $t_file_name, PATHINFO_EXTENSION ), 'pem' ) != 0
+                && strcasecmp( pathinfo( $t_file_name, PATHINFO_EXTENSION ), 'cer' ) != 0
+        ) {
 		throw new ClientException(
 			sprintf( "File '%s' type not allowed", $t_file_name ),
 			ERROR_FILE_NOT_ALLOWED
@@ -61,6 +66,7 @@ if( $f_bot_cert_file !== null && $f_bot_cert_file['error'] !== 4 ) {
         $c_content = db_prepare_binary_string( fread( fopen( $t_tmp_file, 'rb' ), $t_file_size ) );
         
         plugin_config_set( 'bot_cert', $c_content );
+        plugin_config_set( 'use_cert', ON );
         
         unlink($t_tmp_file);
 }
@@ -77,12 +83,26 @@ if( plugin_config_get( 'reinstall_webhook' ) != $f_reinstall_webhook ) {
 	plugin_config_set( 'reinstall_webhook', $f_reinstall_webhook );
 }
 
-if( plugin_config_get( 'use_cert' ) != $f_use_cert ) {
-	plugin_config_set( 'use_cert', $f_use_cert );
+if( $f_use_cert == false ) {
+        plugin_config_delete( 'bot_cert' );
+        plugin_config_delete( 'use_cert' );
+}
+
+if( $f_use_cert == true ) {
+        plugin_config_set( 'use_cert', true );
+}
+
+if( $f_use_cert == ON && plugin_config_get( 'bot_cert' ) == '' ) {
+        error_parameters( plugin_lang_get( 'bot_cert' ) );
+        plugin_error( 'ERROR_CERT_FILE_NOT_FOUND', ERROR );
 }
 
 if( plugin_config_get( 'proxy_address' ) != $f_proxy_address ) {
 	plugin_config_set( 'proxy_address', $f_proxy_address );
+}
+
+if( plugin_config_get( 'cli_g_path' ) != $f_cli_g_path ) {
+	plugin_config_set( 'cli_g_path', $f_cli_g_path );
 }
 
 if( plugin_config_get( 'time_out_server_response' ) != $f_time_out_server_response ) {
@@ -113,7 +133,7 @@ if( $f_reinstall_webhook == ON ) {
     try {
             html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_set_webhook()->getDescription() );
     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
-            plugin_config_set( 'reinstall_webhook', OFF );
+            //plugin_config_set( 'reinstall_webhook', OFF );
             html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
     }
 } else {

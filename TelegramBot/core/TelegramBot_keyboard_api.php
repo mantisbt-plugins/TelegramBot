@@ -200,6 +200,15 @@ function keyboard_category_get( $p_project_id ) {
     $t_category_rows = category_get_all_rows( $p_project_id, null, true );
 
     foreach( $t_category_rows as $t_category ) {
+        
+        if( config_get( 'allow_no_category' ) ) {
+            $t_inline_keyboard -> addRow( [
+                                            'text' => lang_get( 'no_category' ),
+                                            'callback_data' => json_encode( array(
+                                                                                    'rb' => array('sc' => array('id' => 0))
+                                                               ) )
+            ] );
+        }
 
         $t_inline_keyboard->addRow( [
                                   'text'          => $p_project_id == $t_category['project_id'] ? $t_category['name'] : '[' .
@@ -220,16 +229,21 @@ function keyboard_category_get( $p_project_id ) {
                                                                                   ) )
                               ) )
     ] );
-
+    
     return $t_inline_keyboard;
 }
 
-function keyboard_enum_string_get( $p_enum_string ) {
+function keyboard_enum_string_get( $p_enum_string, $p_default_val = 0 ) {
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
     $t_config_reproducibility_name = $p_enum_string . '_enum_string';
     $t_config_var_value            = config_get( $t_config_reproducibility_name );
 
+    if( is_array( $p_default_val ) ) {
+            $t_val = $p_default_val;
+    } else {
+            $t_val = (int)$p_default_val;
+    }
 
     $t_enum_values = MantisEnum::getValues( $t_config_var_value );
 
@@ -237,7 +251,7 @@ function keyboard_enum_string_get( $p_enum_string ) {
         $t_elem2 = get_enum_element( $p_enum_string, $t_key );
 
         $t_inline_keyboard->addRow( [
-                                  'text'          => $t_elem2,
+                                  'text'          => $t_elem2 . ( telegrambot_check_default( $t_val, $t_key ) ? ' (Default)' : '' ),
                                   'callback_data' => json_encode( array(
                                                             'rb' => array( 's' . $p_enum_string => array( 'id' => $t_key ) )
                                   ) )
@@ -245,6 +259,111 @@ function keyboard_enum_string_get( $p_enum_string ) {
     }
 
     return $t_inline_keyboard;
+}
+
+function keyboard_duedate_get() {
+    $keyboard = new TelegramBotInlineKeyboardCalendar();
+
+    $keyboard->setConfigDate("2023-04");
+
+    return $keyboard->getKeyboard();
+}
+
+function keyboard_profile_option_list( $p_user_id, $p_select_id = 0, array $p_profiles = null ) {
+	if( 0 == $p_select_id ) {
+		$p_select_id = profile_get_default( $p_user_id );
+	}
+	if( $p_profiles != null ) {
+		$t_profiles = $p_profiles;
+	} else {
+		$t_profiles = profile_get_all_for_user( $p_user_id );
+	}
+	return keyboard_profile_option_list_from_profiles( $t_profiles, $p_select_id );
+}
+
+function keyboard_profile_option_list_from_profiles( array $p_profiles, $p_select_id ) {
+        $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+	
+	foreach( $p_profiles as $t_profile ) {
+		extract( $t_profile, EXTR_PREFIX_ALL, 'v' );
+
+		$t_platform = string_attribute( $t_profile['platform'] );
+		$t_os = string_attribute( $t_profile['os'] );
+		$t_os_build = string_attribute( $t_profile['os_build'] );
+
+                if( $p_select_id == (int)$t_profile['id'] ) {
+                        $t_inline_keyboard->addRow( [
+                                  'text'          => $t_platform . ' ' . $t_os . ' ' . $t_os_build . ' (Default)',
+                                  'callback_data' => json_encode( array(
+                                                            'rb' => array( 'splatform' => array( 'id' => $t_profile['id'] ) )
+                                  ) )
+                        ] );
+		} else {
+                        $t_inline_keyboard->addRow( [
+                                          'text'          => $t_platform . ' ' . $t_os . ' ' . $t_os_build,
+                                          'callback_data' => json_encode( array(
+                                                                    'rb' => array( 'splatform' => array( 'id' => $t_profile['id'] ) )
+                                          ) )
+                        ] );
+                }
+	}
+        return $t_inline_keyboard;
+}
+
+function keyboard_version_option_list( $p_version = '', $p_project_ids = null, $p_released = VERSION_ALL, $p_action ) {
+        $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+        
+	if( null === $p_project_ids ) {
+		$p_project_ids = helper_get_current_project();
+	}
+	$t_project_ids = is_array( $p_project_ids ) ? $p_project_ids : array( $p_project_ids );
+
+	$t_versions = version_get_all_rows( $t_project_ids, $p_released, true );
+
+	# Ensure the selected version (if specified) is included in the list
+	# Note: Filter API specifies selected versions as an array
+	if( !is_array( $p_version ) ) {
+		if( !empty( $p_version ) ) {
+			foreach( $t_project_ids as $t_project_id ) {
+				$t_version_id = version_get_id( $p_version, $t_project_id );
+				if( $t_version_id !== false ) {
+					$t_versions[] = version_cache_row( $t_version_id );
+					break;
+				}
+			}
+		}
+	}
+
+	$t_listed = array();
+	$t_max_length = config_get( 'max_dropdown_length' );
+
+	$t_show_project_name = count( $t_project_ids ) > 1;
+
+	foreach( $t_versions as $t_version ) {
+		# If the current version is obsolete, and current version not equal to $p_version,
+		# then skip it.
+		if( ( (int)$t_version['obsolete'] ) == 1 ) {
+			if( $t_version['version'] != $p_version ) {
+				continue;
+			}
+		}
+
+		$t_version_version = string_attribute( $t_version['version'] );
+
+		if( !in_array( $t_version_version, $t_listed, true ) ) {
+			$t_listed[] = $t_version_version;
+//			check_selected( $p_version, $t_version['version'] );
+			$t_version_string = string_attribute( prepare_version_string( $t_version['project_id'], $t_version['id'], $t_show_project_name ) );
+
+                        $t_inline_keyboard->addRow( [
+                                          'text'          => string_shorten( $t_version_string, $t_max_length ),
+                                          'callback_data' => json_encode( array(
+                                                                    'rb' => array( $p_action => array( 'version' => $t_version_version ) )
+                                          ) )
+                        ] );
+		}
+	}
+        return $t_inline_keyboard;
 }
 
 function keyboard_handler_get( $p_project_id ) {
@@ -320,7 +439,7 @@ function keyboard_handler_get( $p_project_id ) {
                                   ) )
         ] );
     }
-
+    
     return $t_inline_keyboard;
 }
 
@@ -338,76 +457,6 @@ function keyboard_status_get( $p_project_id ) {
                                                             'rb' => array( 'sstatus' => array( 'id' => $t_key ) )
                                   ) )
         ] );
-    }
-
-    return $t_inline_keyboard;
-}
-
-/**
- * Print the option list for versions
- * @param string  $p_version       The currently selected version.
- * @param integer $p_project_id    Project id, otherwise current project will be used.
- * @param integer $p_released      Null to get all, 1: only released, 0: only future versions.
- * @param boolean $p_leading_blank Allow selection of no version.
- * @param boolean $p_with_subs     Whether to include sub-projects.
- * @return void
- */
-function keyboard_target_version_get( $p_version = '', $p_project_id = null, $p_released = null, $p_leading_blank = true, $p_with_subs = false ) {
-
-    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-
-    if( null === $p_project_id ) {
-        $c_project_id = helper_get_current_project();
-    } else {
-        $c_project_id = (int) $p_project_id;
-    }
-
-    if( $p_with_subs ) {
-        $t_versions = version_get_all_rows_with_subs( $c_project_id, $p_released, null );
-    } else {
-        $t_versions = version_get_all_rows( $c_project_id, $p_released, null );
-    }
-
-    # Ensure the selected version (if specified) is included in the list
-    # Note: Filter API specifies selected versions as an array
-    if( !is_array( $p_version ) ) {
-        if( !empty( $p_version ) ) {
-            $t_version_id = version_get_id( $p_version, $c_project_id );
-            if( $t_version_id !== false ) {
-                $t_versions[] = version_cache_row( $t_version_id );
-            }
-        }
-    }
-
-    if( $p_leading_blank ) {
-        echo '<option value=""></option>';
-    }
-
-    $t_listed     = array();
-    $t_max_length = config_get( 'max_dropdown_length' );
-
-    foreach( $t_versions as $t_version ) {
-        # If the current version is obsolete, and current version not equal to $p_version,
-        # then skip it.
-        if( ( (int) $t_version['obsolete'] ) == 1 ) {
-            if( $t_version['version'] != $p_version ) {
-                continue;
-            }
-        }
-
-        $t_version_version = string_attribute( $t_version['version'] );
-
-        if( !in_array( $t_version_version, $t_listed, true ) ) {
-            $t_listed[]       = $t_version_version;
-            $t_version_string = string_attribute( prepare_version_string( $c_project_id, $t_version['id'] ) );
-
-            $t_inline_keyboard->addRow( [
-                                      'text'          => string_shorten( $t_version_string, $t_max_length ),
-                                      'callback_data' => json_encode( array(
-                                                                'rb' => array( 'stargetv' => array( 'id' => $t_version_version ) )
-                                      ) )
-            ] );
-        }
     }
 
     return $t_inline_keyboard;
@@ -483,4 +532,16 @@ function keyboard_buttons_bug_change_status( BugData $p_bug ) {
     }
 
     return $t_inline_keyboard;
+}
+
+function keyboard_skip_button_add( &$p_inline_keyboard, $p_action ) {
+        
+//        $t_inline_keyboard = $p_inline_keyboard == null ? new Longman\TelegramBot\Entities\InlineKeyboard( array() ) : $p_inline_keyboard;
+        
+        $p_inline_keyboard->addRow( [
+                              'text'          => '(' . plugin_lang_get( 'skip_button' ) . ')',
+                              'callback_data' => json_encode( $p_action )
+        ] );
+        
+//        return $t_inline_keyboard;
 }

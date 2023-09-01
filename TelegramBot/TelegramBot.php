@@ -1,6 +1,6 @@
 <?php
 
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2023 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -22,7 +22,7 @@ class TelegramBotPlugin extends MantisPlugin {
         $this->name        = 'TelegramBot';
         $this->description = plugin_lang_get( 'description' );
 
-        $this->version  = '1.5.0';
+        $this->version  = '2.0.0-dev';
         $this->requires = array(
                                   'MantisCore' => '2.14.0',
         );
@@ -72,11 +72,24 @@ class TelegramBotPlugin extends MantisPlugin {
                                                             ) ),
                                   array( 'CreateIndexSQL', array( 'idx_msgid_chatid', plugin_table( 'message_relationship' ), array( 'msg_id', 'chat_id' ) ) ),
                                   array( 'CreateIndexSQL', array( 'idx_chatid', plugin_table( 'message_relationship' ), 'chat_id' ) ),
+                                  // version 1.6.0
+                                  array( 'ChangeTableSQL', array( plugin_table( "user_relationship" ), "
+                                        telegram_user_id  N   $t_notnull
+                                " ) ),
+                                  // version 2.0.0
+                                  array( 'CreateTableSQL', array( plugin_table( 'pin_codes' ), "
+                                      telegram_user_id  N   UNSIGNED    $t_notnull  PRIMARY,
+                                      pin_code          I(4)    UNSIGNED    $t_notnull,
+                                      timestamp         I   UNSIGNED    $t_notnull DEFAULT '1'",
+                                                                                      $t_table_options
+                                                            ) ),
+                                  array( 'CreateIndexSQL', array( 'idx_t_uid_pin', plugin_table( 'pin_codes' ), array( 'telegram_user_id', 'pin_code' ) ) ),                      
+                                  array( 'CreateIndexSQL', array( 'idx_timestamp', plugin_table( 'pin_codes' ), 'timestamp' ) ),
         );
     }
 
     function init() {
-        require_once __DIR__ . '/api/vendor/autoload.php';
+        require_once 'api/vendor/autoload.php';
         require_once 'core/TelegramBot_bug_api.php';
         require_once 'core/TelegramBot_authentication_api.php';
         require_once 'core/TelegramBot_user_api.php';
@@ -86,6 +99,9 @@ class TelegramBotPlugin extends MantisPlugin {
         require_once 'core/TelegramBot_message_api.php';
         require_once 'core/TelegramBot_message_format_api.php';
 	require_once 'core/TelegramBot_menu_api.php';
+        require_once 'core/TelegramBot_InlineKeyboardCalendar_api.php';
+//        require_once 'core/cfdefs/TelegramBot_cfdef_standard.php';
+        require_once 'core/TelegramBot_custom_field_api.php';
 
         global $g_skip_sending_bugnote, $g_account_telegram_menu_active;
         $g_skip_sending_bugnote         = FALSE;
@@ -106,6 +122,12 @@ class TelegramBotPlugin extends MantisPlugin {
 				  'time_out_server_response'			=> 30,
 				  'debug_connection_log_path'			=> '/tmp/TelegramBot_debug.log',
 				  'debug_connection_enabled'			=> OFF,
+                                  'bug_data_draft'                              => '',
+                                  'bug_data_draft_chat_id'                      => '',
+                                  'bug_data_draft_message_id'                   => '',
+                                  'bug_data_draft_text_msg'                     => '',
+                                  'bug_data_draft_current_field_to_save'        => '',
+                                  'cli_g_path'                                  => '',
                                   /**
                                    * The following two config options allow you to control who should get email
                                    * notifications on different actions/statuses.  The first option
@@ -253,12 +275,13 @@ class TelegramBotPlugin extends MantisPlugin {
     
     public function errors() {
         return array(
-                                  'BAD_REQUEST' => plugin_lang_get( 'BAD_REQUEST' ),
+                                  'BAD_REQUEST'                 => plugin_lang_get( 'BAD_REQUEST' ),
+                                  'ERROR_CERT_FILE_NOT_FOUND'   => plugin_lang_get( 'ERROR_CERT_FILE_NOT_FOUND' ),
         );
     }
 
     function telegram_message_bug_added( $p_type_event, $p_issue, $p_issue_id ) {
-        plugin_log_event( sprintf( 'Issue #%d reported', $p_bug_id ) );
+        plugin_log_event( sprintf( 'Issue #%d reported', $p_issue_id ) );
         telegram_message_generic( $p_issue_id, 'new', 'telegram_message_notification_title_for_action_bug_submitted' );
     }
 

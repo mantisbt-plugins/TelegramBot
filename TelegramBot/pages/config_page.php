@@ -1,5 +1,5 @@
 <?php
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2023 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -105,12 +105,13 @@ telegrambot_print_menu_config( 'config_page' );
                                 </tr>
 				
 				<?php
-				$t_curl_version = curl_version();
+//				$t_curl_version = curl_version();
 //				$t_curl_version = '7.19.7';
-				if( $t_curl_version['version'] >= '7.21.7' ) { ?>
+				if( function_exists("curl_version") && curl_version()['version'] >= '7.21.7' ) { ?>
 					<tr>
 	                                    <th class="category" width="5%">
 						<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
+                                                <br><span class="small"><?php echo 'Current curl version='. curl_version()['version']  ?></span>
 	                                    </th>
 	                                    <td class="center" colspan="1"> 
 	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo plugin_config_get( 'proxy_address' ) ?></textarea>
@@ -185,9 +186,11 @@ telegrambot_print_menu_config( 'config_page' );
                                     </td>
                                 </tr>
                                 
+                                <?php if( plugin_config_get( 'reinstall_webhook' ) == ON ) { ?>
                                 <tr>
                                     <th class="category" width="5%">
                                         <?php echo plugin_lang_get('use_bot_cert_is') ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'cert_help' ) ?></span>
                                     </th>
                                     <td class="left" colspan="1">
                                         <label><input type="radio" class="ace" name="use_cert" value="1" <?php echo( ON == plugin_config_get('use_cert') ) ? 'checked="checked" ' : '' ?>/>
@@ -214,7 +217,25 @@ telegrambot_print_menu_config( 'config_page' );
                                         <input type= "file" name="bot_cert_file" id="bot_cert_file" accept=".pem,.crt,.cer">
                                     </td>
                                 </tr>
-                                <?php // } ?>
+                                <?php  } else { ?>
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <?php echo ' ' . plugin_lang_get( 'cli_g_path' ) ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'cli_g_path_notice' ) ?></span>
+                                    </th>
+                                    <td class="center" colspan="1"> 
+                                        <textarea name="cli_g_path" id="cli_g_path" class="form-control" rows="1"><?php echo plugin_config_get( 'cli_g_path' ) ?></textarea>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="category" width="5%">
+					<?php echo plugin_lang_get( 'path_to_crontab_script' ) ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'path_to_crontab_script_notice' ) ?></span>
+                                    </th>
+                                    <td class="left" colspan="1"><?php echo dirname( __FILE__, 2 ) . '/scripts/telegram_get_updates.php' ?></td>
+                                </tr>
+                                    
+                                <?php  } ?>
                             </table>
                         </div>
                     </div>

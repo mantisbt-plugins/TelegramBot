@@ -1,5 +1,5 @@
 <?php
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2023 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -18,18 +18,33 @@ $s_plugin_TelegramBot_name_plugin_description_page = 'Бот Телеграм';
 $s_plugin_TelegramBot_description = 'Добавляет в MantisBT функцию взаимодействия с пользователем через мессенджер Телеграмм.';
 
 $s_plugin_TelegramBot_config_title = 'Настройка';
+$s_plugin_TelegramBot_credential_config_title = 'Настройки учетных данных';
+$s_plugin_TelegramBot_connection_config_title = 'Параметры исходящих соединений';
+$s_plugin_TelegramBot_config_get_update_title = 'Способ получения обновлений от Telegram';
 $s_plugin_TelegramBot_manage_config_message_page = 'Настройка уведомлений';
 $s_plugin_TelegramBot_bot_name = 'Имя бота (необходимо для авторизации бота при приёме сообщений)';
+$s_plugin_TelegramBot_config_bot_username = 'Логин бота:';
+$s_plugin_TelegramBot_config_bot_username_notice = 'Он должн заканчиваться на "bot". Например, так: TetrisBot или tetris_bot.';
 $s_plugin_TelegramBot_api_key = 'Ключ API (необходимо для авторизации бота при отправке сообщений)';
+$s_plugin_TelegramBot_config_api_key = 'API token:';
+$s_plugin_TelegramBot_reinstall_webhook = 'Метод получения обновлений: ';
+$s_plugin_TelegramBot_path_to_crontab_script = 'Путь к сценарию обновления:';
+$s_plugin_TelegramBot_path_to_crontab_script_notice = 'Добавьте его в ваш crontab.';
+$s_plugin_TelegramBot_use_bot_cert_is = 'Использовать самоподписанный сертификат?';
+$s_plugin_TelegramBot_cert_help = 'Если выбранно "нет", то необходимо убедиться, что сертификат вашего сервера отдаёт полную цепочку сертификатов и выпущен публичным центром сертификации. Ошибки отображаются на вкладке "Статус".';
+$s_plugin_TelegramBot_bot_cert = 'Загружен самоподписанный сертификат:';
+$s_plugin_TelegramBot_bot_cert_help = 'Предоставляемый сертификат должен быть закодирован в формате PEM (ASCII BASE64). Файл pem, crt или cer должен содержать только открытый ключ (включая части BEGIN и END).';
 $s_plugin_TelegramBot_proxy_address_header = 'Адрес socks5 прокси сервера: socks5://';
 $s_plugin_TelegramBot_time_out_server_response_header = 'Таймаут ожидания ответа сервера (по умолчанию 30 сек): ';
-$s_plugin_TelegramBot_current_config = 'Бот будет отправлять обновления на следующий URL:';
+$s_plugin_TelegramBot_current_config = 'Telegram будет отправлять сообщения на следующий URL:';
 $s_plugin_TelegramBot_response_from_telegram = 'Ответ сервера Telegram: ';
 $s_plugin_TelegramBot_debug_connection_log_path_title = 'Путь к лог файлу';
 $s_plugin_TelegramBot_debug_connection_enabled = 'Включить режим отладки подключения?';
 $s_plugin_TelegramBot_config_page = 'Общие настройки';
-$s_plugin_TelegramBot_monitor_page = 'Монитор пользователей';
+$s_plugin_TelegramBot_monitor_page = 'Статус Telegram API';
 $s_plugin_TelegramBot_ERROR_CURL_VERSION = 'ТРЕБУЕТСЯ CURL >= 7.21.7 ';
+$s_plugin_TelegramBot_cli_g_path = 'URL вашего экземпляра mantisbt (как видно из веб-браузера):';
+$s_plugin_TelegramBot_cli_g_path_notice = 'ВНИМАНИЕ! Для корректной работы скрипта необходимо чтобы был задан URL вашего экземпляра mantisbt. Его можно определить в переменной g_path (config_inc.php) или здесь. URL должен обязательно завершаться символом "/". URL должен быть доступен пользователям для успешного прохождения регистрации. К примеру: https://mantisbt.org/mantisbt/';
 
 $s_plugin_TelegramBot_bot_successfully_attached = 'Бот успешно привязан.';
 $s_plugin_TelegramBot_info_to_redirect_bot_page = 'Вернитесь в чат, либо дождитесь переадресации.';
@@ -37,9 +52,17 @@ $s_plugin_TelegramBot_user_relationship_question = 'Связать ваш акк
 $s_plugin_TelegramBot_user_relationship_yes = 'ДА';
 $s_plugin_TelegramBot_user_relationship_no = 'НЕТ';
 
-$s_plugin_TelegramBot_registration_message_text = 'Для того чтобы начать использовать бот необходимо:
+$s_plugin_TelegramBot_registration_message_text_pin_code = 'Для того чтобы начать использовать бот необходимо:
 1. Иметь действующий аккаунт в %1$s.
-2. Привязать Ваш аккаунт нажав на кнопку ниже.
+2. ИЛИ в настройках вашего аккаунта ( Имя_вашего_пользователя -> Мой аккаунт -> Настройки Telegram )
+в строке "pin-код привязки" ввести следующие цифры: %2$s
+';
+
+$s_plugin_TelegramBot_registration_message_text = 'Для того чтобы начать использовать бот необходимо:
+1. Иметь действующий аккаунт в %1$s ( %2$s ).
+2. Привязать Ваш аккаунт нажав на кнопку ниже или в настройках вашего аккаунта %1$s ( Настройки Telegram ),
+в строке "pin-код привязки" ввести следующие цифры: 
+%3$s
 ';
 $s_plugin_TelegramBot_registration_button_text = 'Подтвердить привязку';
 
@@ -66,13 +89,14 @@ $s_plugin_TelegramBot_end_message = '
 
 $s_plugin_TelegramBot_help_registration_bot_header = 'Инструкция по настройке бота';
 $s_plugin_TelegramBot_help_registration_bot_message = 'Для активации бота необходимо:<br><br>
-1. Найти бота BotFather перейдя по ссылке %1$s или найдя его в мессенджере через поиск <br>
-2. Отправить сообщение /newbot в чат с BotFather <br>
-3. Отправить в виде сообщения «Краткое_наименование_бота» <br>
-4. Отправить в виде сообщения «логин_бота_bot» (Обратите внимание, что логин должен оканчиваться на _bot) <br>
-5. После того как BotFather сообщит что бот создан, скопируйте token и логин бота в соответствующие поля ниже и примените изменения. <br>
-6. Далее необходимо передать пользователя имя бота или ссылку в виде https://t.me/"логин_вашего_бота"'; 
-
+1. Найти бота BotFather перейдя по ссылке %1$s или найдя его в мессенджере через поиск; <br>
+2. Отправить сообщение /newbot в чат с BotFather;<br>
+3. Отправить в виде сообщения желаемое краткое наименование бота «Краткое_наименование»;<br>
+4. Отправить в виде сообщения желаемый логин бота «Краткое_наименование_bot» (Обратите внимание, что логин должен оканчиваться на _bot);<br>
+5. После того как BotFather сообщит что бот создан, скопируйте token и логин бота в соответствующие поля ниже;<br>
+6. Задайте способ получения обновлений;<br>
+7. Примените изменения;<br>
+8. Передайте пользователям краткое имя бота "Краткое_наименование" для самостоятельного поиска или ссылку в виде https://t.me/"Краткое_наименование"'; 
 
 $s_plugin_TelegramBot_action_select = 'Выберите действие:';
 $s_plugin_TelegramBot_bug_section_select = 'Выберите раздел с задачами:';
@@ -120,6 +144,7 @@ $s_plugin_TelegramBot_telegram_message_notification_title_for_action_relationshi
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_relationship_child_closed = 'СВЯЗАННАЯ задача %1$s ЗАКРЫТА:';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_related_issue_deleted = 'СВЯЗАННАЯ задача %1$s УДАЛЕНА.';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_monitor = 'Задача %1$s отслеживается пользователем %2$s.';
+
 $s_plugin_TelegramBot_telegram_message_reporter = 'Инициатор';
 $s_plugin_TelegramBot_telegram_message_handler = 'Ответственный';
 $s_plugin_TelegramBot_telegram_message_project = 'Проект';
@@ -155,14 +180,44 @@ $s_plugin_TelegramBot_telegram_message_bugnote_limit = 'Ограничение �
 $s_plugin_TelegramBot_telegram_message_full_issue_details = 'Отправить все подробности задачи при комментировании';
 $s_plugin_TelegramBot_telegram_message_included_all_bugnote_is = 'Включать все комментарии в уведомление при изменении статуса';
 
-$s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Настройки телеграм';
-$s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Настройки телеграм бота';
+$s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Настройки Telegram';
+$s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Настройки Telegram бота';
 $s_plugin_TelegramBot_account_telegram_prefs_subscribe_bot = 'Для того чтобы подписать на бота найдите его ( %1$s ) в Telegram или перейдите по ссылке: ';
 $s_plugin_TelegramBot_account_telegram_prefs_associated_users_head = 'Подключенные пользователи:';
-$s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook не установлен.';
-$s_plugin_TelegramBot_monitor_page_pending_update_count = 'Количество обновлений, ожидающих доставки:';
+$s_plugin_TelegramBot_user_info = 'Информация по пользователям';
+$s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook не установлен, используйте crontab.';
+$s_plugin_TelegramBot_monitor_page_pending_update_count = 'Количество сообщений, ожидающих доставки на стороне Telegram:';
 $s_plugin_TelegramBot_monitor_page_last_error_date = 'Дата последней ошибки, которая произошла при попытке доставить обновление через webhook';
 $s_plugin_TelegramBot_monitor_page_last_error_message = 'Сообщение об ошибке для самой последней доставки, которая произошла при попытке доставить обновление через webhook';
+$s_plugin_TelegramBot_monitor_page_is_self_signed_cert = 'Используется самоподписанный сертификат';
+$s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Данные запрашиваются через API Telegram при каждом обновлении страницы.'; 
 $s_plugin_TelegramBot_command_not_found = 'Команда не найдена.';
 
+$s_plugin_TelegramBot_month_january = 'Январь';
+$s_plugin_TelegramBot_month_february = 'Февраль';
+$s_plugin_TelegramBot_month_march = 'Март';
+$s_plugin_TelegramBot_month_april = 'Апрель';
+$s_plugin_TelegramBot_month_may = 'Май';
+$s_plugin_TelegramBot_month_june = 'Июнь';
+$s_plugin_TelegramBot_month_july = 'Июль';
+$s_plugin_TelegramBot_month_august = 'Август';
+$s_plugin_TelegramBot_month_september = 'Сентябрь';
+$s_plugin_TelegramBot_month_october = 'Октябрь';
+$s_plugin_TelegramBot_month_november = 'Ноябрь';
+$s_plugin_TelegramBot_month_december = 'Декабрь';
+
+$s_plugin_TelegramBot_weekday_Mon = 'Пн';
+$s_plugin_TelegramBot_weekday_Tue = 'Вт';
+$s_plugin_TelegramBot_weekday_Wed = 'Ср';
+$s_plugin_TelegramBot_weekday_Thu = 'Чт';
+$s_plugin_TelegramBot_weekday_Fri = 'Пт';
+$s_plugin_TelegramBot_weekday_Sat = 'Сб';
+$s_plugin_TelegramBot_weekday_Sun = 'Вс';
+
+$s_plugin_TelegramBot_next_month = 'След. месяц';
+$s_plugin_TelegramBot_prev_month = 'Пред. месяц';
+
 $s_plugin_TelegramBot_BAD_REQUEST = 'ОШИБКА В ТЕЛЕ ЗАПРОСА.';
+$s_plugin_TelegramBot_ERROR_CERT_FILE_NOT_FOUND = 'ОТСУТСТВУЕТ ФАЙЛ С СЕРТИФИКАТОМ';
+
+$s_plugin_TelegramBot_skip_button = 'Пропустить';

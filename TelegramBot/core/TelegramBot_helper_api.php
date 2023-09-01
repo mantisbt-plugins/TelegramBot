@@ -126,16 +126,23 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
         $t_fields_temp = array_fill_keys( $t_fields, '' );
 
         $t_final_fields = array_merge( $t_issue, $t_fields_temp );
+        
+        $t_final_fields['custom_fields'] = array();
 
         plugin_config_set( 'bug_data_draft', json_encode( $t_final_fields ), auth_get_current_user_id() );
+        plugin_config_set( 'bug_data_draft_chat_id', $t_orgl_chat_id, auth_get_current_user_id() );
+        plugin_config_set( 'bug_data_draft_message_id', $t_callback_msg_id, auth_get_current_user_id() );
+        
         $t_bug_data_draft = $t_final_fields;
     }
+    
+    $t_inline_keyboard = null;
 
     switch( $t_content_type ) {
         case 'video':
         case 'photo':
         case 'document':
-            if( $t_bug_data_draft['ufile'] == NULL && empty( $t_bug_data_draft['ufile'] ) ) {
+            if( array_key_exists( 'attachments', $t_bug_data_draft ) ) {
 
                 switch( $t_content_type ) {
                     case 'video':
@@ -174,7 +181,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                 }
                 $t_file_path = plugin_config_get( 'download_path' ) . $t_file->getFilePath();
 
-                $t_bug_data_draft['ufile'] = [
+                $t_bug_data_draft['attachments'] = [
                                           'browser_upload' => [ 0 => FALSE ],
                                           'tmp_name'       => [ 0 => $t_file_path ],
                                           'name'           => $t_file_orgl->getFileName() == NULL ? [ 0 => $t_file->getFilePath() ] : [ 0 => $t_file_orgl->getFileName() ]
@@ -184,7 +191,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
         case 'text':
 
             switch( array_keys( $p_current_action )[0] ) {
-
+//PROJECT
                 case 'gp':
                     $t_current_project = 0;
                     $t_project_id      = $t_current_project;
@@ -222,17 +229,19 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
                 case 'sc':
                     if( key_exists( 'category_id', $t_bug_data_draft ) ) {
-                        $t_bug_data_draft['category'] = $p_current_action['sc']['id'];
+                            $t_bug_data_draft['category'] = $p_current_action['sc']['id'];
 
-                        plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+                            plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
 
-                        $t_text = $t_callback_msg_text . ' ' . category_get_name( $t_bug_data_draft['category'] );
+                            $t_text = $t_callback_msg_text . ' ' . ( $t_bug_data_draft['category'] != 0 ? category_get_name( $t_bug_data_draft['category'] ) : lang_get( 'no_category' ) );
                     }
 
 //REPRODUCIBILITY
                 case 'greproducibility':
                     if( key_exists( 'reproducibility', $t_bug_data_draft ) ) {
-                        $t_inline_keyboard = keyboard_enum_string_get( 'reproducibility' );
+                        $t_default_reproducibility = (int)config_get( 'default_bug_reproducibility' );
+                            
+                        $t_inline_keyboard = keyboard_enum_string_get( 'reproducibility', $t_default_reproducibility );
 
                         $t_text .= PHP_EOL;
                         $t_text .= lang_get( 'reproducibility' ) . ': ';
@@ -251,7 +260,9 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 //ETA
                 case 'geta':
                     if( key_exists( 'eta', $t_bug_data_draft ) ) {
-                        $t_inline_keyboard = keyboard_enum_string_get( 'eta' );
+                        $t_default_eta = (int)config_get( 'default_bug_eta' );
+                            
+                        $t_inline_keyboard = keyboard_enum_string_get( 'eta', $t_default_eta );
 
                         $t_text .= PHP_EOL;
                         $t_text .= lang_get( 'eta' ) . ': ';
@@ -270,7 +281,8 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 //SEVERITY
                 case 'gseverity':
                     if( key_exists( 'severity', $t_bug_data_draft ) ) {
-                        $t_inline_keyboard = keyboard_enum_string_get( 'severity' );
+                        $t_default_severity = (int)config_get( 'default_bug_severity' );
+                        $t_inline_keyboard = keyboard_enum_string_get( 'severity', $t_default_severity );
 
                         $t_text .= PHP_EOL;
                         $t_text .= lang_get( 'severity' ) . ': ';
@@ -288,7 +300,8 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 //PRIORITY
                 case 'gpriority':
                     if( key_exists( 'priority', $t_bug_data_draft ) ) {
-                        $t_inline_keyboard = keyboard_enum_string_get( 'priority' );
+                        $t_default_priority = (int)config_get( 'default_bug_priority' );
+                        $t_inline_keyboard = keyboard_enum_string_get( 'priority', $t_default_priority );
 
                         $t_text .= PHP_EOL;
                         $t_text .= lang_get( 'priority' ) . ': ';
@@ -304,31 +317,112 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                         $t_text = $t_callback_msg_text . ' ' . get_enum_element( 'priority', $t_bug_data_draft['priority'] );
                     }
 
-////DUE_DATE
-//        case 'gduedate':
-//            if( key_exists( 'due_date', $t_bug_data_draft ) && access_has_project_level( config_get( 'due_date_update_threshold' ), $t_bug_data_draft['project']['id'], auth_get_current_user_id() ) ) {
-//                $t_inline_keyboard = keyboard_duedate_get();
-//
-//                $t_text .= PHP_EOL;
-//                $t_text .= lang_get( 'priority' ) . ': ';
-//
-//                break;
-//            }
-//        case 'sduedate':
-//            if( key_exists( 'due_date', $t_bug_data_draft ) && access_has_project_level( config_get( 'due_date_update_threshold' ), $t_bug_data_draft['project']['id'], auth_get_current_user_id() ) ) {
-//                $t_bug_data_draft['due_date'] = $p_current_action['priority']['id'];
-//
-//                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
-//
-//                $t_text = $p_callback_msg_text . ' ' . get_enum_element( 'priority', $t_bug_data_draft['priority'] );
-//            }
+//DUE_DATE
+                case 'gduedate':
+                    if( key_exists( 'due_date', $t_bug_data_draft ) && access_has_project_level( config_get( 'due_date_update_threshold' ), $t_bug_data_draft['project'], auth_get_current_user_id() ) ) {
+                        if( array_key_exists( 'gduedate', $p_current_action ) && array_key_exists( 'date', $p_current_action['gduedate'] ) ) {
+                            $t_calendar = new TelegramBotInlineKeyboardCalendar( $p_current_action['gduedate']['date'] );
+                            $t_inline_keyboard = $t_calendar->getKeyboard('duedate');
+
+                            $t_text = $t_callback_msg_text;
+
+                            break;
+                        } else {
+                            $t_calendar = new TelegramBotInlineKeyboardCalendar( date( "Y-n", time() ) );
+                            $t_inline_keyboard = $t_calendar->getKeyboard('duedate');
+
+                            $t_text .= PHP_EOL;
+                            $t_text .= lang_get( 'due_date' ) . ': ';
+
+                            break;
+                        }
+                    }
+                case 'sduedate':
+                    if( key_exists( 'due_date', $t_bug_data_draft ) && access_has_project_level( config_get( 'due_date_update_threshold' ), $t_bug_data_draft['project'], auth_get_current_user_id() ) ) {
+                        
+                        $t_bug_data_draft['due_date'] = date_strtotime( $p_current_action['sduedate'][0] );
+
+                        plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+
+                        $t_text = $t_callback_msg_text . ' ' . date( config_get( 'normal_date_format' ), $t_bug_data_draft['due_date'] );
+                    }
+
 //$t_show_platform || $t_show_os || $t_show_os_version
+//Implemented only the choice of platform from the available list. 
+//TODO: Implement the ability to select options by severity and/or manually fill in with arbitrary data ( config_get( 'allow_freetext_in_profile_fields' ) == OFF )
+                case 'gplatform':
+                    if( 
+                            ( config_get( 'enable_profiles' ) && key_exists( 'platform', $t_bug_data_draft ) ) 
+                            || ( config_get( 'enable_profiles' ) && key_exists( 'os', $t_bug_data_draft ) )
+                            || ( config_get( 'enable_profiles' ) && key_exists( 'os_build', $t_bug_data_draft ) ) 
+                       ) 
+                       {
+                            if( count( profile_get_all_for_user( auth_get_current_user_id() ) ) > 0 ) {
+                                $t_profile_id = 0;
+                                $t_inline_keyboard = keyboard_profile_option_list( auth_get_current_user_id(), $t_profile_id );
+                                
+                                keyboard_skip_button_add( $t_inline_keyboard, array( 'rb' => array( 'splatform' => array( 'id' => 'skip' ) ) ) );
+                                
+                                $t_text .= PHP_EOL;
+                                $t_text .= lang_get( 'select_profile' ) . ': ';
+                                break;
+                            }
+                       }
+                case 'splatform':
+                    if( 
+                            ( config_get( 'enable_profiles' ) && key_exists( 'platform', $t_bug_data_draft ) ) 
+                            || ( config_get( 'enable_profiles' ) && key_exists( 'os', $t_bug_data_draft ) )
+                            || ( config_get( 'enable_profiles' ) && key_exists( 'os_build', $t_bug_data_draft ) ) 
+                       ) 
+                       {
+                            if( count( profile_get_all_for_user( auth_get_current_user_id() ) ) > 0 ) {
+                                if( $p_current_action['splatform']['id'] == 'skip' ) {
+                                        $t_text = $t_callback_msg_text;
+                                } else {
+                                        $t_bug_data_draft['profile'] = $p_current_action['splatform']['id'];
+
+                                        plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+
+                                        $t_text = $t_callback_msg_text . ' ' . profile_get_name( $p_current_action['splatform']['id'] );
+                                }
+                            }
+                       }
 //$t_show_product_version
-//$t_show_product_build
+                case 'gpversion':
+                    if( version_should_show_product_version( $t_bug_data_draft['project'] ) && key_exists( 'product_version', $t_bug_data_draft ) ) {
+                            $t_product_version_released_mask = VERSION_RELEASED;
+
+                            if( access_has_project_level( config_get( 'report_issues_for_unreleased_versions_threshold' ) ) ) {
+                                    $t_product_version_released_mask = VERSION_ALL;
+                            }
+                            
+                            $t_inline_keyboard = keyboard_version_option_list( '', $t_bug_data_draft['project'], $t_product_version_released_mask, 'spversion' );
+                            
+                            keyboard_skip_button_add( $t_inline_keyboard, array( 'rb' => array( 'spversion' => array( 'version' => 'skip' ) ) ) );
+                            
+                            $t_text .= PHP_EOL;
+                            $t_text .= lang_get( 'product_version' ) . ': ';
+                            break;
+                    }
+                case 'spversion':
+                    if( version_should_show_product_version( $t_bug_data_draft['project'] ) && key_exists( 'product_version', $t_bug_data_draft ) ) {
+                            if( $p_current_action['spversion']['version'] == 'skip' ) {
+                                    $t_text = $t_callback_msg_text;
+                            } else {
+                                    $t_bug_data_draft['product_version'] = $p_current_action['spversion']['version'];
+
+                                    plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+
+                                    $t_text = $t_callback_msg_text . ' ' . $t_bug_data_draft['product_version'];
+                            }
+                    }
+//TODO: $t_show_product_build Text area
 //HANDLER
                 case 'ghandler':
                     if( key_exists( 'handler', $t_bug_data_draft ) && access_has_project_level( config_get( 'update_bug_assign_threshold' ) ) ) {
                         $t_inline_keyboard = keyboard_handler_get( $t_bug_data_draft['project'] );
+
+                        keyboard_skip_button_add( $t_inline_keyboard, array( 'rb' => array( 'shandler' => array( 'id' => 0 ) ) ) );
 
                         $t_text .= PHP_EOL;
                         $t_text .= lang_get( 'issue_handler' ) . ': ';
@@ -337,13 +431,17 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                     }
                 case 'shandler':
                     if( key_exists( 'handler', $t_bug_data_draft ) && access_has_project_level( config_get( 'update_bug_assign_threshold' ) ) ) {
-                        $t_bug_data_draft['handler'] = $p_current_action['shandler']['id'];
+                            if( $p_current_action['shandler']['id'] === 0 ) {
+                                    $t_text = $t_callback_msg_text;
+                            } else {
+                                    $t_bug_data_draft['handler'] = $p_current_action['shandler']['id'];
 
-                        plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+                                    plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
 
-                        $t_text = $t_callback_msg_text . ' ' . user_get_name( $t_bug_data_draft['handler'] );
+                                    $t_text = $t_callback_msg_text . ' ' . user_get_name( $t_bug_data_draft['handler'] );
+                            }
                     }
-
+//TODO: $t_show_monitors (new element)
 //STATUS
                 case 'gstatus':
                     if( key_exists( 'status', $t_bug_data_draft ) ) {
@@ -382,24 +480,149 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                         $t_text = $t_callback_msg_text . ' ' . get_enum_element( 'resolution', $t_bug_data_draft['resolution'] );
                     }
 
-////TARGET_VERSION
-//        case 'gtargetv':
-//            if( version_should_show_product_version( $t_bug_data_draft['project']['id'] ) && key_exists( 'target_version', $t_bug_data_draft ) && access_has_project_level( config_get( 'roadmap_update_threshold' ) ) ) {
-//                $t_inline_keyboard = keyboard_target_version_get( '', $t_bug_data_draft['project']['id'], VERSION_FUTURE );
-//
-//                $t_text .= PHP_EOL;
-//                $t_text .= lang_get( 'target_version' ) . ': ';
-//
-//                break;
-//            }
-//        case 'stargetv':
-//            if( version_should_show_product_version( $t_bug_data_draft['project']['id'] ) && key_exists( 'target_version', $t_bug_data_draft ) && access_has_project_level( config_get( 'roadmap_update_threshold' ) ) ) {
-//                $t_bug_data_draft['target_version'] = $p_current_action['stargetv']['id'];
-//
-//                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
-//
-//                $t_text = $p_callback_msg_text . ' ' . ;
-//            }
+//TARGET_VERSION
+                case 'gtargetv':
+                    if(
+                            version_should_show_product_version( $t_bug_data_draft['project'] ) 
+                            && key_exists( 'target_version', $t_bug_data_draft ) 
+                            && access_has_project_level( config_get( 'roadmap_update_threshold' ) ) 
+                            ) {
+                        $t_inline_keyboard = keyboard_version_option_list( '', $t_bug_data_draft['project'], VERSION_FUTURE, 'stargetv' );
+
+                        keyboard_skip_button_add( $t_inline_keyboard, array( 'rb' => array( 'stargetv' => array( 'version' => 'skip' ) ) ) );
+                        
+                        $t_text .= PHP_EOL;
+                        $t_text .= lang_get( 'target_version' ) . ': ';
+
+                        break;
+                    }
+                case 'stargetv':
+                    if(
+                            version_should_show_product_version( $t_bug_data_draft['project'] ) 
+                            && key_exists( 'target_version', $t_bug_data_draft ) 
+                            && access_has_project_level( config_get( 'roadmap_update_threshold' ) ) 
+                            ) {
+                            if( $p_current_action['stargetv']['version'] == 'skip' ) {
+                                        $t_text = $t_callback_msg_text;
+                            } else {
+                                        $t_bug_data_draft['target_version'] = $p_current_action['stargetv']['version'];
+
+                                        plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+
+                                        $t_text = $t_callback_msg_text . ' ' . $t_bug_data_draft['target_version'];
+                            }
+                    }
+//custom_fields buttons type
+                case 'scf':
+                        if( key_exists( 'scf', $p_current_action ) ) {
+                                $t_value_id = $p_current_action['scf'];
+                                $t_definition = custom_field_get_definition( key( $t_value_id ) );
+                                $t_value = '';
+                                
+                                switch( $t_definition['type'] ) {
+                                        case CUSTOM_FIELD_TYPE_MULTILIST:
+                                        case CUSTOM_FIELD_TYPE_CHECKBOX:
+                                                # ensure that the default is an array, if set
+                                                if( ( $p_default !== null ) && !is_array( $p_default ) ) {
+                                                        $p_default = array( $p_default );
+                                                }
+                                                $t_values = gpc_get_string_array( $p_var_name, $p_default );
+                                                if( is_array( $t_values ) ) {
+                                                        return implode( '|', $t_values );
+                                                } else {
+                                                        return '';
+                                                }
+                                                
+                                                
+                                                
+                                                $t_inline_keyboard = telegrambot_print_custom_field_input( $t_def, null, $t_def['require_report'] );
+                                                
+                                                break;
+                                        case CUSTOM_FIELD_TYPE_DATE:
+                                                $t_value = strtotime( $t_value_id[key( $t_value_id )] );
+                                                break;
+                                        default:
+                                                $t_value = $t_value_id[key( $t_value_id )];
+                                }
+                                
+//                                $t_values = explode( '|', custom_field_prepare_possible_values( $t_definition['possible_values'] ) );
+                                
+                                $t_bug_data_draft['custom_fields'][key( $t_value_id )] = $t_value;
+                                
+                                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+                                
+                                $t_text = $t_callback_msg_text . ' ' . $t_value_id[key( $t_value_id )];
+                                
+                        }
+                // Change custom field date 
+                case 'gcf':                        
+                case 'skipcf':
+                        //Change date request
+                        if( key_exists( 'gcf', $p_current_action ) ) {
+                                $t_request_cfid = key( $p_current_action['gcf'] );
+                                $t_request_date = $p_current_action['gcf'][$t_request_cfid];
+                                
+                                $t_calendar = new TelegramBotInlineKeyboardCalendar( $t_request_date );
+                                $t_inline_keyboard = $t_calendar->getKeyboard( 'cf', $t_request_cfid );
+                                
+                                $t_def = custom_field_get_definition( $t_request_cfid );
+                                
+                                if( $t_def['default_value'] != 0 ) {
+                                        $t_inline_keyboard->addRow( [
+                                              'text'          => $t_def['default_value'] . ' (' . lang_get( 'custom_field_default_value' ) . ')',
+                                              'callback_data' => json_encode( array( 'rb' => array( 'scf' => array( $t_request_cfid => $t_def['default_value'] ) ) ) )
+                                        ] );
+                                }
+        
+                                if( !$t_def['require_report'] ) {
+                                        keyboard_skip_button_add( $t_inline_keyboard, array( 'rb' => array( 'skipcf' => $t_request_cfid ) ) );
+                                }
+
+                                $t_text = $t_callback_msg_text;
+                                break;
+                        }
+                        if( key_exists( 'skipcf', $p_current_action ) ) {
+                               $t_skip_cf_id = $p_current_action['skipcf'];
+                        } else {
+                               $t_skip_cf_id = 0;
+                        }
+
+                        //Other request
+                        $t_related_custom_field_ids = custom_field_get_linked_ids( $t_bug_data_draft['project'] );
+                        
+                        $t_break_switch = false;
+                    
+                        foreach( $t_related_custom_field_ids as $t_id ) {
+                                if( $t_skip_cf_id == $t_id ) {
+                                        $t_text = $t_callback_msg_text;
+                                        continue; 
+                                }
+                                
+                                if( !key_exists( $t_id, $t_bug_data_draft['custom_fields'] ) ) {
+                                        $t_def = custom_field_get_definition( $t_id );
+                                        
+                                        if( ( $t_def['display_report'] || $t_def['require_report'] ) && custom_field_has_write_access_to_project( $t_id, $t_bug_data_draft['project'] ) ) {
+
+                                                $t_inline_keyboard = telegrambot_print_custom_field_input( $t_def, null, $t_def['require_report'] );
+  
+                                                $t_text .= PHP_EOL;
+                                                $t_text .= lang_get_defaulted( $t_def['name'] ) . ': ';
+
+                                                $t_bug_data_draft['custom_fields'][$t_id] = array();
+                                                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+
+                                                $t_break_switch = true;
+
+                                                break;
+                                        }
+                                } # end if( !key_exists( $t_id, $t_bug_data_draft['custom_fields'] ) )
+                        } # end foreach( $t_related_custom_field_ids as $t_id )
+
+                        if( $t_break_switch ) {
+                                break;
+                        }
+                    
+//TODO: $t_show_tags
 //SUMMARY            
                 case 'gsummary':
 
@@ -412,10 +635,10 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                         $t_summary = $t_orgl_message->getCaption();
                     } else {
 
-                        $t_text .= PHP_EOL;
-                        $t_text .= '----------------------------';
-                        $t_text .= PHP_EOL;
-                        $t_text .= plugin_lang_get( 'get_summary' );
+//                        $t_text .= PHP_EOL;
+//                        $t_text .= '----------------------------';
+//                        $t_text .= PHP_EOL;
+//                        $t_text .= plugin_lang_get( 'get_summary' );
 
                         break;
                     }
@@ -433,18 +656,18 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
                     $t_text .= PHP_EOL;
                     $t_text .= lang_get( 'description' ) . ': ';
-                    $t_text .= PHP_EOL;
-                    $t_text .= '----------------------------';
-                    $t_text .= PHP_EOL;
-                    $t_text .= plugin_lang_get( 'get_description' );
+//                    $t_text .= PHP_EOL;
+//                    $t_text .= '----------------------------';
+//                    $t_text .= PHP_EOL;
+//                    $t_text .= plugin_lang_get( 'get_description' );
                     break;
 
                 case 'sdescription':
-                    $t_bug_data_draft['summary'] = $p_callback_query->getMessage()->getReplyToMessage()->getText();
+                    $t_bug_data_draft['description'] = $p_callback_query->getMessage()->getReplyToMessage()->getText();
 
                     plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
 
-                    $t_text .= $t_bug_data_draft['summary'];
+                    $t_text .= $t_bug_data_draft['description'];
             }
 
             $t_data_send = [
@@ -453,7 +676,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                                       'text'         => $t_text,
                                       'reply_markup' => $t_inline_keyboard,
             ];
-
+            plugin_config_set( 'bug_data_draft_text_msg', $t_text, auth_get_current_user_id() );
             break;
 
         default :
@@ -511,6 +734,7 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
 
         case 'set_bug':
             $t_bug_id = $p_current_action['set_bug'];
+            $t_upload_is_error = FALSE;
 
             $t_orgl_message = $p_reply_to_message;
             $t_content_type = $t_orgl_message->getType();
@@ -542,7 +766,7 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
 //                                              'action'  => 'upload_document'
 //                    ];
 //                    $t_rttt             = Longman\TelegramBot\Request::sendChatAction( $t_data_send_action );
-                    $t_upload_is_error = FALSE;
+                    
                     try {
                         Longman\TelegramBot\Request::downloadFile( $t_file );
                     } catch( Longman\TelegramBot\Exception\TelegramException $e ) {
@@ -666,3 +890,86 @@ function telegram_lang_get_default( $p_lang_code = null ) {
 
 	return $t_lang;
 }
+
+/**
+ * Attach a "checked" attribute to a HTML element if $p_var === $p_val or
+ * a {value within an array passed via $p_var} === $p_val.
+ *
+ * If the second parameter is not given, the first parameter is compared to
+ * the boolean value true.
+ *
+ * @param mixed   $p_var    The variable to compare.
+ * @param mixed   $p_val    The value to compare $p_var with.
+ * @param boolean $p_strict Set to false to bypass strict type checking (defaults to true).
+ * @return void
+ */
+function telegrambot_check_default( $p_var, $p_val = true, $p_strict = true ) {
+	if( is_array( $p_var ) ) {
+		foreach( $p_var as $t_this_var ) {
+			if( helper_check_variables_equal( $t_this_var, $p_val, $p_strict ) ) {
+				echo ' checked="checked"';
+				return;
+			}
+		}
+	} else {
+		if( helper_check_variables_equal( $p_var, $p_val, $p_strict ) ) {
+//			echo ' checked="checked"';
+			return true;
+		} else {
+                        return false;
+                }
+	}
+}
+
+function telegrambot_get_pin_code( $p_telegram_user_id ) {
+
+                telegrembot_clear_old_pins();
+
+        //        $t_pin_code = $p_telegram_user_id;
+
+                db_param_push();
+
+        //        $t_query = 'SELECT pin_code FROM {plugin_TelegramBot_pin_codes} WHERE telegram_user_id=' . db_param();
+                $t_query = 'SELECT * FROM {plugin_TelegramBot_pin_codes} WHERE 1';
+        //	$t_result = db_query( $t_query, array( $p_telegram_user_id ) );
+                $t_result = db_query( $t_query );
+
+                $t_rows = array();
+
+                while( $c_row = db_fetch_array( $t_result ) ) {
+                        $t_rows[] = $c_row;
+                }
+
+
+                foreach( $t_rows as $t_row) {
+                        if( $t_row['telegram_user_id'] == $p_telegram_user_id ) {
+                                return $t_row['pin_code'];
+                        }
+                }
+
+                while( true ) {
+                        $t_pin_code = mt_rand(1000, 9999);
+                        foreach( $t_rows as $t_row) {
+                                if( $t_row['pin_code'] == $t_pin_code ) {
+                                        continue;
+                                }
+
+                        }
+
+                        db_param_push();
+
+                        $t_query = 'INSERT INTO {plugin_TelegramBot_pin_codes} (telegram_user_id, pin_code, timestamp) VALUES ( ' . db_param() . ', ' . db_param() . ', ' . db_param() . ')';
+                        db_query( $t_query, array( $p_telegram_user_id, $t_pin_code, db_now() ) );
+
+                        return $t_pin_code;
+                }
+        }
+
+function telegrembot_clear_old_pins() {
+
+                $t_time_cut = db_now() - (15*60);
+                db_param_push();
+                $t_query = 'DELETE FROM {plugin_TelegramBot_pin_codes} WHERE timestamp <' . $t_time_cut;
+                db_query( $t_query );
+}
+

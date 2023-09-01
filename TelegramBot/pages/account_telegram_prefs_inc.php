@@ -103,11 +103,14 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                         } else {
                                             ?>
                                             <tr>
-                                                <td class="category">
+                                                <th class="category" width="35%">
                                                     <?php
                                                     echo sprintf( plugin_lang_get( 'account_telegram_prefs_subscribe_bot' ), plugin_config_get( 'bot_name' ) ) .
                                                     '<a href="' . plugin_config_get( 'telegram_url' ) . plugin_config_get( 'bot_name' ) . '">' . '@' . plugin_config_get( 'bot_name' ) . '</a>';
                                                     ?>
+                                                </th>
+                                                <td class="left" colspan="1"> 
+                                                        <input type="number" name="pin_code" id="pin_code" class="form-control" min="0" value="">
                                                 </td>
                                             </tr>
                                             <?php

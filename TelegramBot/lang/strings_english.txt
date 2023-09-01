@@ -1,5 +1,5 @@
 <?php
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2023 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -28,18 +28,23 @@ $s_plugin_TelegramBot_config_bot_username_notice = 'It must end in "bot". Like t
 $s_plugin_TelegramBot_api_key = 'API key (required for bot authorization when sending messages)';
 $s_plugin_TelegramBot_config_api_key = 'API token:';
 $s_plugin_TelegramBot_reinstall_webhook = 'Getting updates method: ';
+$s_plugin_TelegramBot_path_to_crontab_script = 'Path to update script:';
+$s_plugin_TelegramBot_path_to_crontab_script_notice = 'Add it to your crontab.';
 $s_plugin_TelegramBot_use_bot_cert_is = 'Use a self-signed certificate?';
+$s_plugin_TelegramBot_cert_help = 'If you select "no", you must make sure that your server certificate gives the full certificate chain and is issued by a public CA. Errors are displayed in the Status tab.';
 $s_plugin_TelegramBot_bot_cert = 'Uploaded self-signed certificate:';
 $s_plugin_TelegramBot_bot_cert_help = 'The certificate supplied should be PEM encoded (ASCII BASE64). The pem,crt or cer file should only contain the public key (including BEGIN and END portions).';
 $s_plugin_TelegramBot_proxy_address_header = 'SOCKS5 proxy server address: socks5://';
 $s_plugin_TelegramBot_time_out_server_response_header = 'Server response timeout (30 seconds by default):';
-$s_plugin_TelegramBot_current_config = 'The bot will send updates to the following URL:';
+$s_plugin_TelegramBot_current_config = 'Telegram will send messages to the following URL:';
 $s_plugin_TelegramBot_response_from_telegram = 'Telegram server response: ';
 $s_plugin_TelegramBot_debug_connection_log_path_title = 'Path to log file';
 $s_plugin_TelegramBot_debug_connection_enabled = 'Enable connection debug mode?';
 $s_plugin_TelegramBot_config_page = 'General settings';
-$s_plugin_TelegramBot_monitor_page = 'Users monitor';
+$s_plugin_TelegramBot_monitor_page = 'Status of the Telegram API';
 $s_plugin_TelegramBot_ERROR_CURL_VERSION = 'REQUIRED CURL >= 7.21.7 ';
+$s_plugin_TelegramBot_cli_g_path = 'The URL of your mantisbt instance (as seen from a web browser):';
+$s_plugin_TelegramBot_cli_g_path_notice = 'ATTENTION! For the script to work correctly, the URL for your mantisbt instance must be specified. It can be defined in the g_path variable (config_inc.php) or here. The URL must end with a "/" character. The URL must be available to users for successful registration. For example: https://mantisbt.org/mantisbt/';
 
 $s_plugin_TelegramBot_bot_successfully_attached = 'The bot is successfully attached.';
 $s_plugin_TelegramBot_info_to_redirect_bot_page = 'Return to the chat, or wait for redirection.';
@@ -76,13 +81,14 @@ To subscribe, send any message and follow the instructions.';
 
 $s_plugin_TelegramBot_help_registration_bot_header = 'Instructions for setting up the bot';
 $s_plugin_TelegramBot_help_registration_bot_message = 'To activate the bot, you must:<br><br>
-1. Find a bot BotFather follow the link %1$s or by finding it in the instant messenger through a search <br>
-2. Send a message /newbot in the chat with BotFather <br>
-3. Send as "Short_Name_Bot" <br>
-4. Send as "login_bot_bot" (Note that the login must end in _bot) <br>
-5. After BotFather reports that the bot was created, copy the token and bot login to the appropriate fields below and apply the changes. <br>
-6. Next, you need to send the user a bot name or link in the form https://t.me/"login_your_bot"'; 
-
+1. Find a bot BotFather follow the link %1$s or by finding it in the instant messenger through a search;<br>
+2. Send a message /newbot in the chat with BotFather;<br>
+3. Send as "Short_Name" for your bot;<br>
+4. Send as "login_bot_bot" (Note that the login must end in _bot);<br>
+5. After BotFather reports that the bot was created, copy the token and bot login to the appropriate fields below;<br>
+6. Set how you want to receive updates;<br>
+7. Apply the changes;<br>
+8. Next, you need to send the user a bot name ("Short_Name") or link in the form https://t.me/"Short_Name"'; 
 
 $s_plugin_TelegramBot_action_select = 'Select an action from:';
 $s_plugin_TelegramBot_bug_section_select = 'Select a section with bugs:';
@@ -90,7 +96,7 @@ $s_plugin_TelegramBot_bug_select = 'Select a bug';
 $s_plugin_TelegramBot_content_upload_complete = 'The content is attached to the bug: ';
 $s_plugin_TelegramBot_comment_add_complete = 'Comment added to bug: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'List of sections';
-$s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
+$s_plugin_TelegramBot_keyboard_button_back = 'To the list of actions';
 
 $s_plugin_TelegramBot_error_file_size = 'The file should not exceed 20 MB';
 $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this bot';
@@ -98,7 +104,6 @@ $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this
 $s_plugin_TelegramBot_get_description = 'ENTER DESCRIPTION TEXT:';
 $s_plugin_TelegramBot_get_summary = 'ENTER SUMMARY TEXT:';
 $s_plugin_TelegramBot_bug_creation_complete = 'Created %1$s: ';
-
 
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_new = 'The following issue is now in status NEW (again)';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_feedback = 'The following issue requires your FEEDBACK.';
@@ -171,11 +176,40 @@ $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Telegram settings';
 $s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Settings bot Telegram';
 $s_plugin_TelegramBot_account_telegram_prefs_subscribe_bot = 'To sign on to the bot, find it ( %1$s ) in Telegram or follow the link: ';
 $s_plugin_TelegramBot_account_telegram_prefs_associated_users_head = 'Connected users:';
-$s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook is not set up.';
-$s_plugin_TelegramBot_monitor_page_pending_update_count = 'Number of updates awaiting delivery:';
+$s_plugin_TelegramBot_user_info = 'User information';
+$s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook is not set up, please use crontab.';
+$s_plugin_TelegramBot_monitor_page_pending_update_count = 'The number of messages waiting to be delivered on the Telegram side:';
 $s_plugin_TelegramBot_monitor_page_last_error_date = 'Date for the most recent error that happened when trying to deliver an update via webhook';
 $s_plugin_TelegramBot_monitor_page_last_error_message = 'Error message for the most recent error that happened when trying to deliver an update via webhook';
-$s_plugin_TelegramBot_monitor_page_is_self_signed_cert = 'A custom certificate was provided for webhook certificate checks?';
+$s_plugin_TelegramBot_monitor_page_is_self_signed_cert = 'A self-signed certificate is used';
+$s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Data is requested via the Telegram API every time the page is refreshed.'; 
 $s_plugin_TelegramBot_command_not_found = 'Command not found.';
 
+$s_plugin_TelegramBot_month_january = 'January';
+$s_plugin_TelegramBot_month_february = 'February';
+$s_plugin_TelegramBot_month_march = 'March';
+$s_plugin_TelegramBot_month_april = 'April';
+$s_plugin_TelegramBot_month_may = 'May';
+$s_plugin_TelegramBot_month_june = 'June';
+$s_plugin_TelegramBot_month_july = 'July';
+$s_plugin_TelegramBot_month_august = 'August';
+$s_plugin_TelegramBot_month_september = 'September';
+$s_plugin_TelegramBot_month_october = 'October';
+$s_plugin_TelegramBot_month_november = 'November';
+$s_plugin_TelegramBot_month_december = 'December';
+
+$s_plugin_TelegramBot_weekday_Mon = 'Mon';
+$s_plugin_TelegramBot_weekday_Tue = 'Tue';
+$s_plugin_TelegramBot_weekday_Wed = 'Wed';
+$s_plugin_TelegramBot_weekday_Thu = 'Thu';
+$s_plugin_TelegramBot_weekday_Fri = 'Fri';
+$s_plugin_TelegramBot_weekday_Sat = 'Sat';
+$s_plugin_TelegramBot_weekday_Sun = 'Sun';
+
+$s_plugin_TelegramBot_next_month = 'Next Month';
+$s_plugin_TelegramBot_prev_month = 'Prev Month';
+
 $s_plugin_TelegramBot_BAD_REQUEST = 'ERROR IN THE BODY OF THE REQUEST.';
+$s_plugin_TelegramBot_ERROR_CERT_FILE_NOT_FOUND = 'CERT FILE NOT FOUND';
+
+$s_plugin_TelegramBot_skip_button = 'Skip';

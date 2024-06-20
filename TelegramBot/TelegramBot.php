@@ -24,7 +24,7 @@ class TelegramBotPlugin extends MantisPlugin {
 
         $this->version  = '1.6.0-dev';
         $this->requires = array(
-                                  'MantisCore' => '2.14.0',
+                                  'MantisCore' => '2.26.0',
         );
 
         $this->author  = 'Grigoriy Ermolaev';
@@ -76,7 +76,7 @@ class TelegramBotPlugin extends MantisPlugin {
     }
 
     function init() {
-        require_once __DIR__ . '/api/vendor/autoload.php';
+        require_once 'api/vendor/autoload.php';
         require_once 'core/TelegramBot_bug_api.php';
         require_once 'core/TelegramBot_authentication_api.php';
         require_once 'core/TelegramBot_user_api.php';

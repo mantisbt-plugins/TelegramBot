@@ -1,0 +1,19 @@
+{
+    "name": "brlumen/telegrambot",
+    "description": "Adds the user interaction function to the MantisBT via the Telegram messenger.",
+    "authors": [
+        {
+            "name": "brlumen",
+            "email": "igflocal@gmail.com"
+        }
+    ],
+    "require": {
+        "longman/telegram-bot": "* 0.64.0"
+    },
+    "replace": {
+        "guzzlehttp/guzzle": "*"
+    },
+    "config": {
+        "vendor-dir": "TelegramBot/api/vendor"
+    }
+}

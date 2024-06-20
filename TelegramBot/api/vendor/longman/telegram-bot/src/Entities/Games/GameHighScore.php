@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of the TelegramBot package.
  *
@@ -11,6 +12,7 @@
 namespace Longman\TelegramBot\Entities\Games;
 
 use Longman\TelegramBot\Entities\Entity;
+use Longman\TelegramBot\Entities\User;
 
 /**
  * Class GameHighScore

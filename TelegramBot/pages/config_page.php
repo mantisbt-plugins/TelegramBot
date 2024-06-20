@@ -44,7 +44,7 @@ telegrambot_print_menu_config( 'config_page' );
                                     <col style="width:25%" />
                                 </colgroup>
 
-                                <tr <?php echo helper_alternate_class() ?>>
+                                <tr>
                                     <th class="category" width="5%">
                                         <?php echo plugin_lang_get( 'help_registration_bot_header' ) ?>
                                     </th>
@@ -57,7 +57,7 @@ telegrambot_print_menu_config( 'config_page' );
                                     </td>
                                 </tr>
 
-                                <tr <?php echo helper_alternate_class() ?>>
+                                <tr>
                                     <th class="category" width="5%">
                                         <span class="required">*</span>
                                         <?php echo plugin_lang_get( 'bot_name' ) ?>
@@ -67,7 +67,7 @@ telegrambot_print_menu_config( 'config_page' );
                                     </td>
                                 </tr>
 
-                                <tr <?php echo helper_alternate_class() ?>>
+                                <tr>
                                     <th class="category" width="5%">
                                         <span class="required">*</span>
                                         <?php echo plugin_lang_get( 'api_key' ) ?>
@@ -77,7 +77,7 @@ telegrambot_print_menu_config( 'config_page' );
                                     </td>
                                 </tr>
 				
-				<tr <?php echo helper_alternate_class() ?>>
+				<tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'time_out_server_response_header' ) ?>
                                     </th>
@@ -90,7 +90,7 @@ telegrambot_print_menu_config( 'config_page' );
 				$t_curl_version = curl_version();
 //				$t_curl_version = '7.19.7';
 				if( $t_curl_version['version'] >= '7.21.7' ) { ?>
-					<tr <?php echo helper_alternate_class() ?>>
+					<tr>
 	                                    <th class="category" width="5%">
 						<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
 	                                    </th>
@@ -100,7 +100,7 @@ telegrambot_print_menu_config( 'config_page' );
 	                                </tr>
 				<?php				
 				} else { ?>
-						<tr <?php echo helper_alternate_class() ?>>
+						<tr>
 						    <th class="category" width="5%">
 							<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
 						    </th>
@@ -111,7 +111,7 @@ telegrambot_print_menu_config( 'config_page' );
 					<?php
 				} ?>
 				
-				<tr <?php echo helper_alternate_class() ?>>
+				<tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'debug_connection_log_path_title' ) ?>
                                     </th>
@@ -120,7 +120,7 @@ telegrambot_print_menu_config( 'config_page' );
                                     </td>
                                 </tr>
 								
-				<tr <?php echo helper_alternate_class() ?>>
+				<tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'debug_connection_enabled' ) ?>
                                     </th>

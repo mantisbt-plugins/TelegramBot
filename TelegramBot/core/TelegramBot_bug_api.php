@@ -43,7 +43,7 @@ function telegram_bug_add( $p_bug_data_draft, $p_orgl_chat_id, $p_callback_msg_i
         }
     }
 
-    $f_files = array_key_exists( 'ufile', $p_bug_data_draft ) ? $p_bug_data_draft['ufile'] : null;
+    $f_files = array_key_exists( 'attachments', $p_bug_data_draft ) ? $p_bug_data_draft['attachments'] : null;
     if( $f_files !== null && !empty( $f_files ) ) {
         $t_issue['files'] = helper_array_transpose( $f_files );
     }

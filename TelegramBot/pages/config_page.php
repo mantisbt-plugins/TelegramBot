@@ -63,7 +63,7 @@ telegrambot_print_menu_config( 'config_page' );
                                         <?php echo plugin_lang_get( 'bot_name' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <textarea name="bot_name" id="bot_name" class="form-control" rows="1" required><?php echo plugin_config_get( 'bot_name' ) == NULL ? '' : plugin_config_get( 'bot_name' ) ?></textarea>
+                                        <textarea name="bot_name" id="bot_name" class="form-control" rows="1" required><?php echo plugin_config_get( 'bot_name' ) ?></textarea>
                                     </td>
                                 </tr>
 
@@ -73,7 +73,7 @@ telegrambot_print_menu_config( 'config_page' );
                                         <?php echo plugin_lang_get( 'api_key' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <textarea name="api_key" id="api_key" class="form-control" rows="1" required><?php echo plugin_config_get( 'api_key' ) == NULL ? '' : plugin_config_get( 'api_key' ) ?></textarea>
+                                        <textarea name="api_key" id="api_key" class="form-control" rows="1" required><?php echo plugin_config_get( 'api_key' ) ?></textarea>
                                     </td>
                                 </tr>
 				
@@ -82,7 +82,7 @@ telegrambot_print_menu_config( 'config_page' );
 					<?php echo plugin_lang_get( 'time_out_server_response_header' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <input type="number" name="time_out_server_response" id="proxy_address" class="form-control" min="0" value="<?php echo plugin_config_get( 'time_out_server_response' ) == NULL ? '' : plugin_config_get( 'time_out_server_response' ) ?>">
+                                        <input type="number" name="time_out_server_response" id="proxy_address" class="form-control" min="0" value="<?php echo plugin_config_get( 'time_out_server_response' ) ?>">
                                     </td>
                                 </tr>
 				
@@ -95,7 +95,7 @@ telegrambot_print_menu_config( 'config_page' );
 						<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
 	                                    </th>
 	                                    <td class="center" colspan="1"> 
-	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
+	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo plugin_config_get( 'proxy_address' ) ?></textarea>
 	                                    </td>
 	                                </tr>
 				<?php				

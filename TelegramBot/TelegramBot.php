@@ -56,13 +56,13 @@ class TelegramBotPlugin extends MantisPlugin {
         }
 
         return array(
-                                  // version 0.0.1
+                                  // version 0.0.1 (schema 0)
                                   array( 'CreateTableSQL', array( plugin_table( 'user_relationship' ), "
                                       mantis_user_id    I   $t_notnull  PRIMARY,
                                       telegram_user_id  I   $t_notnull",
                                                                                       $t_table_options
                                                             ) ),
-                                  // version 1.3.0
+                                  // version 1.3.0 (schema 1)
                                   array( 'CreateTableSQL', array( plugin_table( 'message_relationship' ), "
                                       id                I   $t_notnull  AUTOINCREMENT   PRIMARY,                                     
                                       bug_id            I   UNSIGNED    $t_notnull,
@@ -70,8 +70,14 @@ class TelegramBotPlugin extends MantisPlugin {
                                       msg_id            I   UNSIGNED    $t_notnull",
                                                                                       $t_table_options
                                                             ) ),
+                                  // version 1.3.0 (schema 2)                          
                                   array( 'CreateIndexSQL', array( 'idx_msgid_chatid', plugin_table( 'message_relationship' ), array( 'msg_id', 'chat_id' ) ) ),
+                                  // version 1.3.0 (schema 3)
                                   array( 'CreateIndexSQL', array( 'idx_chatid', plugin_table( 'message_relationship' ), 'chat_id' ) ),
+                                  // version 1.5.1 (schema 4)
+                                  array( 'ChangeTableSQL', array( plugin_table( "user_relationship" ), "
+                                        telegram_user_id  N   $t_notnull
+                                " ) ),
         );
     }
 

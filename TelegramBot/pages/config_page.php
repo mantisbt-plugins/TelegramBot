@@ -44,7 +44,7 @@ telegrambot_print_menu_config( 'config_page' );
                                     <col style="width:25%" />
                                 </colgroup>
 
-                                <tr <?php echo helper_alternate_class() ?>>
+                                <tr>
                                     <th class="category" width="5%">
                                         <?php echo plugin_lang_get( 'help_registration_bot_header' ) ?>
                                     </th>
@@ -57,32 +57,32 @@ telegrambot_print_menu_config( 'config_page' );
                                     </td>
                                 </tr>
 
-                                <tr <?php echo helper_alternate_class() ?>>
+                                <tr>
                                     <th class="category" width="5%">
                                         <span class="required">*</span>
                                         <?php echo plugin_lang_get( 'bot_name' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <textarea name="bot_name" id="bot_name" class="form-control" rows="1" required><?php echo plugin_config_get( 'bot_name' ) == NULL ? '' : plugin_config_get( 'bot_name' ) ?></textarea>
+                                        <textarea name="bot_name" id="bot_name" class="form-control" rows="1" required><?php echo plugin_config_get( 'bot_name' ) ?></textarea>
                                     </td>
                                 </tr>
 
-                                <tr <?php echo helper_alternate_class() ?>>
+                                <tr>
                                     <th class="category" width="5%">
                                         <span class="required">*</span>
                                         <?php echo plugin_lang_get( 'api_key' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <textarea name="api_key" id="api_key" class="form-control" rows="1" required><?php echo plugin_config_get( 'api_key' ) == NULL ? '' : plugin_config_get( 'api_key' ) ?></textarea>
+                                        <textarea name="api_key" id="api_key" class="form-control" rows="1" required><?php echo plugin_config_get( 'api_key' ) ?></textarea>
                                     </td>
                                 </tr>
 				
-				<tr <?php echo helper_alternate_class() ?>>
+				<tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'time_out_server_response_header' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <input type="number" name="time_out_server_response" id="proxy_address" class="form-control" min="0" value="<?php echo plugin_config_get( 'time_out_server_response' ) == NULL ? '' : plugin_config_get( 'time_out_server_response' ) ?>">
+                                        <input type="number" name="time_out_server_response" id="proxy_address" class="form-control" min="0" value="<?php echo plugin_config_get( 'time_out_server_response' ) ?>">
                                     </td>
                                 </tr>
 				
@@ -90,17 +90,17 @@ telegrambot_print_menu_config( 'config_page' );
 				$t_curl_version = curl_version();
 //				$t_curl_version = '7.19.7';
 				if( $t_curl_version['version'] >= '7.21.7' ) { ?>
-					<tr <?php echo helper_alternate_class() ?>>
+					<tr>
 	                                    <th class="category" width="5%">
 						<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
 	                                    </th>
 	                                    <td class="center" colspan="1"> 
-	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
+	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo plugin_config_get( 'proxy_address' ) ?></textarea>
 	                                    </td>
 	                                </tr>
 				<?php				
 				} else { ?>
-						<tr <?php echo helper_alternate_class() ?>>
+						<tr>
 						    <th class="category" width="5%">
 							<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
 						    </th>
@@ -111,7 +111,7 @@ telegrambot_print_menu_config( 'config_page' );
 					<?php
 				} ?>
 				
-				<tr <?php echo helper_alternate_class() ?>>
+				<tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'debug_connection_log_path_title' ) ?>
                                     </th>
@@ -120,7 +120,7 @@ telegrambot_print_menu_config( 'config_page' );
                                     </td>
                                 </tr>
 								
-				<tr <?php echo helper_alternate_class() ?>>
+				<tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'debug_connection_enabled' ) ?>
                                     </th>

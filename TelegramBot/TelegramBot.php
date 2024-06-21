@@ -100,8 +100,8 @@ class TelegramBotPlugin extends MantisPlugin {
 
     function config() {
         return array(
-                                  'api_token'                                 => NULL,
-                                  'bot_name'                                  => NULL,
+                                  'api_key'                                     => '',
+                                  'bot_name'                                    => '',
                                   'bot_father_url'                            => 'https://t.me/BotFather',
                                   'telegram_url'                              => 'tg://resolve?domain=',
                                   'download_path'                             => '/tmp/',
@@ -109,6 +109,7 @@ class TelegramBotPlugin extends MantisPlugin {
 				  'time_out_server_response'			=> 30,
 				  'debug_connection_log_path'			=> '/tmp/TelegramBot_debug.log',
 				  'debug_connection_enabled'			=> OFF,
+                                  'bug_data_draft'                              => '',
                                   /**
                                    * The following two config options allow you to control who should get email
                                    * notifications on different actions/statuses.  The first option
@@ -261,7 +262,7 @@ class TelegramBotPlugin extends MantisPlugin {
     }
 
     function telegram_message_bug_added( $p_type_event, $p_issue, $p_issue_id ) {
-        plugin_log_event( sprintf( 'Issue #%d reported', $p_bug_id ) );
+        plugin_log_event( sprintf( 'Issue #%d reported', $p_issue_id ) );
         telegram_message_generic( $p_issue_id, 'new', 'telegram_message_notification_title_for_action_bug_submitted' );
     }
 

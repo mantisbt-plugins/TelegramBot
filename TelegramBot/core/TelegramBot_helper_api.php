@@ -131,11 +131,13 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
         $t_bug_data_draft = $t_final_fields;
     }
 
+    $t_inline_keyboard = null;
+
     switch( $t_content_type ) {
         case 'video':
         case 'photo':
         case 'document':
-            if( $t_bug_data_draft['ufile'] == NULL && empty( $t_bug_data_draft['ufile'] ) ) {
+            if( array_key_exists( 'attachments', $t_bug_data_draft ) ) {
 
                 switch( $t_content_type ) {
                     case 'video':
@@ -174,7 +176,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                 }
                 $t_file_path = plugin_config_get( 'download_path' ) . $t_file->getFilePath();
 
-                $t_bug_data_draft['ufile'] = [
+                $t_bug_data_draft['attachments'] = [
                                           'browser_upload' => [ 0 => FALSE ],
                                           'tmp_name'       => [ 0 => $t_file_path ],
                                           'name'           => $t_file_orgl->getFileName() == NULL ? [ 0 => $t_file->getFilePath() ] : [ 0 => $t_file_orgl->getFileName() ]
@@ -447,6 +449,10 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                     $t_text .= $t_bug_data_draft['summary'];
             }
 
+            if( is_null( $t_inline_keyboard )) {
+                $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+            }
+
             $t_data_send = [
                                       'chat_id'      => $t_orgl_chat_id,
                                       'message_id'   => $t_callback_msg_id,
@@ -511,6 +517,7 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
 
         case 'set_bug':
             $t_bug_id = $p_current_action['set_bug'];
+            $t_upload_is_error = FALSE;
 
             $t_orgl_message = $p_reply_to_message;
             $t_content_type = $t_orgl_message->getType();
@@ -542,7 +549,7 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
 //                                              'action'  => 'upload_document'
 //                    ];
 //                    $t_rttt             = Longman\TelegramBot\Request::sendChatAction( $t_data_send_action );
-                    $t_upload_is_error = FALSE;
+                    
                     try {
                         Longman\TelegramBot\Request::downloadFile( $t_file );
                     } catch( Longman\TelegramBot\Exception\TelegramException $e ) {

@@ -722,7 +722,11 @@ function bug_get_id_from_message_id( $p_chat_id, $p_msg_id ) {
     $t_result = db_query( $t_query, array( $p_chat_id, $p_msg_id ) );
 
     $t_row    = db_fetch_array( $t_result );
-    $t_bug_id = $t_row['bug_id'];
-
+    if( $t_row === false ) {
+        $t_bug_id = 0;
+    } else {
+        $t_bug_id = $t_row['bug_id'];
+    }
+    
     return (int) $t_bug_id;
 }

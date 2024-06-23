@@ -266,7 +266,7 @@ class TelegramBotPlugin extends MantisPlugin {
         telegram_message_generic( $p_issue_id, 'new', 'telegram_message_notification_title_for_action_bug_submitted' );
     }
 
-    function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id ) {
+    function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id, $files ) {
         global $g_skip_sending_bugnote;
 
         if( $g_skip_sending_bugnote == TRUE ) {

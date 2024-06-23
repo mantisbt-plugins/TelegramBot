@@ -89,7 +89,11 @@ function user_get_id_by_telegram_user_id( $p_telegram_user_id ) {
     $t_result = db_query( $t_query, array( $p_telegram_user_id ) );
 
     $t_row     = db_fetch_array( $t_result );
-    $t_user_id = $t_row['mantis_user_id'];
+    if( $t_row === false ) {
+        $t_user_id = 0;
+    } else {
+        $t_user_id = $t_row['mantis_user_id'];
+    }
 
     return (int) $t_user_id;
 }
@@ -106,7 +110,11 @@ function telegram_user_get_id_by_user_id( $p_mantis_user_id ) {
     $t_result = db_query( $t_query, array( $p_mantis_user_id ) );
 
     $t_row     = db_fetch_array( $t_result );
-    $t_user_id = $t_row['telegram_user_id'];
+    if( $t_row === false ) {
+        $t_user_id = 0;
+    } else {
+        $t_user_id = $t_row['telegram_user_id'];
+    }
 
     return (int) $t_user_id;
 }

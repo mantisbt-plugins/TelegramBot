@@ -50,5 +50,6 @@ How to install
 Supported Versions
 ------------------
 
-- MantisBT 2.14 and higher - supported
+- MantisBT 2.14 to 2.26 - supported in plugin version up to 1.5.x
+- MantisBT 2.26 and higher - supported in plugin version 1.6 and higher
 - Only https ssl certificate signed trusted ca is supported for MantisBT ( In the near future, a self-signed https certificate will be supported. )

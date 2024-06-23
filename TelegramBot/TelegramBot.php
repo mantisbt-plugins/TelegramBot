@@ -1,6 +1,6 @@
 <?php
 
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2024 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -22,9 +22,9 @@ class TelegramBotPlugin extends MantisPlugin {
         $this->name        = 'TelegramBot';
         $this->description = plugin_lang_get( 'description' );
 
-        $this->version  = '1.5.1-dev';
+        $this->version  = '1.5.1';
         $this->requires = array(
-                                  'MantisCore' => '2.14.0',
+                                  'MantisCore' => '2.14.0, < 2.26.0',
         );
 
         $this->author  = 'Grigoriy Ermolaev';

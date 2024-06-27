@@ -36,7 +36,11 @@ if( $t_update_content == null ) {
     exit();
 }
 
-auth_ensure_telegram_user_authenticated( $t_update_content->getFrom()->getId() );
+    //We check the binding of the telegram account to the current user account mantisbt and if it is not linked, 
+    //then we issue an invitation to bind and skip processing the current callback.
+    if( !auth_ensure_telegram_user_authenticated( $t_update_content->getFrom()->getId(), $t_update_content->getFrom()->getLanguageCode() ) ) {
+        exit();
+    }
 
 switch( true ) {
 //MESSAGE

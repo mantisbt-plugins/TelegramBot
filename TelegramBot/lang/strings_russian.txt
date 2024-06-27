@@ -38,9 +38,8 @@ $s_plugin_TelegramBot_user_relationship_yes = 'ДА';
 $s_plugin_TelegramBot_user_relationship_no = 'НЕТ';
 
 $s_plugin_TelegramBot_registration_message_text = 'Для того чтобы начать использовать бот необходимо:
-1. Иметь действующий аккаунт в %1$s.
-2. Привязать Ваш аккаунт нажав на кнопку ниже.
-';
+1. Иметь действующий аккаунт в %1$s ( %2$s ).
+2. Привязать Ваш аккаунт нажав на кнопку ниже:';
 $s_plugin_TelegramBot_registration_button_text = 'Подтвердить привязку';
 
 $s_plugin_TelegramBot_first_message = '
@@ -120,6 +119,7 @@ $s_plugin_TelegramBot_telegram_message_notification_title_for_action_relationshi
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_relationship_child_closed = 'СВЯЗАННАЯ задача %1$s ЗАКРЫТА:';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_related_issue_deleted = 'СВЯЗАННАЯ задача %1$s УДАЛЕНА.';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_action_monitor = 'Задача %1$s отслеживается пользователем %2$s.';
+
 $s_plugin_TelegramBot_telegram_message_reporter = 'Инициатор';
 $s_plugin_TelegramBot_telegram_message_handler = 'Ответственный';
 $s_plugin_TelegramBot_telegram_message_project = 'Проект';

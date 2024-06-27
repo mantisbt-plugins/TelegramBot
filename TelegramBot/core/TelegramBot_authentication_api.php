@@ -93,41 +93,75 @@ function telegram_session_send_message( $p_telegram_user_id, $p_data ) {
     return $t_results_send;
 }
 
-function auth_ensure_telegram_user_authenticated( $p_telegram_user_id ) {
+/**
+* The function of checking the authorization of a telegram user and issuing an invitation for authorization
+*
+* @param int $p_telegram_user_id  Telegram user id.
+* @param string $p_telegram_user_lang_code Telegram user language code.
+* @return bool
+*/
+function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_telegram_user_lang_code = null ) {
 
     global $g_cache_cookie_valid;
 
+    plugin_log_event( 'Telegram user ' . $p_telegram_user_id . ' request language: "'.$p_telegram_user_lang_code.'"' );
+    
     $t_mantis_user_id = user_get_id_by_telegram_user_id( $p_telegram_user_id );
 
     if( $t_mantis_user_id == 0 ) {
-        user_telegram_signup( $p_telegram_user_id );
-        plugin_log_event( 'Authorisation Error! Telegram user id#' . $p_telegram_user_id . ' is not mapped to any mantisbt user.' );
-        exit();
+        lang_push( telegram_lang_map_auto( $p_telegram_user_lang_code ) );
+        $t_response = user_telegram_signup( $p_telegram_user_id );
+        if( !$t_response[0]->getOk() ) {
+            error_parameters( $t_response[0]->getDescription() );
+            plugin_error( 'ERROR_TG_GET_UPDATE', WARNING );
+        }
+        plugin_log_event( 'Authorization Error! Telegram user id#' . $p_telegram_user_id . ' is not mapped to any mantisbt user. As a response, an authorization invitation was sent.' );
+        return false;
     } else if( !user_is_enabled( $t_mantis_user_id ) || !user_exists( $t_mantis_user_id ) ) {
-        user_telegram_signup( $p_telegram_user_id );
-        plugin_log_event( 'Authorisation Error! User ' . user_get_username( $t_mantis_user_id ) . ' is disabled or deleted.' );
-        exit();
+        lang_push( telegram_lang_map_auto( $p_telegram_user_lang_code ) );
+        $t_response = user_telegram_signup( $p_telegram_user_id );
+        if( !$t_response[0]->getOk() ) {
+            error_parameters( $t_response[0]->getDescription() );
+            plugin_error( 'ERROR_TG_GET_UPDATE', WARNING );
+        }
+        plugin_log_event( 'Authorization Error! User ' . user_get_username( $t_mantis_user_id ) . ' is disabled or deleted. As a response, an authorization invitation was sent.' );
+        return false;
     } else {
         current_user_set( $t_mantis_user_id );
-        plugin_log_event( 'Authorisation success! Server telegrams successfully logged in as user: ' . user_get_username( $t_mantis_user_id ) );
+        plugin_log_event( 'Authorization success! Server telegrams successfully logged in as user: ' . user_get_username( $t_mantis_user_id ) );
         $g_cache_cookie_valid = TRUE;
 
-        lang_push( lang_get_default() );
+        lang_push( telegram_lang_get_default( $p_telegram_user_lang_code ) );
+        return true;
     }
 }
 
 function user_telegram_signup( $p_telegram_user_id ) {
 
+//    $t_pin_code = telegrambot_get_pin_code( $p_telegram_user_id );
+    
+    //We correctly form the url, depending on which method of receiving updates from the telegram server is selected.
+    if( php_sapi_name() == 'cli' ) {
+            $t_url = plugin_config_get( 'cli_g_path' ) == '' ? config_get_global( 'path' ) : plugin_config_get( 'cli_g_path' );
+    } else {
+            $t_url = config_get_global( 'path' );
+    }
+ 
     $t_signup_keyboard = new \Longman\TelegramBot\Entities\InlineKeyboard( array() );
     $t_signup_keyboard->addRow( [
                               'text' => plugin_lang_get( 'registration_button_text' ),
-                              'url'  => config_get_global( 'path' ) . plugin_page( 'registred', TRUE ) . '&telegram_user_id=' . $p_telegram_user_id
+                              'url'  => $t_url . plugin_page( 'registred', TRUE ) . '&telegram_user_id=' . $p_telegram_user_id
     ] );
     $data_signup       = [
                               'chat_id'      => $p_telegram_user_id,
-                              'text'         => sprintf( plugin_lang_get( 'registration_message_text' ), config_get( 'window_title' ) . ' ( ' . config_get( 'path' ) . ' )' ),
+                              'text'         => sprintf( 
+                                                            plugin_lang_get( 'registration_message_text' ), 
+                                                            config_get( 'window_title' ),
+                                                            $t_url,
+                                      ),
                               'reply_markup' => $t_signup_keyboard,
     ];
 
-    RequestMantis::sendMessage( $data_signup );
+    return RequestMantis::sendMessage( $data_signup );
+    
 }

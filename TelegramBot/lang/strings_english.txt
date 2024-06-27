@@ -38,16 +38,15 @@ $s_plugin_TelegramBot_user_relationship_yes = 'YES';
 $s_plugin_TelegramBot_user_relationship_no = 'NO';
 
 $s_plugin_TelegramBot_registration_message_text = 'In order to start using the bot it is necessary:
-1. Have a valid account in %1$s.
-2. Link your account by clicking on the button below.
-';
+1. Have a valid account in %1$s ( %2$s ).
+2. Link your account by clicking on the button below:';
 $s_plugin_TelegramBot_registration_button_text = 'Confirm the binding';
 
 $s_plugin_TelegramBot_first_message = '
 You have successfully subscribed to the chat-bot
 %1$s
 If you want to unsubscribe, then just send
-command / stop and follow the instructions.
+command /stop and follow the instructions.
 
 The following actions are currently available with bugs: 
 - report bugs;
@@ -80,7 +79,7 @@ $s_plugin_TelegramBot_bug_select = 'Select a bug';
 $s_plugin_TelegramBot_content_upload_complete = 'The content is attached to the bug: ';
 $s_plugin_TelegramBot_comment_add_complete = 'Comment added to bug: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'List of sections';
-$s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
+$s_plugin_TelegramBot_keyboard_button_back = 'Back to action list';
 
 $s_plugin_TelegramBot_error_file_size = 'The file should not exceed 20 MB';
 $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this bot';
@@ -88,7 +87,6 @@ $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this
 $s_plugin_TelegramBot_get_description = 'ENTER DESCRIPTION TEXT:';
 $s_plugin_TelegramBot_get_summary = 'ENTER SUMMARY TEXT:';
 $s_plugin_TelegramBot_bug_creation_complete = 'Created %1$s: ';
-
 
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_new = 'The following issue is now in status NEW (again)';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_feedback = 'The following issue requires your FEEDBACK.';

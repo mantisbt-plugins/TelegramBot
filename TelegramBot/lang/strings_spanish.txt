@@ -38,18 +38,17 @@ $s_plugin_TelegramBot_user_relationship_yes = 'SÍ';
 $s_plugin_TelegramBot_user_relationship_no = 'NO';
 
 $s_plugin_TelegramBot_registration_message_text = 'Para comenzar a usar el bot es necesario:
-1. Tener una cuenta válida en %1$s.
-2. Enlace su cuenta haciendo clic en el botón de abajo.
-';
+1. Tener una cuenta válida en %1$s ( %2$s ).
+2. Enlace su cuenta haciendo clic en el botón de abajo:';
 $s_plugin_TelegramBot_registration_button_text = 'Confirmar el enlace';
 
 $s_plugin_TelegramBot_first_message = '
 Te has suscrito con éxito al chat-bot
 %1$s
 Si desea darse de baja, simplemente envíe
-command / stop y sigua las instrucciones.
+command /stop y sigua las instrucciones.
 
-Las siguientes acciones están actualmente disponibles con errores:
+Las siguientes acciones están actualmente disponibles con errores: 
 - report bugs;
 - add comments;
 - attach files;
@@ -88,7 +87,6 @@ $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this
 $s_plugin_TelegramBot_get_description = 'ENTER DESCRIPTION TEXT:';
 $s_plugin_TelegramBot_get_summary = 'ENTER SUMMARY TEXT:';
 $s_plugin_TelegramBot_bug_creation_complete = 'Created %1$s: ';
-
 
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_new = 'The following issue is now in status NEW (again)';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_feedback = 'The following issue requires your FEEDBACK.';

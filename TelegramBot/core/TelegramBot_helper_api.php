@@ -620,3 +620,58 @@ function telegram_action_select( $p_orgl_chat_id, $p_callback_msg_id ) {
     ];
     return $t_data_send;
 }
+
+function telegram_lang_map_auto( $p_lang_code = null) {
+	$t_lang = config_get_global( 'fallback_language' );
+
+	if( isset( $p_lang_code ) ) {
+		$t_auto_map = config_get_global( 'language_auto_map' );
+
+		# Expand language map
+		$t_auto_map_exp = array();
+		foreach( $t_auto_map as $t_encs => $t_enc_lang ) {
+			$t_encs_arr = explode( ',', $t_encs );
+
+			foreach( $t_encs_arr as $t_enc ) {
+				$t_auto_map_exp[trim( $t_enc )] = $t_enc_lang;
+			}
+		}
+
+		# Find encoding
+		if( isset( $t_auto_map_exp[$p_lang_code] ) ) {
+                        $t_valid_langs = config_get( 'language_choices_arr' );
+			$t_found_lang = $t_auto_map_exp[$p_lang_code];
+
+                        if( in_array( $t_found_lang, $t_valid_langs, true ) ) {
+				$t_lang = $t_found_lang;
+			}
+		}
+	}
+
+	return $t_lang;
+}
+
+function telegram_lang_get_default( $p_lang_code = null ) {
+	global $g_active_language;
+
+	$t_lang = false;
+
+	# Confirm that the user's language can be determined
+	if( function_exists( 'auth_is_user_authenticated' ) && auth_is_user_authenticated() ) {
+		$t_lang = user_pref_get_language( auth_get_current_user_id() );
+	}
+
+	# Otherwise fall back to default
+	if( !$t_lang ) {
+		$t_lang = config_get_global( 'default_language' );
+	}
+
+	if( $t_lang == 'auto' ) {
+		$t_lang = telegram_lang_map_auto( $p_lang_code );
+	}
+
+	# Remember the language
+	$g_active_language = $t_lang;
+
+	return $t_lang;
+}

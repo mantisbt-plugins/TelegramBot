@@ -49,10 +49,20 @@ if( !plugin_is_loaded( 'TelegramBot' ) ) {
 
 plugin_push_current( 'TelegramBot' );
 
-echo "Get updates...\n";
-telegram_session_start();
+if( $g_tg == NULL ) {
+    plugin_error('ERROR_TG_SESSION_NOT_INITIALIZED');
+}
+
 $t_updates = $g_tg->handleGetUpdates();
+if( !$t_updates->getOk() ) {
+    error_parameters( $t_updates->getDescription() );
+    plugin_error('ERROR_TG_GET_UPDATE');
+}
+
+echo "Get updates...\n";
+
 $t_results = $t_updates->getResult();
+
 echo "Received " . count( $t_results ) . " updates.\n";
 echo "Start process updates...\n\n";
 

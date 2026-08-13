@@ -97,6 +97,7 @@ $s_plugin_TelegramBot_content_upload_complete = 'The content is attached to the 
 $s_plugin_TelegramBot_comment_add_complete = 'Comment added to bug: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'List of sections';
 $s_plugin_TelegramBot_keyboard_button_back = 'To the list of actions';
+$s_plugin_TelegramBot_keyboard_button_delete_draft = 'Delete Draft';
 
 $s_plugin_TelegramBot_error_file_size = 'The file should not exceed 20 MB';
 $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this bot';
@@ -185,6 +186,8 @@ $s_plugin_TelegramBot_monitor_page_is_self_signed_cert = 'A self-signed certific
 $s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Data is requested via the Telegram API every time the page is refreshed.'; 
 $s_plugin_TelegramBot_command_not_found = 'Command not found.';
 
+$s_plugin_TelegramBot_menu_main_broadcast_message_page = 'Send message';
+
 $s_plugin_TelegramBot_month_january = 'January';
 $s_plugin_TelegramBot_month_february = 'February';
 $s_plugin_TelegramBot_month_march = 'March';
@@ -211,5 +214,7 @@ $s_plugin_TelegramBot_prev_month = 'Prev Month';
 
 $s_plugin_TelegramBot_BAD_REQUEST = 'ERROR IN THE BODY OF THE REQUEST.';
 $s_plugin_TelegramBot_ERROR_CERT_FILE_NOT_FOUND = 'CERT FILE NOT FOUND';
+$s_plugin_TelegramBot_ERROR_TG_SESSION_NOT_INITIALIZED = 'ERROR: TELEGRAM SESSION NOT INITIALIZED';
+$s_plugin_TelegramBot_ERROR_TG_GET_UPDATE = 'ERROR TELEGRAM GET UPDATES - %1$s';
 
 $s_plugin_TelegramBot_skip_button = 'Skip';

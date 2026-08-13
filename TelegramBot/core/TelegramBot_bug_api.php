@@ -176,6 +176,8 @@ function telegram_bug_add( $p_bug_data_draft, $p_orgl_chat_id, $p_callback_msg_i
     $t_result = $t_command -> execute();
     $t_issue_id = (int) $t_result['issue_id'];
     
+    plugin_history_log( $t_issue_id, lang_get("new_bug_title"), "", lang_get("email_notification_title_for_action_bug_submitted") . " " . $t_issue_id );
+    
     return $t_issue_id;
    
 }

@@ -24,8 +24,6 @@ if( $f_token != plugin_config_get( 'api_key' ) || is_blank( $f_token ) ) {
     exit();
 }
 
-telegram_session_start();
-
 $t_post = json_decode( Longman\TelegramBot\Request::getInput(), true );
 
 $t_results[0] = new Longman\TelegramBot\Entities\Update( $t_post );

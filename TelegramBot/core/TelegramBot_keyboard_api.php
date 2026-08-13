@@ -101,7 +101,7 @@ function keyboard_get_menu_operations() {
 //        ] );
         $t_inline_keyboard->addRow( [
                                   'text'          => lang_get( 'report_bug_link' ),
-                                  'callback_data' => json_encode( array( 'rb' => array( 'gp' => array(
+                                  'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( 'gp' => array(
                                                                                                                 'id' => 0,
                                                                                                                 'p'  => 1,
                                                                                                                 'fp' => 1
@@ -112,9 +112,9 @@ function keyboard_get_menu_operations() {
 
     $t_inline_keyboard->addRow( [
                               'text'          => lang_get( 'add_bugnote_title' ),
-                              'callback_data' => json_encode( array( 'add_comment' => array( 'get_default_category' => '' ) ) )
+                              'callback_data' => json_encode( array( TelegrambotActions::ADD_COMMENT_TAG => array( 'get_default_category' => '' ) ) )
     ] );
-
+    
     return $t_inline_keyboard;
 }
 
@@ -138,15 +138,15 @@ function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1,
         $t_inline_keyboard->addRow( [
                                   'text'          => project_get_field( $t_project_ids[$i], 'name' ),
                                   'callback_data' => json_encode( array(
-                                                            'rb' => array( 'sp' => array( 'id' => $t_project_ids[$i] ) )
+                                                            TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::SET_PROJECT => array( 'id' => $t_project_ids[$i] ) )
                                   ) )
                 ], count( $t_child_project_ids ) > 0 ? [
                                           'text'          => '>>',
-                                          'callback_data' => json_encode( array( 'rb' => array( 'gp' => array(
-                                                                                                                        'id' => $t_project_ids[$i],
-                                                                                                                        'p'  => 1,
-                                                                                                                        'fp' => $p_page
-                                                                                              ) )
+                                          'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
+                                                                                                                                                                        'id' => $t_project_ids[$i],
+                                                                                                                                                                        'p'  => 1,
+                                                                                                                                                                        'fp' => $p_page
+                                                                                                                                                                ) )
                                           ) )
                         ] : []
         );
@@ -155,7 +155,7 @@ function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1,
     if( $p_page > 1 ) {
         $t_inline_keyboard->addRow( [
                                   'text'          => '<<',
-                                  'callback_data' => json_encode( array( 'rb' => array( 'gp' => array(
+                                  'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
                                                                                                                 'id' => $p_selected_project,
                                                                                                                 'p'  => $p_page - 1,
                                                                                                                 'fp' => $p_from_page
@@ -169,7 +169,7 @@ function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1,
         if( $t_parent_project_id != $p_selected_project ) {
             $t_inline_keyboard->addRow( [
                                       'text'          => '<<',
-                                      'callback_data' => json_encode( array( 'rb' => array( 'gp' => array(
+                                      'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
                                                                                                                     'id' => $t_parent_project_id,
                                                                                                                     'p'  => $p_from_page,
                                                                                                                     'fp' => $p_page
@@ -182,7 +182,7 @@ function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1,
     if( (count( $t_project_ids ) / 10) > $p_page ) {
         $t_inline_keyboard->addRow( [
                                   'text'          => '>>',
-                                  'callback_data' => json_encode( array( 'rb' => array( 'gp' => array(
+                                  'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
                                                                                                                 'id' => $p_selected_project,
                                                                                                                 'p'  => $p_page + 1,
                                                                                                                 'fp' => $p_from_page
@@ -205,7 +205,7 @@ function keyboard_category_get( $p_project_id ) {
             $t_inline_keyboard -> addRow( [
                                             'text' => lang_get( 'no_category' ),
                                             'callback_data' => json_encode( array(
-                                                                                    'rb' => array('sc' => array('id' => 0))
+                                                                                    TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::SET_CATEGORY => array('id' => 0))
                                                                ) )
             ] );
         }
@@ -215,14 +215,14 @@ function keyboard_category_get( $p_project_id ) {
                                           ($t_category['project_name'] == NULL ? lang_get( 'all_projects' ) : $t_category['project_name'])
                                           . '] ' . $t_category['name'],
                                   'callback_data' => json_encode( array(
-                                                            'rb' => array( 'sc' => array( 'id' => $t_category['id'] ) )
+                                                            TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::SET_CATEGORY => array( 'id' => $t_category['id'] ) )
                                   ) )
         ] );
     }
 
     $t_inline_keyboard->addRow( [
                               'text'          => '<<',
-                              'callback_data' => json_encode( array( 'rb' => array( 'gp' => array(
+                              'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
                                                                                                             'id' => 0,
                                                                                                             'p'  => 1,
                                                                                                             'fp' => 1
@@ -257,7 +257,7 @@ function keyboard_enum_string_get( $p_enum_string, $p_default_val = 0 ) {
                                   ) )
         ] );
     }
-
+    
     return $t_inline_keyboard;
 }
 

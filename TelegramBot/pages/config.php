@@ -15,10 +15,9 @@
 # If not, see <http://www.gnu.org/licenses/>.
 
 use Mantis\Exceptions\ClientException;
+use Longman\TelegramBot\Request;
 
 form_security_validate( 'config' );
-
-global $g_tg;
 
 $f_bot_name			= gpc_get_string   ( 'bot_username' );
 $f_api_key			= gpc_get_string   ( 'api_key' );
@@ -123,23 +122,46 @@ if( $f_debug_connection_enabled == ON ) {
 	plugin_config_set( 'debug_connection_log_path', $f_debug_connection_log_path );
 }
 
-form_security_purge( plugin_page( 'config', true ) );
+form_security_purge( 'config' );
 
 $t_redirect_url = plugin_page( 'config_page', true );
 layout_page_header();
 layout_page_begin();
 
 if( $f_reinstall_webhook == ON ) {
-    try {
-            html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_set_webhook()->getDescription() );
-    } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
-            //plugin_config_set( 'reinstall_webhook', OFF );
-            html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
-    }
+        $t_data = array();
+
+        if( plugin_config_get( 'use_cert' ) == ON ) {
+                $t_tmp_file = tmpfile();
+                fwrite( $t_tmp_file, plugin_config_get('bot_cert') );
+
+                $t_data['certificate'] = stream_get_meta_data( $t_tmp_file )['uri'];
+        }
+
+        $t_data = array_intersect_key($t_data, array_flip([
+                'certificate',
+                'max_connections',
+                'allowed_updates',
+        ]));
+
+        $t_data['url'] = config_get_global( 'path' ) . plugin_page( 'hook', TRUE ) . '&token=' . plugin_config_get( 'api_key' );
+
+        // If the certificate is passed as a path, encode and add the file to the data array.
+        if (!empty($t_data['certificate']) && is_string($t_data['certificate'])) {
+                $t_data['certificate'] = Request::encodeFile($t_data['certificate']);
+        }
+
+        try {
+                telegram_session_start();
+                html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . Request::setWebhook( $t_data )->getDescription() );
+        } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
+                //plugin_config_set( 'reinstall_webhook', OFF );
+                html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
+        }
 } else {
 //    html_operation_successful( $t_redirect_url );
     try {
-            html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_webhook_delete()->getDescription() );
+            html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . Request::deleteWebhook()->getDescription() );
     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
             html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
     }

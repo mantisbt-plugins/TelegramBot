@@ -50,16 +50,15 @@ $s_plugin_TelegramBot_user_relationship_yes = 'SÍ';
 $s_plugin_TelegramBot_user_relationship_no = 'NO';
 
 $s_plugin_TelegramBot_registration_message_text = 'Para comenzar a usar el bot es necesario:
-1. Tener una cuenta válida en %1$s.
-2. Enlace su cuenta haciendo clic en el botón de abajo.
-';
+1. Tener una cuenta válida en %1$s ( %2$s ).
+2. Enlace su cuenta haciendo clic en el botón de abajo:';
 $s_plugin_TelegramBot_registration_button_text = 'Confirmar el enlace';
 
 $s_plugin_TelegramBot_first_message = '
 Te has suscrito con éxito al chat-bot
 %1$s
 Si desea darse de baja, simplemente envíe
-command / stop y sigua las instrucciones.
+command /stop y sigua las instrucciones.
 
 Las siguientes acciones están actualmente disponibles con errores:
 - report bugs;
@@ -85,7 +84,7 @@ $s_plugin_TelegramBot_help_registration_bot_message = 'Para activar el bot, debe
 5. Una vez que BotFather le informe de que se ha creado el bot, copie el token y el nombre de usuario del bot en los campos correspondientes;<br>
 6. Establezca cómo desea recibir las actualizaciones;<br>
 7. Aplica los cambios;<br>
-8. Dar a los usuarios el nombre corto del bot "Nombre_corto" para auto-búsqueda o enlace como https://t.me/"Nombre_corto"'.;
+8. Dar a los usuarios el nombre corto del bot "Nombre_corto" para auto-búsqueda o enlace como https://t.me/"Nombre_corto"';
 
 $s_plugin_TelegramBot_action_select = 'Select an action from:';
 $s_plugin_TelegramBot_bug_section_select = 'Select a section with bugs:';

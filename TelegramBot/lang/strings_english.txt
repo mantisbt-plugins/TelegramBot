@@ -53,16 +53,15 @@ $s_plugin_TelegramBot_user_relationship_yes = 'YES';
 $s_plugin_TelegramBot_user_relationship_no = 'NO';
 
 $s_plugin_TelegramBot_registration_message_text = 'In order to start using the bot it is necessary:
-1. Have a valid account in %1$s.
-2. Link your account by clicking on the button below.
-';
+1. Have a valid account in %1$s ( %2$s ).
+2. Link your account by clicking on the button below:';
 $s_plugin_TelegramBot_registration_button_text = 'Confirm the binding';
 
 $s_plugin_TelegramBot_first_message = '
 You have successfully subscribed to the chat-bot
 %1$s
 If you want to unsubscribe, then just send
-command / stop and follow the instructions.
+command /stop and follow the instructions.
 
 The following actions are currently available with bugs: 
 - report bugs;

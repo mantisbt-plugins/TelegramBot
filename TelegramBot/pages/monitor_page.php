@@ -66,6 +66,9 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         $t_is_self_signed_cert = $t_result->result->getHasCustomCertificate();
                                     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
                                         $t_webhook_url = $t_errors->getMessage();
+                                    } catch( GuzzleHttp\Exception\GuzzleException $t_errors ) {
+                                        # network errors (no route to api.telegram.org, timeout, proxy)
+                                        $t_webhook_url = $t_errors->getMessage();
                                     }
 
                                         echo '<tr>';
@@ -115,7 +118,32 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         echo $t_pending_update_count;
                                         echo '</td>';
                                         echo '</tr>';
-                                        
+
+                                    }
+
+                                    if( (int)plugin_config_get( 'reinstall_webhook' ) == OFF ) {
+                                        # The script stamps every start, so a missing or stale value means it is not
+                                        # scheduled - the schedule itself cannot be read from the web.
+                                        $t_last_run = (int)plugin_config_get( 'get_updates_last_run' );
+
+                                        echo '<tr>';
+                                        echo '<td class="category" width="50%">';
+                                        echo plugin_lang_get( 'get_updates_last_run' );
+                                        echo '</td>';
+                                        echo '<td colspan="2">';
+
+                                        if( $t_last_run == 0 ) {
+                                                echo '<span class="red">' . plugin_lang_get( 'get_updates_last_run_never' ) . '</span>';
+                                        } else {
+                                                echo date( config_get( 'normal_date_format' ), $t_last_run );
+
+                                                if( time() - $t_last_run > 300 ) {
+                                                        echo '<br><span class="small red">' . plugin_lang_get( 'get_updates_last_run_stale' ) . '</span>';
+                                                }
+                                        }
+
+                                        echo '</td>';
+                                        echo '</tr>';
                                     }
                                 }
                                 ?>

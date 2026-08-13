@@ -27,7 +27,8 @@ Features
     - adding a comment to the bug;
     - mention of the user in the commentary.
 - Respond to chat alerts about events using the built-in function "Reply to message". The answer will be added as a comment to the bug (v. >= 1.3);
-- Support SOCKS5 proxy server ( Requires curl >= 7.21.7 ).
+- Support SOCKS5 proxy server ( Requires curl >= 7.21.7 );
+- Two ways of getting updates from Telegram: webhook and long polling (v. >= 2.0).
 
 Download
 --------
@@ -46,6 +47,45 @@ How to install
 6. Click Install.
 7. Click TelegramBot link
 8. Follow the instructions.
+
+Getting updates: Webhook or Script
+----------------------------------
+
+Telegram delivers updates to a bot in one of two ways, chosen in the plugin settings
+(*Manage -> Manage Plugins -> TelegramBot -> Settings*, option **Getting updates method**).
+
+**Webhook** - Telegram servers connect to your MantisBT instance themselves, so it has to be
+reachable from the Internet over HTTPS with a certificate signed by a trusted CA. Updates arrive
+instantly and nothing has to be scheduled.
+
+**Script** (long polling) - MantisBT asks Telegram for updates itself, over an outgoing connection
+only. Use it when publishing MantisBT on the Internet is not possible. Add the script shown on the
+settings page to your scheduler, for example:
+
+```
+* * * * * /usr/bin/php <mantisbt>/plugins/TelegramBot/scripts/telegram_get_updates.php >/dev/null 2>&1
+```
+
+A single run keeps a connection to Telegram open and processes updates as soon as they arrive, so
+the schedule above is not a polling interval - it only restarts the script for the next minute.
+Two settings control the timing, both on the settings page in the Script mode:
+
+- **Long polling timeout** (25 s by default) - how long Telegram holds the connection while there
+  are no updates. It has to stay below the server response timeout, otherwise curl gives up before
+  Telegram answers.
+- **Run time** (55 s by default) - how long a single run works before exiting. Keep it below the
+  interval between runs; a run started while another one is still working exits immediately.
+  Setting it to 0 makes the script poll once and exit.
+
+Only one instance runs at a time - Telegram rejects parallel getUpdates calls with 409 Conflict.
+The page *Telegram API status* shows when the script was last started, which is the way to tell
+that the scheduler entry actually works. Note that both methods are mutually exclusive: while a
+webhook is set, getUpdates returns 409 Conflict, so switching to Script deletes the webhook.
+
+For the Script mode the URL of your MantisBT instance must be known: in CLI it cannot be derived
+from the request, and the bot puts it into the links it sends. Set `$g_path` in `config_inc.php`,
+or fill the URL field on the settings page if MantisBT is published under a different name for
+external users.
 
 Supported Versions
 ------------------

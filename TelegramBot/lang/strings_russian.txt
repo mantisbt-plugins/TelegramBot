@@ -52,18 +52,9 @@ $s_plugin_TelegramBot_user_relationship_question = 'Связать ваш акк
 $s_plugin_TelegramBot_user_relationship_yes = 'ДА';
 $s_plugin_TelegramBot_user_relationship_no = 'НЕТ';
 
-$s_plugin_TelegramBot_registration_message_text_pin_code = 'Для того чтобы начать использовать бот необходимо:
-1. Иметь действующий аккаунт в %1$s.
-2. ИЛИ в настройках вашего аккаунта ( Имя_вашего_пользователя -> Мой аккаунт -> Настройки Telegram )
-в строке "pin-код привязки" ввести следующие цифры: %2$s
-';
-
 $s_plugin_TelegramBot_registration_message_text = 'Для того чтобы начать использовать бот необходимо:
 1. Иметь действующий аккаунт в %1$s ( %2$s ).
-2. Привязать Ваш аккаунт нажав на кнопку ниже или в настройках вашего аккаунта %1$s ( Настройки Telegram ),
-в строке "pin-код привязки" ввести следующие цифры: 
-%3$s
-';
+2. Привязать Ваш аккаунт нажав на кнопку ниже:';
 $s_plugin_TelegramBot_registration_button_text = 'Подтвердить привязку';
 
 $s_plugin_TelegramBot_first_message = '
@@ -105,6 +96,7 @@ $s_plugin_TelegramBot_content_upload_complete = 'Контент прикрепл
 $s_plugin_TelegramBot_comment_add_complete = 'Комментарий добавлен к задаче: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'К списку разделов';
 $s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
+$s_plugin_TelegramBot_keyboard_button_delete_draft = 'Удалить черновик';
 
 $s_plugin_TelegramBot_error_file_size = 'Файл не должен превышать 20 Мб';
 $s_plugin_TelegramBot_error_content_type = 'Запрос не поддерживается ботом';
@@ -219,5 +211,6 @@ $s_plugin_TelegramBot_prev_month = 'Пред. месяц';
 
 $s_plugin_TelegramBot_BAD_REQUEST = 'ОШИБКА В ТЕЛЕ ЗАПРОСА.';
 $s_plugin_TelegramBot_ERROR_CERT_FILE_NOT_FOUND = 'ОТСУТСТВУЕТ ФАЙЛ С СЕРТИФИКАТОМ';
+$s_plugin_TelegramBot_ERROR_TG_SESSION_NOT_INITIALIZED = 'ОШИБКА: TELEGRAM СЕССИЯ НЕ ИНИЦИАЛИЗИРОВАНА';
 
 $s_plugin_TelegramBot_skip_button = 'Пропустить';

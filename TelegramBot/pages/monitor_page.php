@@ -55,7 +55,7 @@ telegrambot_print_menu_config( 'monitor_page' );
                                 if( $t_bot_name && $t_api_key ) {
 
                                     try {
-					telegram_session_start();
+//					telegram_session_start();
                                         $t_result      = Longman\TelegramBot\Request::getWebhookInfo();
                                         $t_webhook_url = $t_result->result->getUrl();
                                         $t_pending_update_count = $t_result->result->getPendingUpdateCount();

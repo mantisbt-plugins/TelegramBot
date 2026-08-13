@@ -24,7 +24,7 @@ class TelegramBotPlugin extends MantisPlugin {
 
         $this->version  = '2.0.0-dev';
         $this->requires = array(
-                                  'MantisCore' => '2.14.0',
+                                  'MantisCore' => '2.26.0',
         );
 
         $this->author  = 'Grigoriy Ermolaev';
@@ -56,13 +56,13 @@ class TelegramBotPlugin extends MantisPlugin {
         }
 
         return array(
-                                  // version 0.0.1
+                                  // version 0.0.1 (schema 0)
                                   array( 'CreateTableSQL', array( plugin_table( 'user_relationship' ), "
                                       mantis_user_id    I   $t_notnull  PRIMARY,
                                       telegram_user_id  I   $t_notnull",
                                                                                       $t_table_options
                                                             ) ),
-                                  // version 1.3.0
+                                  // version 1.3.0 (schema 1)
                                   array( 'CreateTableSQL', array( plugin_table( 'message_relationship' ), "
                                       id                I   $t_notnull  AUTOINCREMENT   PRIMARY,                                     
                                       bug_id            I   UNSIGNED    $t_notnull,
@@ -70,21 +70,25 @@ class TelegramBotPlugin extends MantisPlugin {
                                       msg_id            I   UNSIGNED    $t_notnull",
                                                                                       $t_table_options
                                                             ) ),
+                                  // version 1.3.0 (schema 2)                          
                                   array( 'CreateIndexSQL', array( 'idx_msgid_chatid', plugin_table( 'message_relationship' ), array( 'msg_id', 'chat_id' ) ) ),
+                                  // version 1.3.0 (schema 3)
                                   array( 'CreateIndexSQL', array( 'idx_chatid', plugin_table( 'message_relationship' ), 'chat_id' ) ),
-                                  // version 1.6.0
+                                  // version 2.0.0 (schema 4)
                                   array( 'ChangeTableSQL', array( plugin_table( "user_relationship" ), "
                                         telegram_user_id  N   $t_notnull
                                 " ) ),
-                                  // version 2.0.0
-                                  array( 'CreateTableSQL', array( plugin_table( 'pin_codes' ), "
-                                      telegram_user_id  N   UNSIGNED    $t_notnull  PRIMARY,
-                                      pin_code          I(4)    UNSIGNED    $t_notnull,
-                                      timestamp         I   UNSIGNED    $t_notnull DEFAULT '1'",
-                                                                                      $t_table_options
-                                                            ) ),
-                                  array( 'CreateIndexSQL', array( 'idx_t_uid_pin', plugin_table( 'pin_codes' ), array( 'telegram_user_id', 'pin_code' ) ) ),                      
-                                  array( 'CreateIndexSQL', array( 'idx_timestamp', plugin_table( 'pin_codes' ), 'timestamp' ) ),
+//                                  // version 2.0.0 (schema 5)
+//                                  array( 'CreateTableSQL', array( plugin_table( 'pin_codes' ), "
+//                                      telegram_user_id  N   UNSIGNED    $t_notnull  PRIMARY,
+//                                      pin_code          I(4)    UNSIGNED    $t_notnull,
+//                                      timestamp         I   UNSIGNED    $t_notnull DEFAULT '1'",
+//                                                                                      $t_table_options
+//                                                            ) ),
+//                                  // version 2.0.0 (schema 6)
+//                                  array( 'CreateIndexSQL', array( 'idx_t_uid_pin', plugin_table( 'pin_codes' ), array( 'telegram_user_id', 'pin_code' ) ) ),
+//                                  // version 2.0.0 (schema 7)
+//                                  array( 'CreateIndexSQL', array( 'idx_timestamp', plugin_table( 'pin_codes' ), 'timestamp' ) ),
         );
     }
 
@@ -101,11 +105,14 @@ class TelegramBotPlugin extends MantisPlugin {
 	require_once 'core/TelegramBot_menu_api.php';
         require_once 'core/TelegramBot_InlineKeyboardCalendar_api.php';
 //        require_once 'core/cfdefs/TelegramBot_cfdef_standard.php';
+        require_once 'core/classes/TelegrambotActions.class.php';
         require_once 'core/TelegramBot_custom_field_api.php';
-
+        
         global $g_skip_sending_bugnote, $g_account_telegram_menu_active;
         $g_skip_sending_bugnote         = FALSE;
         $g_account_telegram_menu_active = FALSE;
+        
+        telegram_session_start();
     }
 
     function config() {
@@ -128,6 +135,8 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'bug_data_draft_text_msg'                     => '',
                                   'bug_data_draft_current_field_to_save'        => '',
                                   'cli_g_path'                                  => '',
+                                  'broadcast_send_threshold'                    => 'Administrator',
+                                  'api_url'                                     => 'https://api.telegram.org',
                                   /**
                                    * The following two config options allow you to control who should get email
                                    * notifications on different actions/statuses.  The first option
@@ -269,7 +278,10 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'EVENT_BUGNOTE_ADD'     => 'telegram_message_bugnote_add',
                                   'EVENT_UPDATE_BUG_DATA' => 'telegram_message_skip_sending',
                                   'EVENT_UPDATE_BUG'      => 'telegram_message_update_bug',
-                                  'EVENT_MENU_ACCOUNT'    => 'telegram_account_page_menu'
+                                  'EVENT_MENU_ACCOUNT'    => 'telegram_account_page_menu',
+                                  'EVENT_MENU_MAIN_FRONT' => 'menu_main_front',
+                                  //TODO: Delete realatationship
+                                  //'EVENT_BUG_DELETED' => 'delete_realatationship_tgmessage',
         );
     }
     
@@ -277,6 +289,8 @@ class TelegramBotPlugin extends MantisPlugin {
         return array(
                                   'BAD_REQUEST'                 => plugin_lang_get( 'BAD_REQUEST' ),
                                   'ERROR_CERT_FILE_NOT_FOUND'   => plugin_lang_get( 'ERROR_CERT_FILE_NOT_FOUND' ),
+                                  'ERROR_TG_SESSION_NOT_INITIALIZED'    => plugin_lang_get('ERROR_TG_SESSION_NOT_INITIALIZED'),
+                                  'ERROR_TG_GET_UPDATE'                 => plugin_lang_get('ERROR_TG_GET_UPDATE'),
         );
     }
 
@@ -374,5 +388,15 @@ class TelegramBotPlugin extends MantisPlugin {
             return '<a href=' . plugin_page( 'account_telegram_prefs_page' ) . '>' . plugin_lang_get( 'account_telegram_prefs_page_header' ) . '</a>';
         }
     }
-
+    
+    function menu_main_front() {
+        return array(
+                                  array(
+                                                            'url'          => plugin_page( 'broadcast_message_page' ),
+                                                            'title'        => plugin_lang_get( 'menu_main_broadcast_message_page' ),
+                                                            'access_level' => plugin_config_get( 'broadcast_send_threshold' ),
+                                                            'icon'         => 'fa-brands fa-telegram'
+                                  ),
+        );
+    }
 }

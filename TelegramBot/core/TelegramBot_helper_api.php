@@ -59,16 +59,11 @@ function helper_ensure_telegram_bot_registred_confirmed( $p_message ) {
 
 function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(), $p_duration = '0:00' ) {
 
-    $f_bug_id   = $p_bug_id;
-    $f_text     = $p_text;
-    $f_duration = $p_duration;
-    $f_files    = $p_files;
+    $t_query = array( 'issue_id' => $p_bug_id );
 
-    $t_query = array( 'issue_id' => $f_bug_id );
-
-    if( count( $f_files ) > 0 && is_blank( $f_text ) && helper_duration_to_minutes( $f_duration ) == 0 ) {
+    if( count( $p_files ) > 0 && is_blank( $p_text ) && helper_duration_to_minutes( $p_duration ) == 0 ) {
         $t_payload = array(
-                                  'files' => helper_array_transpose( $f_files )
+                                  'files' => helper_array_transpose( $p_files )
         );
 
         $t_data = array(
@@ -78,16 +73,19 @@ function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(),
 
         $t_command = new IssueFileAddCommand( $t_data );
         $t_command->execute();
+
+        plugin_history_log( $p_bug_id, lang_get("download_attachments"), "", lang_get("file_added") );
+
     } else {
         $t_payload = array(
-                                  'text'          => $f_text,
+                                  'text'          => $p_text,
                                   'view_state'    => array(
                                                             'id' => VS_PUBLIC
                                   ),
                                   'time_tracking' => array(
-                                                            'duration' => $f_duration
+                                                            'duration' => $p_duration
                                   ),
-                                  'files'         => helper_array_transpose( $f_files )
+                                  'files'         => helper_array_transpose( $p_files )
         );
 
         $t_data = array(
@@ -96,7 +94,10 @@ function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(),
         );
 
         $t_command = new IssueNoteAddCommand( $t_data );
-        $t_command->execute();
+        $t_noteId = $t_command->execute();
+        
+        plugin_history_log( $p_bug_id, lang_get( "add_notes" ), "", lang_get( "bugnote_added" ) . ": " . $t_noteId['id']);
+       
     }
 }
 
@@ -192,7 +193,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
             switch( array_keys( $p_current_action )[0] ) {
 //PROJECT
-                case 'gp':
+                case TelegrambotActions::GET_PROJECT:
                     $t_current_project = 0;
                     $t_project_id      = $t_current_project;
 
@@ -204,20 +205,24 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
                         $t_callback_msg_text = lang_get( 'email_project' ) . ': ';
                     } else {
-                        $t_inline_keyboard   = keyboard_projects_get( $p_current_action['gp']['id'], $p_current_action['gp']['p'], $p_current_action['gp']['fp'] );
+                        $t_inline_keyboard   = keyboard_projects_get(
+                                                        $p_current_action[TelegrambotActions::GET_PROJECT]['id'],
+                                                        $p_current_action[TelegrambotActions::GET_PROJECT]['p'],
+                                                        $p_current_action[TelegrambotActions::GET_PROJECT]['fp']
+                                                        );
                         $t_callback_msg_text = $p_callback_query->getMessage()->getText();
                         $t_text              = lang_get( 'email_project' ) . ': ';
                         break;
                     }
 
-                case 'sp':
-                    $t_bug_data_draft['project'] = $p_current_action['sp']['id'];
+                case TelegrambotActions::SET_PROJECT:
+                    $t_bug_data_draft['project'] = $p_current_action[TelegrambotActions::SET_PROJECT]['id'];
                     plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
 
                     $t_text = $t_callback_msg_text . ' ' . project_get_field( $t_bug_data_draft['project'], 'name' );
 
 //CATEGORY
-                case 'gc':
+                case TelegrambotActions::GET_CATEGORY:
                     if( key_exists( 'category_id', $t_bug_data_draft ) ) {
                         $t_inline_keyboard = keyboard_category_get( $t_bug_data_draft['project'] );
 
@@ -227,17 +232,17 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                         break;
                     }
 
-                case 'sc':
+                case TelegrambotActions::SET_CATEGORY:
                     if( key_exists( 'category_id', $t_bug_data_draft ) ) {
-                            $t_bug_data_draft['category'] = $p_current_action['sc']['id'];
+                            $t_bug_data_draft['category'] = $p_current_action[TelegrambotActions::SET_CATEGORY]['id'];
 
                             plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
 
                             $t_text = $t_callback_msg_text . ' ' . ( $t_bug_data_draft['category'] != 0 ? category_get_name( $t_bug_data_draft['category'] ) : lang_get( 'no_category' ) );
                     }
-
+                
 //REPRODUCIBILITY
-                case 'greproducibility':
+                case TelegrambotActions::GET_REPRODUCIBILITY:
                     if( key_exists( 'reproducibility', $t_bug_data_draft ) ) {
                         $t_default_reproducibility = (int)config_get( 'default_bug_reproducibility' );
                             
@@ -248,9 +253,9 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
                         break;
                     }
-                case 'sreproducibility':
+                case TelegrambotActions::SET_REPRODUCIBILITY:
                     if( key_exists( 'reproducibility', $t_bug_data_draft ) ) {
-                        $t_bug_data_draft['reproducibility'] = $p_current_action['sreproducibility']['id'];
+                        $t_bug_data_draft['reproducibility'] = $p_current_action[TelegrambotActions::SET_REPRODUCIBILITY]['id'];
 
                         plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
 
@@ -258,7 +263,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                     }
 
 //ETA
-                case 'geta':
+                case TelegrambotActions::GET_ETA:
                     if( key_exists( 'eta', $t_bug_data_draft ) ) {
                         $t_default_eta = (int)config_get( 'default_bug_eta' );
                             
@@ -269,7 +274,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
                         break;
                     }
-                case 'seta':
+                case TelegrambotActions::SET_ETA:
                     if( key_exists( 'eta', $t_bug_data_draft ) ) {
                         $t_bug_data_draft['eta'] = $p_current_action['seta']['id'];
 
@@ -513,114 +518,114 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                             }
                     }
 //custom_fields buttons type
-                case 'scf':
-                        if( key_exists( 'scf', $p_current_action ) ) {
-                                $t_value_id = $p_current_action['scf'];
-                                $t_definition = custom_field_get_definition( key( $t_value_id ) );
-                                $t_value = '';
-                                
-                                switch( $t_definition['type'] ) {
-                                        case CUSTOM_FIELD_TYPE_MULTILIST:
-                                        case CUSTOM_FIELD_TYPE_CHECKBOX:
-                                                # ensure that the default is an array, if set
-                                                if( ( $p_default !== null ) && !is_array( $p_default ) ) {
-                                                        $p_default = array( $p_default );
-                                                }
-                                                $t_values = gpc_get_string_array( $p_var_name, $p_default );
-                                                if( is_array( $t_values ) ) {
-                                                        return implode( '|', $t_values );
-                                                } else {
-                                                        return '';
-                                                }
-                                                
-                                                
-                                                
-                                                $t_inline_keyboard = telegrambot_print_custom_field_input( $t_def, null, $t_def['require_report'] );
-                                                
-                                                break;
-                                        case CUSTOM_FIELD_TYPE_DATE:
-                                                $t_value = strtotime( $t_value_id[key( $t_value_id )] );
-                                                break;
-                                        default:
-                                                $t_value = $t_value_id[key( $t_value_id )];
-                                }
-                                
-//                                $t_values = explode( '|', custom_field_prepare_possible_values( $t_definition['possible_values'] ) );
-                                
-                                $t_bug_data_draft['custom_fields'][key( $t_value_id )] = $t_value;
-                                
-                                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
-                                
-                                $t_text = $t_callback_msg_text . ' ' . $t_value_id[key( $t_value_id )];
-                                
-                        }
-                // Change custom field date 
-                case 'gcf':                        
-                case 'skipcf':
-                        //Change date request
-                        if( key_exists( 'gcf', $p_current_action ) ) {
-                                $t_request_cfid = key( $p_current_action['gcf'] );
-                                $t_request_date = $p_current_action['gcf'][$t_request_cfid];
-                                
-                                $t_calendar = new TelegramBotInlineKeyboardCalendar( $t_request_date );
-                                $t_inline_keyboard = $t_calendar->getKeyboard( 'cf', $t_request_cfid );
-                                
-                                $t_def = custom_field_get_definition( $t_request_cfid );
-                                
-                                if( $t_def['default_value'] != 0 ) {
-                                        $t_inline_keyboard->addRow( [
-                                              'text'          => $t_def['default_value'] . ' (' . lang_get( 'custom_field_default_value' ) . ')',
-                                              'callback_data' => json_encode( array( 'rb' => array( 'scf' => array( $t_request_cfid => $t_def['default_value'] ) ) ) )
-                                        ] );
-                                }
-        
-                                if( !$t_def['require_report'] ) {
-                                        keyboard_skip_button_add( $t_inline_keyboard, array( 'rb' => array( 'skipcf' => $t_request_cfid ) ) );
-                                }
-
-                                $t_text = $t_callback_msg_text;
-                                break;
-                        }
-                        if( key_exists( 'skipcf', $p_current_action ) ) {
-                               $t_skip_cf_id = $p_current_action['skipcf'];
-                        } else {
-                               $t_skip_cf_id = 0;
-                        }
-
-                        //Other request
-                        $t_related_custom_field_ids = custom_field_get_linked_ids( $t_bug_data_draft['project'] );
-                        
-                        $t_break_switch = false;
-                    
-                        foreach( $t_related_custom_field_ids as $t_id ) {
-                                if( $t_skip_cf_id == $t_id ) {
-                                        $t_text = $t_callback_msg_text;
-                                        continue; 
-                                }
-                                
-                                if( !key_exists( $t_id, $t_bug_data_draft['custom_fields'] ) ) {
-                                        $t_def = custom_field_get_definition( $t_id );
-                                        
-                                        if( ( $t_def['display_report'] || $t_def['require_report'] ) && custom_field_has_write_access_to_project( $t_id, $t_bug_data_draft['project'] ) ) {
-
-                                                $t_inline_keyboard = telegrambot_print_custom_field_input( $t_def, null, $t_def['require_report'] );
-  
-                                                $t_text .= PHP_EOL;
-                                                $t_text .= lang_get_defaulted( $t_def['name'] ) . ': ';
-
-                                                $t_bug_data_draft['custom_fields'][$t_id] = array();
-                                                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
-
-                                                $t_break_switch = true;
-
-                                                break;
-                                        }
-                                } # end if( !key_exists( $t_id, $t_bug_data_draft['custom_fields'] ) )
-                        } # end foreach( $t_related_custom_field_ids as $t_id )
-
-                        if( $t_break_switch ) {
-                                break;
-                        }
+//                case 'scf':
+//                        if( key_exists( 'scf', $p_current_action ) ) {
+//                                $t_value_id = $p_current_action['scf'];
+//                                $t_definition = custom_field_get_definition( key( $t_value_id ) );
+//                                $t_value = '';
+//                                
+//                                switch( $t_definition['type'] ) {
+//                                        case CUSTOM_FIELD_TYPE_MULTILIST:
+//                                        case CUSTOM_FIELD_TYPE_CHECKBOX:
+//                                                # ensure that the default is an array, if set
+//                                                if( ( $p_default !== null ) && !is_array( $p_default ) ) {
+//                                                        $p_default = array( $p_default );
+//                                                }
+//                                                $t_values = gpc_get_string_array( $p_var_name, $p_default );
+//                                                if( is_array( $t_values ) ) {
+//                                                        return implode( '|', $t_values );
+//                                                } else {
+//                                                        return '';
+//                                                }
+//                                                
+//                                                
+//                                                
+//                                                $t_inline_keyboard = telegrambot_print_custom_field_input( $t_def, null, $t_def['require_report'] );
+//                                                
+//                                                break;
+//                                        case CUSTOM_FIELD_TYPE_DATE:
+//                                                $t_value = strtotime( $t_value_id[key( $t_value_id )] );
+//                                                break;
+//                                        default:
+//                                                $t_value = $t_value_id[key( $t_value_id )];
+//                                }
+//                                
+////                                $t_values = explode( '|', custom_field_prepare_possible_values( $t_definition['possible_values'] ) );
+//                                
+//                                $t_bug_data_draft['custom_fields'][key( $t_value_id )] = $t_value;
+//                                
+//                                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+//                                
+//                                $t_text = $t_callback_msg_text . ' ' . $t_value_id[key( $t_value_id )];
+//                                
+//                        }
+//                // Change custom field date 
+//                case 'gcf':                        
+//                case 'skipcf':
+//                        //Change date request
+//                        if( key_exists( 'gcf', $p_current_action ) ) {
+//                                $t_request_cfid = key( $p_current_action['gcf'] );
+//                                $t_request_date = $p_current_action['gcf'][$t_request_cfid];
+//                                
+//                                $t_calendar = new TelegramBotInlineKeyboardCalendar( $t_request_date );
+//                                $t_inline_keyboard = $t_calendar->getKeyboard( 'cf', $t_request_cfid );
+//                                
+//                                $t_def = custom_field_get_definition( $t_request_cfid );
+//                                
+//                                if( $t_def['default_value'] != 0 ) {
+//                                        $t_inline_keyboard->addRow( [
+//                                              'text'          => $t_def['default_value'] . ' (' . lang_get( 'custom_field_default_value' ) . ')',
+//                                              'callback_data' => json_encode( array( 'rb' => array( 'scf' => array( $t_request_cfid => $t_def['default_value'] ) ) ) )
+//                                        ] );
+//                                }
+//        
+//                                if( !$t_def['require_report'] ) {
+//                                        keyboard_skip_button_add( $t_inline_keyboard, array( 'rb' => array( 'skipcf' => $t_request_cfid ) ) );
+//                                }
+//
+//                                $t_text = $t_callback_msg_text;
+//                                break;
+//                        }
+//                        if( key_exists( 'skipcf', $p_current_action ) ) {
+//                               $t_skip_cf_id = $p_current_action['skipcf'];
+//                        } else {
+//                               $t_skip_cf_id = 0;
+//                        }
+//
+//                        //Other request
+//                        $t_related_custom_field_ids = custom_field_get_linked_ids( $t_bug_data_draft['project'] );
+//                        
+//                        $t_break_switch = false;
+//                    
+//                        foreach( $t_related_custom_field_ids as $t_id ) {
+//                                if( $t_skip_cf_id == $t_id ) {
+//                                        $t_text = $t_callback_msg_text;
+//                                        continue; 
+//                                }
+//                                
+//                                if( !key_exists( $t_id, $t_bug_data_draft['custom_fields'] ) ) {
+//                                        $t_def = custom_field_get_definition( $t_id );
+//                                        
+//                                        if( ( $t_def['display_report'] || $t_def['require_report'] ) && custom_field_has_write_access_to_project( $t_id, $t_bug_data_draft['project'] ) ) {
+//
+//                                                $t_inline_keyboard = telegrambot_print_custom_field_input( $t_def, null, $t_def['require_report'] );
+//  
+//                                                $t_text .= PHP_EOL;
+//                                                $t_text .= lang_get_defaulted( $t_def['name'] ) . ': ';
+//
+//                                                $t_bug_data_draft['custom_fields'][$t_id] = array();
+//                                                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
+//
+//                                                $t_break_switch = true;
+//
+//                                                break;
+//                                        }
+//                                } # end if( !key_exists( $t_id, $t_bug_data_draft['custom_fields'] ) )
+//                        } # end foreach( $t_related_custom_field_ids as $t_id )
+//
+//                        if( $t_break_switch ) {
+//                                break;
+//                        }
                     
 //TODO: $t_show_tags
 //SUMMARY            
@@ -669,6 +674,14 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
                     $t_text .= $t_bug_data_draft['description'];
             }
+            
+            if( is_null( $t_inline_keyboard )) {
+                $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+            }
+            $t_inline_keyboard->addRow( [
+                                  'text'          => '(Удалить черновик)',
+                                  'callback_data' => json_encode( array( 'stop_report_issue' => 1 ) )
+            ] );
 
             $t_data_send = [
                                       'chat_id'      => $t_orgl_chat_id,
@@ -921,55 +934,93 @@ function telegrambot_check_default( $p_var, $p_val = true, $p_strict = true ) {
 	}
 }
 
-function telegrambot_get_pin_code( $p_telegram_user_id ) {
+function telegramMsg_run_command( $t_command ) {
+        switch( $t_command->getCommand() ) {
+                case 'start':
+                        $t_data = [
+                            'chat_id' => $t_command->getFrom()->getId(),
+                            'text' => sprintf(
+                                                plugin_lang_get('first_message'), 
+                                                config_get('window_title') . ' ( ' . config_get('path') . ' )', 
+                                                ' ( ' . config_get('path') . plugin_page('account_telegram_prefs_page', TRUE) . ' )'
+                            ),
+                        ];
+                        break;
 
-                telegrembot_clear_old_pins();
+                case 'stop':
+                        $t_user_id = user_get_id_by_telegram_user_id($t_command->getFrom()->getId());
 
-        //        $t_pin_code = $p_telegram_user_id;
+                        telegram_message_realatationship_delete($t_command->getFrom()->getId());
+                        telegram_bot_user_mapping_delete($t_user_id);
+                        plugin_config_delete('bug_data_draft', auth_get_current_user_id());
+                        plugin_config_delete('bug_data_draft_chat_id', auth_get_current_user_id());
+                        plugin_config_delete('bug_data_draft_message_id', auth_get_current_user_id());
+                        plugin_config_delete('bug_data_draft_text_msg', auth_get_current_user_id());
+                        plugin_config_delete('bug_data_draft_current_field_to_save', auth_get_current_user_id());
 
-                db_param_push();
+                        $t_data = [
+                            'chat_id' => $t_command->getFrom()->getId(),
+                            'text' => plugin_lang_get('end_message')
+                        ];
+                        break;
 
-        //        $t_query = 'SELECT pin_code FROM {plugin_TelegramBot_pin_codes} WHERE telegram_user_id=' . db_param();
-                $t_query = 'SELECT * FROM {plugin_TelegramBot_pin_codes} WHERE 1';
-        //	$t_result = db_query( $t_query, array( $p_telegram_user_id ) );
-                $t_result = db_query( $t_query );
-
-                $t_rows = array();
-
-                while( $c_row = db_fetch_array( $t_result ) ) {
-                        $t_rows[] = $c_row;
-                }
-
-
-                foreach( $t_rows as $t_row) {
-                        if( $t_row['telegram_user_id'] == $p_telegram_user_id ) {
-                                return $t_row['pin_code'];
-                        }
-                }
-
-                while( true ) {
-                        $t_pin_code = mt_rand(1000, 9999);
-                        foreach( $t_rows as $t_row) {
-                                if( $t_row['pin_code'] == $t_pin_code ) {
-                                        continue;
-                                }
-
-                        }
-
-                        db_param_push();
-
-                        $t_query = 'INSERT INTO {plugin_TelegramBot_pin_codes} (telegram_user_id, pin_code, timestamp) VALUES ( ' . db_param() . ', ' . db_param() . ', ' . db_param() . ')';
-                        db_query( $t_query, array( $p_telegram_user_id, $t_pin_code, db_now() ) );
-
-                        return $t_pin_code;
-                }
+                default:
+                        $t_data = [
+                            'chat_id' => $t_command->getFrom()->getId(),
+                            'text' => plugin_lang_get('command_not_found')
+                        ];
         }
-
-function telegrembot_clear_old_pins() {
-
-                $t_time_cut = db_now() - (15*60);
-                db_param_push();
-                $t_query = 'DELETE FROM {plugin_TelegramBot_pin_codes} WHERE timestamp <' . $t_time_cut;
-                db_query( $t_query );
+        return $t_data;
 }
 
+//function telegrambot_get_pin_code( $p_telegram_user_id ) {
+//
+//                telegrembot_clear_old_pins();
+//
+//        //        $t_pin_code = $p_telegram_user_id;
+//
+//                db_param_push();
+//
+//        //        $t_query = 'SELECT pin_code FROM {plugin_TelegramBot_pin_codes} WHERE telegram_user_id=' . db_param();
+//                $t_query = 'SELECT * FROM {plugin_TelegramBot_pin_codes} WHERE 1';
+//        //	$t_result = db_query( $t_query, array( $p_telegram_user_id ) );
+//                $t_result = db_query( $t_query );
+//
+//                $t_rows = array();
+//
+//                while( $c_row = db_fetch_array( $t_result ) ) {
+//                        $t_rows[] = $c_row;
+//                }
+//
+//
+//                foreach( $t_rows as $t_row) {
+//                        if( $t_row['telegram_user_id'] == $p_telegram_user_id ) {
+//                                return $t_row['pin_code'];
+//                        }
+//                }
+//
+//                while( true ) {
+//                        $t_pin_code = mt_rand(1000, 9999);
+//                        foreach( $t_rows as $t_row) {
+//                                if( $t_row['pin_code'] == $t_pin_code ) {
+//                                        continue;
+//                                }
+//
+//                        }
+//
+//                        db_param_push();
+//
+//                        $t_query = 'INSERT INTO {plugin_TelegramBot_pin_codes} (telegram_user_id, pin_code, timestamp) VALUES ( ' . db_param() . ', ' . db_param() . ', ' . db_param() . ')';
+//                        db_query( $t_query, array( $p_telegram_user_id, $t_pin_code, db_now() ) );
+//
+//                        return $t_pin_code;
+//                }
+//        }
+
+//function telegrembot_clear_old_pins() {
+//
+//                $t_time_cut = db_now() - (15*60);
+//                db_param_push();
+//                $t_query = 'DELETE FROM {plugin_TelegramBot_pin_codes} WHERE timestamp <' . $t_time_cut;
+//                db_query( $t_query );
+//}

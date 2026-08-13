@@ -177,25 +177,26 @@ telegrambot_print_menu_config( 'config_page' );
                                 <tr>
                                     <th class="category" width="5%">
                                         <?php echo plugin_lang_get('reinstall_webhook') ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'reinstall_webhook_notice' ) ?></span>
                                     </th>
                                     <td class="left" colspan="1">
-                                        <label><input type="radio" class="ace" name="reinstall_webhook" value="1" <?php echo( ON == plugin_config_get('reinstall_webhook') ) ? 'checked="checked" ' : '' ?>/>
+                                        <label><input type="radio" class="ace" name="reinstall_webhook" value="1" <?php echo( ON == (int)plugin_config_get('reinstall_webhook') ) ? 'checked="checked" ' : '' ?>/>
                                             <span class="lbl padding-6"><?php echo 'Webhook' ?></span></label>
-                                        <label><input type="radio" class="ace" name="reinstall_webhook" value="0" <?php echo( OFF == plugin_config_get('reinstall_webhook') ) ? 'checked="checked" ' : '' ?>/>
+                                        <label><input type="radio" class="ace" name="reinstall_webhook" value="0" <?php echo( OFF == (int)plugin_config_get('reinstall_webhook') ) ? 'checked="checked" ' : '' ?>/>
                                             <span class="lbl padding-6"><?php echo 'Script' ?></span></label>
                                     </td>
                                 </tr>
                                 
-                                <?php if( plugin_config_get( 'reinstall_webhook' ) == ON ) { ?>
+                                <?php if( (int)plugin_config_get( 'reinstall_webhook' ) == ON ) { ?>
                                 <tr>
                                     <th class="category" width="5%">
                                         <?php echo plugin_lang_get('use_bot_cert_is') ?>
                                         <br><span class="small"><?php echo plugin_lang_get( 'cert_help' ) ?></span>
                                     </th>
                                     <td class="left" colspan="1">
-                                        <label><input type="radio" class="ace" name="use_cert" value="1" <?php echo( ON == plugin_config_get('use_cert') ) ? 'checked="checked" ' : '' ?>/>
+                                        <label><input type="radio" class="ace" name="use_cert" value="1" <?php echo( ON == (int)plugin_config_get('use_cert') ) ? 'checked="checked" ' : '' ?>/>
                                             <span class="lbl padding-6"><?php echo lang_get('yes') ?></span></label>
-                                        <label><input type="radio" class="ace" name="use_cert" value="0" <?php echo( OFF == plugin_config_get('use_cert') ) ? 'checked="checked" ' : '' ?>/>
+                                        <label><input type="radio" class="ace" name="use_cert" value="0" <?php echo( OFF == (int)plugin_config_get('use_cert') ) ? 'checked="checked" ' : '' ?>/>
                                             <span class="lbl padding-6"><?php echo lang_get('no') ?></span></label>
                                     </td>
                                 </tr>
@@ -221,10 +222,24 @@ telegrambot_print_menu_config( 'config_page' );
                                 <tr>
                                     <th class="category" width="5%">
                                         <?php echo ' ' . plugin_lang_get( 'cli_g_path' ) ?>
-                                        <br><span class="small"><?php echo plugin_lang_get( 'cli_g_path_notice' ) ?></span>
+                                        <?php
+                                        # $g_defaulted_path is FALSE when $g_path is set in config_inc.php, TRUE when the
+                                        # core derived it from the request headers - in CLI that guess becomes localhost,
+                                        # so it must not be shown as the address the script is going to use.
+                                        global $g_defaulted_path;
+
+                                        if( $g_defaulted_path ) {
+                                                $t_path_notice      = plugin_lang_get( 'cli_g_path_notice' );
+                                                $t_path_placeholder = '';
+                                        } else {
+                                                $t_path_notice      = plugin_lang_get( 'cli_g_path_global_notice' );
+                                                $t_path_placeholder = config_get_global( 'path' );
+                                        }
+                                        ?>
+                                        <br><span class="small"><?php echo $t_path_notice ?></span>
                                     </th>
-                                    <td class="center" colspan="1"> 
-                                        <textarea name="cli_g_path" id="cli_g_path" class="form-control" rows="1"><?php echo plugin_config_get( 'cli_g_path' ) ?></textarea>
+                                    <td class="center" colspan="1">
+                                        <textarea name="cli_g_path" id="cli_g_path" class="form-control" rows="1" placeholder="<?php echo string_attribute( $t_path_placeholder ) ?>"><?php echo plugin_config_get( 'cli_g_path' ) ?></textarea>
                                     </td>
                                 </tr>
                                 <tr>
@@ -234,7 +249,25 @@ telegrambot_print_menu_config( 'config_page' );
                                     </th>
                                     <td class="left" colspan="1"><?php echo dirname( __FILE__, 2 ) . '/scripts/telegram_get_updates.php' ?></td>
                                 </tr>
-                                    
+
+                                <tr>
+                                    <th class="category" width="5%">
+					<?php echo plugin_lang_get( 'get_updates_timeout_header' ) ?>
+                                    </th>
+                                    <td class="center" colspan="1">
+                                        <input type="number" name="get_updates_timeout" id="get_updates_timeout" class="form-control" min="0" value="<?php echo plugin_config_get( 'get_updates_timeout' ) ?>">
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th class="category" width="5%">
+					<?php echo plugin_lang_get( 'get_updates_run_time_header' ) ?>
+                                    </th>
+                                    <td class="center" colspan="1">
+                                        <input type="number" name="get_updates_run_time" id="get_updates_run_time" class="form-control" min="0" value="<?php echo plugin_config_get( 'get_updates_run_time' ) ?>">
+                                    </td>
+                                </tr>
+
                                 <?php  } ?>
                             </table>
                         </div>

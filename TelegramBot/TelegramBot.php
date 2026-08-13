@@ -129,6 +129,14 @@ class TelegramBotPlugin extends MantisPlugin {
 				  'time_out_server_response'			=> 30,
 				  'debug_connection_log_path'			=> '/tmp/TelegramBot_debug.log',
 				  'debug_connection_enabled'			=> OFF,
+				  # long polling: seconds Telegram holds the connection while there are no updates
+				  'get_updates_timeout'				=> 25,
+				  # long polling: seconds a single run of telegram_get_updates.php works (0 - poll once and exit)
+				  'get_updates_run_time'			=> 55,
+				  # long polling: timestamp of the last telegram_get_updates.php start, set by the script itself
+				  'get_updates_last_run'			=> 0,
+				  # long polling: id of the next expected update, kept by the script between runs
+				  'get_updates_offset'				=> 0,
                                   'bug_data_draft'                              => '',
                                   'bug_data_draft_chat_id'                      => '',
                                   'bug_data_draft_message_id'                   => '',

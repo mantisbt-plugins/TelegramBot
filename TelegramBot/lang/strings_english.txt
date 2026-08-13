@@ -28,6 +28,7 @@ $s_plugin_TelegramBot_config_bot_username_notice = 'It must end in "bot". Like t
 $s_plugin_TelegramBot_api_key = 'API key (required for bot authorization when sending messages)';
 $s_plugin_TelegramBot_config_api_key = 'API token:';
 $s_plugin_TelegramBot_reinstall_webhook = 'Getting updates method: ';
+$s_plugin_TelegramBot_reinstall_webhook_notice = 'Webhook requires your MantisBT instance to be reachable from the Internet over HTTPS, because Telegram servers connect to it themselves. If you cannot publish MantisBT on the Internet, choose Script: MantisBT will request updates from Telegram itself, using an outgoing connection only.';
 $s_plugin_TelegramBot_path_to_crontab_script = 'Path to update script:';
 $s_plugin_TelegramBot_path_to_crontab_script_notice = 'Add it to your crontab.';
 $s_plugin_TelegramBot_use_bot_cert_is = 'Use a self-signed certificate?';
@@ -36,6 +37,11 @@ $s_plugin_TelegramBot_bot_cert = 'Uploaded self-signed certificate:';
 $s_plugin_TelegramBot_bot_cert_help = 'The certificate supplied should be PEM encoded (ASCII BASE64). The pem,crt or cer file should only contain the public key (including BEGIN and END portions).';
 $s_plugin_TelegramBot_proxy_address_header = 'SOCKS5 proxy server address: socks5://';
 $s_plugin_TelegramBot_time_out_server_response_header = 'Server response timeout (30 seconds by default):';
+$s_plugin_TelegramBot_get_updates_timeout_header = 'Long polling: how long Telegram holds the connection waiting for updates, seconds (25 by default, must be less than the server response timeout):';
+$s_plugin_TelegramBot_get_updates_run_time_header = 'Long polling: how long a single run of telegram_get_updates.php works, seconds (55 by default, 0 — poll once and exit):';
+$s_plugin_TelegramBot_get_updates_last_run = 'Last script run from crontab: ';
+$s_plugin_TelegramBot_get_updates_last_run_never = 'The script has never been run - the bot will not receive any message until the script is added to the schedule (crontab).';
+$s_plugin_TelegramBot_get_updates_last_run_stale = 'The last run was a while ago: the script does not seem to be running on schedule - check the crontab entry.';
 $s_plugin_TelegramBot_current_config = 'Telegram will send messages to the following URL:';
 $s_plugin_TelegramBot_response_from_telegram = 'Telegram server response: ';
 $s_plugin_TelegramBot_debug_connection_log_path_title = 'Path to log file';
@@ -45,6 +51,7 @@ $s_plugin_TelegramBot_monitor_page = 'Status of the Telegram API';
 $s_plugin_TelegramBot_ERROR_CURL_VERSION = 'REQUIRED CURL >= 7.21.7 ';
 $s_plugin_TelegramBot_cli_g_path = 'The URL of your mantisbt instance (as seen from a web browser):';
 $s_plugin_TelegramBot_cli_g_path_notice = 'ATTENTION! For the script to work correctly, the URL for your mantisbt instance must be specified. It can be defined in the g_path variable (config_inc.php) or here. The URL must end with a "/" character. The URL must be available to users for successful registration. For example: https://mantisbt.org/mantisbt/';
+$s_plugin_TelegramBot_cli_g_path_global_notice = 'The greyed out value in the field is the URL set globally in the g_path variable (config_inc.php) - this is the address the bot puts into the links it sends. Check that MantisBT is reachable at this address for your users, and leave the field empty if it is correct. If MantisBT is published under a different name for external users, enter that external URL here (ending with a "/" character): for the script this value takes precedence over the global one.';
 
 $s_plugin_TelegramBot_bot_successfully_attached = 'The bot is successfully attached.';
 $s_plugin_TelegramBot_info_to_redirect_bot_page = 'Return to the chat, or wait for redirection.';

@@ -26,9 +26,11 @@ $f_use_cert                     = gpc_get_bool     ( 'use_cert' );
 $f_bot_cert_file                = gpc_get_file     ( 'bot_cert_file', null );
 $f_proxy_address		= gpc_get_string   ( 'proxy_address', '' );
 $f_time_out_server_response	= gpc_get_int      ( 'time_out_server_response' );
+$f_get_updates_timeout		= gpc_get_int      ( 'get_updates_timeout', plugin_config_get( 'get_updates_timeout' ) );
+$f_get_updates_run_time		= gpc_get_int      ( 'get_updates_run_time', plugin_config_get( 'get_updates_run_time' ) );
 $f_debug_connection_log_path    = gpc_get_string   ( 'debug_connection_log_path', '' );
 $f_debug_connection_enabled	= gpc_get_bool     ( 'debug_connection_enabled', FALSE );
-$f_cli_g_path                   = gpc_get_string   ( 'cli_g_path', '' );
+$f_cli_g_path                   = gpc_get_string   ( 'cli_g_path', plugin_config_get( 'cli_g_path' ) );
 
 if( $f_bot_cert_file !== null && $f_bot_cert_file['error'] !== 4 ) {
         $t_tmp_file = $f_bot_cert_file['tmp_name'];
@@ -79,7 +81,8 @@ if( plugin_config_get( 'api_key' ) != $f_api_key ) {
 }
 
 if( plugin_config_get( 'reinstall_webhook' ) != $f_reinstall_webhook ) {
-	plugin_config_set( 'reinstall_webhook', $f_reinstall_webhook );
+	# ON/OFF, not a PHP boolean: plugin_config_set() would store false as an empty string
+	plugin_config_set( 'reinstall_webhook', $f_reinstall_webhook ? ON : OFF );
 }
 
 if( $f_use_cert == false ) {
@@ -88,7 +91,7 @@ if( $f_use_cert == false ) {
 }
 
 if( $f_use_cert == true ) {
-        plugin_config_set( 'use_cert', true );
+        plugin_config_set( 'use_cert', ON );
 }
 
 if( $f_use_cert == ON && plugin_config_get( 'bot_cert' ) == '' ) {
@@ -108,9 +111,17 @@ if( plugin_config_get( 'time_out_server_response' ) != $f_time_out_server_respon
 	plugin_config_set( 'time_out_server_response', $f_time_out_server_response );
 }
 
+if( plugin_config_get( 'get_updates_timeout' ) != $f_get_updates_timeout ) {
+	plugin_config_set( 'get_updates_timeout', $f_get_updates_timeout );
+}
+
+if( plugin_config_get( 'get_updates_run_time' ) != $f_get_updates_run_time ) {
+	plugin_config_set( 'get_updates_run_time', $f_get_updates_run_time );
+}
+
 if( $f_debug_connection_enabled == ON ) {
 	if( fopen( $f_debug_connection_log_path, 'a' ) ) {
-		plugin_config_set( 'debug_connection_enabled', $f_debug_connection_enabled );
+		plugin_config_set( 'debug_connection_enabled', $f_debug_connection_enabled ? ON : OFF );
 		plugin_config_set( 'debug_connection_log_path', $f_debug_connection_log_path );
 	} else {
 		plugin_config_set( 'debug_connection_enabled', OFF );
@@ -157,12 +168,16 @@ if( $f_reinstall_webhook == ON ) {
         } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
                 //plugin_config_set( 'reinstall_webhook', OFF );
                 html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
+        } catch( GuzzleHttp\Exception\GuzzleException $t_errors ) {
+                html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
         }
 } else {
 //    html_operation_successful( $t_redirect_url );
     try {
             html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . Request::deleteWebhook()->getDescription() );
     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
+            html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
+    } catch( GuzzleHttp\Exception\GuzzleException $t_errors ) {
             html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
     }
 }

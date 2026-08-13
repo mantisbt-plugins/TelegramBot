@@ -1,6 +1,6 @@
 <?php
 
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2024 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -722,7 +722,11 @@ function bug_get_id_from_message_id( $p_chat_id, $p_msg_id ) {
     $t_result = db_query( $t_query, array( $p_chat_id, $p_msg_id ) );
 
     $t_row    = db_fetch_array( $t_result );
-    $t_bug_id = $t_row['bug_id'];
-
+    if( $t_row === false ) {
+        $t_bug_id = 0;
+    } else {
+        $t_bug_id = $t_row['bug_id'];
+    }
+    
     return (int) $t_bug_id;
 }

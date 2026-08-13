@@ -1,5 +1,5 @@
 <?php
-# Copyright (c) 2023 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2024 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -58,7 +58,7 @@ telegrambot_print_menu_config( 'config_page' );
                                         <span class="required">*</span><?php echo ' ' . plugin_lang_get( 'config_bot_username' ) ?>
                                         <br><span class="small"><?php echo plugin_lang_get( 'config_bot_username_notice' ) ?></span>
                                     </th>
-                                    <td class="center" colspan="1"> 
+                                    <td class="center" colspan="1">
                                         <textarea name="bot_username" id="bot_username" class="form-control" rows="1" required><?php echo plugin_config_get( 'bot_name' ) ?></textarea>
                                     </td>
                                 </tr>
@@ -78,7 +78,7 @@ telegrambot_print_menu_config( 'config_page' );
             </div>
 
             <div class="space-10"></div>
-            
+
             <div class="widget-box widget-color-blue2">
                 <div class="widget-header widget-header-small">
                     <h4 class="widget-title lighter">
@@ -86,7 +86,7 @@ telegrambot_print_menu_config( 'config_page' );
                         <?php echo plugin_lang_get( 'connection_config_title' ) ?>
                     </h4>
                 </div>
-                
+
                 <div class="widget-body">
                     <div class="widget-main no-padding">
                         <div class="table-responsive">
@@ -94,7 +94,7 @@ telegrambot_print_menu_config( 'config_page' );
                                 <colgroup>
                                     <col style="width:25%" />
                                 </colgroup>
-                                
+
                                 <tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'time_out_server_response_header' ) ?>

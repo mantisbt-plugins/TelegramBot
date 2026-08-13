@@ -1,6 +1,6 @@
 <?php
 
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2024 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -819,7 +819,9 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
 //                                          'reply_markup' => keyboard_bug_status_change_is( $t_bug_id )
                 ];
             } catch( Mantis\Exceptions\MantisException $t_error ) {
-                $t_file_is_deleted = unlink( $t_file_path );
+                if( isset( $t_file_path ) ) {
+                    $t_file_is_deleted = unlink( $t_file_path );
+                }
 
                 $t_params = $t_error->getParams();
                 if( !empty( $t_params ) ) {

@@ -1,6 +1,6 @@
 <?php
 
-# Copyright (c) 2023 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2024 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -74,7 +74,7 @@ class TelegramBotPlugin extends MantisPlugin {
                                   array( 'CreateIndexSQL', array( 'idx_msgid_chatid', plugin_table( 'message_relationship' ), array( 'msg_id', 'chat_id' ) ) ),
                                   // version 1.3.0 (schema 3)
                                   array( 'CreateIndexSQL', array( 'idx_chatid', plugin_table( 'message_relationship' ), 'chat_id' ) ),
-                                  // version 2.0.0 (schema 4)
+                                  // version 1.5.1 (schema 4)
                                   array( 'ChangeTableSQL', array( plugin_table( "user_relationship" ), "
                                         telegram_user_id  N   $t_notnull
                                 " ) ),
@@ -299,7 +299,7 @@ class TelegramBotPlugin extends MantisPlugin {
         telegram_message_generic( $p_issue_id, 'new', 'telegram_message_notification_title_for_action_bug_submitted' );
     }
 
-    function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id ) {
+    function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id, $files ) {
         global $g_skip_sending_bugnote;
 
         if( $g_skip_sending_bugnote == TRUE ) {

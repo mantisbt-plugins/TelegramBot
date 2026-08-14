@@ -79,57 +79,57 @@ function telegram_bug_add( $p_bug_data_draft, $p_orgl_chat_id, $p_callback_msg_i
     }
 
     $t_profile_id = array_key_exists( 'profile', $p_bug_data_draft ) ? $p_bug_data_draft['profile'] : 0;
-    if( $t_profile_id != 0 ) {
+    if( (int)$t_profile_id != 0 ) {
         $t_issue['profile'] = array( 'id' => $t_profile_id );
     }
 
     $t_handler_id = array_key_exists( 'handler', $p_bug_data_draft ) ? $p_bug_data_draft['handler'] : NO_USER;
-    if( $t_handler_id != NO_USER ) {
+    if( (int)$t_handler_id != NO_USER ) {
         $t_issue['handler'] = array( 'id' => $t_handler_id );
     }
 
     $t_view_state = array_key_exists( 'view_state', $p_bug_data_draft ) ? $p_bug_data_draft['view_state'] : 0;
-    if( $t_view_state != 0 ) {
+    if( (int)$t_view_state != 0 ) {
         $t_issue['view_state'] = array( 'id' => $t_view_state );
     }
 
     $t_category_id = array_key_exists( 'category', $p_bug_data_draft ) ? $p_bug_data_draft['category'] : 0;
-    if( $t_category_id != 0 ) {
+    if( (int)$t_category_id != 0 ) {
         $t_issue['category'] = array( 'id' => $t_category_id );
     }
 
     $t_reproducibility = array_key_exists( 'reproducibility', $p_bug_data_draft ) ? $p_bug_data_draft['reproducibility'] : 0;
-    if( $t_reproducibility != 0 ) {
+    if( (int)$t_reproducibility != 0 ) {
         $t_issue['reproducibility'] = array( 'id' => $t_reproducibility );
     }
 
     $t_severity = array_key_exists( 'severity', $p_bug_data_draft ) ? $p_bug_data_draft['severity'] : 0;
-    if( $t_severity != 0 ) {
+    if( (int)$t_severity != 0 ) {
         $t_issue['severity'] = array( 'id' => $t_severity );
     }
 
     $t_priority = array_key_exists( 'priority', $p_bug_data_draft ) ? $p_bug_data_draft['priority'] : 0;
-    if( $t_priority != 0 ) {
+    if( (int)$t_priority != 0 ) {
         $t_issue['priority'] = array( 'id' => $t_priority );
     }
 
     $t_projection = array_key_exists( 'projection', $p_bug_data_draft ) ? $p_bug_data_draft['projection'] : 0;
-    if( $t_projection != 0 ) {
+    if( (int)$t_projection != 0 ) {
         $t_issue['projection'] = array( 'id' => $t_projection );
     }
 
     $t_eta = array_key_exists( 'eta', $p_bug_data_draft ) ? $p_bug_data_draft['eta'] : 0;
-    if( $t_eta != 0 ) {
+    if( (int)$t_eta != 0 ) {
         $t_issue['eta'] = array( 'id' => $t_eta );
     }
 
     $t_resolution = array_key_exists( 'resolution', $p_bug_data_draft ) ? $p_bug_data_draft['resolution'] : 0;
-    if( $t_resolution != 0 ) {
+    if( (int)$t_resolution != 0 ) {
         $t_issue['resolution'] = array( 'id' => $t_resolution );
     }
 
     $t_status = array_key_exists( 'status', $p_bug_data_draft ) ? $p_bug_data_draft['status'] : 0;
-    if( $t_status != 0 ) {
+    if( (int)$t_status != 0 ) {
         $t_issue['status'] = array( 'id' => $t_status );
     }
 
@@ -143,25 +143,36 @@ function telegram_bug_add( $p_bug_data_draft, $p_orgl_chat_id, $p_callback_msg_i
         $t_issue['additional_information'] = $t_additional_info;
     }
 
+    # A field which is neither answered nor skipped holds an empty string
     $t_due_date = array_key_exists( 'due_date', $p_bug_data_draft ) ? $p_bug_data_draft['due_date'] : null;
-    if( $t_due_date !== null ) {
+    if( $t_due_date !== null && !is_blank( (string)$t_due_date ) ) {
         $t_issue['due_date'] = $t_due_date;
     }
     
-    # Validate the custom fields before adding the bug.
+    # Collect the custom fields of the draft, the values are validated by the command.
+    # Drafts started before the custom fields support have no such key at all.
+    $t_draft_custom_fields = array_key_exists( 'custom_fields', $p_bug_data_draft ) && is_array( $p_bug_data_draft['custom_fields'] )
+                              ? $p_bug_data_draft['custom_fields']
+                              : array();
+
     $t_related_custom_field_ids = custom_field_get_linked_ids( $p_bug_data_draft['project'] );
     $t_custom_fields = array();
     foreach( $t_related_custom_field_ids as $t_id ) {
-                $t_def = custom_field_get_definition( $t_id );
-
-                # Produce an error if the field is required but wasn't posted
-//                if( gpc_isset_custom_field( $t_id, $t_def['type'] ) ) {
-                if( key_exists( $t_id, $p_bug_data_draft['custom_fields'] ) && !empty( $p_bug_data_draft['custom_fields'][$t_id] ) ) {
-                        $t_custom_fields[] = array(
-                            'field' => array('id' => $t_id),
-                            'value' => $p_bug_data_draft['custom_fields'][$t_id]
-                        );
+                if( !array_key_exists( (int)$t_id, $t_draft_custom_fields ) ) {
+                        continue;
                 }
+
+                $t_value = $t_draft_custom_fields[(int)$t_id];
+
+                # A field that was not answered or was skipped is not sent at all
+                if( $t_value === null || is_array( $t_value ) || is_blank( $t_value ) ) {
+                        continue;
+                }
+
+                $t_custom_fields[] = array(
+                    'field' => array( 'id' => $t_id ),
+                    'value' => $t_value
+                );
     }
 
     if( !empty( $t_custom_fields ) ) {

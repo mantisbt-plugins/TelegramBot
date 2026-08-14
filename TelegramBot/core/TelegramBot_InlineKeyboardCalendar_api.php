@@ -44,7 +44,7 @@ class TelegramBotInlineKeyboardCalendar {
             '0' => 'Sun'
         ];
 
-        public function TelegramBotInlineKeyboardCalendar( $p_date ) {
+        public function __construct( $p_date ) {
                 $this -> setConfigDate( $p_date );
                 return $this;
         }
@@ -95,8 +95,11 @@ class TelegramBotInlineKeyboardCalendar {
 
                 $t_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
+                # The header switches the calendar to the overview of the whole year
                 $t_keyboard -> addRow(
-                        ['text' => plugin_lang_get( 'month_' . $this -> month_array[( $this -> month ) - 1] ) . ' ' . $this -> year, 'callback_data' => '' . $this -> month . $this -> year]
+                        ['text' => plugin_lang_get( 'month_' . $this -> month_array[( $this -> month ) - 1] ) . ' ' . $this -> year, 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                            $p_id => '' . $this -> year
+                            ) ) ) )]
                 );
 
                 foreach( $this -> weekdays as $t_day_name ) {
@@ -125,6 +128,96 @@ class TelegramBotInlineKeyboardCalendar {
                             ) ) ) )],
                         ['text' => plugin_lang_get( 'next_month' ) . ' »', 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array( 
                             $p_id => $this -> nextMonth( $this -> year . '-' . $this -> month )
+                            ) ) ) )]
+                );
+
+                return $t_keyboard;
+        }
+
+        /**
+         * Generate the overview of the whole year: a keyboard of the twelve months.
+         *
+         * A month switches the calendar back to the grid of its days, the bottom
+         * row leafs through the years.
+         *
+         * @param string  $p_action Action the calendar is shown for.
+         * @param integer $p_id     Identifier passed back along with the action.
+         * @return Longman\TelegramBot\Entities\InlineKeyboard
+         */
+        public function getYearKeyboard( $p_action, $p_id = 0 ) {
+                list( $t_year ) = explode( '-', $this -> date );
+                $t_year = (int)$t_year;
+
+                $t_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+                # The header switches the calendar to the overview of the years
+                $t_keyboard -> addRow(
+                        ['text' => '' . $t_year, 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                            $p_id => 'd' . $t_year
+                            ) ) ) )]
+                );
+
+                for( $i = 0; $i < 4; $i++ ) {
+                        $t_row = [];
+                        for( $j = 0; $j < 3; $j++ ) {
+                                $t_month = $i * 3 + $j + 1;
+                                $t_row[] = ['text' => plugin_lang_get( 'month_' . $this -> month_array[$t_month - 1] ), 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                                    $p_id => $t_year . '-' . $t_month
+                                    ) ) ) )];
+                        }
+                        call_user_func_array( array( $t_keyboard, 'addRow' ), $t_row );
+                }
+
+                $t_keyboard -> addRow(
+                        ['text' => '« ' . ( $t_year - 1 ), 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                            $p_id => '' . ( $t_year - 1 )
+                            ) ) ) )],
+                        ['text' => ( $t_year + 1 ) . ' »', 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                            $p_id => '' . ( $t_year + 1 )
+                            ) ) ) )]
+                );
+
+                return $t_keyboard;
+        }
+
+        /**
+         * Generate the overview of a twelve year block.
+         *
+         * A year switches the calendar back to the overview of its months, the
+         * bottom row leafs through the blocks. The blocks are aligned to twelve
+         * years, so leafing back and forth always shows the same blocks.
+         *
+         * @param string  $p_action Action the calendar is shown for.
+         * @param integer $p_id     Identifier passed back along with the action.
+         * @return Longman\TelegramBot\Entities\InlineKeyboard
+         */
+        public function getYearsKeyboard( $p_action, $p_id = 0 ) {
+                $t_year  = (int)preg_replace( '/\D/', '', $this -> date );
+                $t_start = $t_year - ( $t_year % 12 );
+
+                $t_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+                $t_keyboard -> addRow(
+                        ['text' => $t_start . ' - ' . ( $t_start + 11 ), 'callback_data' => '0']
+                );
+
+                for( $i = 0; $i < 4; $i++ ) {
+                        $t_row = [];
+                        for( $j = 0; $j < 3; $j++ ) {
+                                $t_item = $t_start + $i * 3 + $j;
+                                $t_row[] = ['text' => '' . $t_item, 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                                    $p_id => '' . $t_item
+                                    ) ) ) )];
+                        }
+                        call_user_func_array( array( $t_keyboard, 'addRow' ), $t_row );
+                }
+
+                $t_keyboard -> addRow(
+                        ['text' => '« ' . ( $t_start - 12 ) . ' - ' . ( $t_start - 1 ), 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                            $p_id => 'd' . ( $t_start - 12 )
+                            ) ) ) )],
+                        ['text' => ( $t_start + 12 ) . ' - ' . ( $t_start + 23 ) . ' »', 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                            $p_id => 'd' . ( $t_start + 12 )
                             ) ) ) )]
                 );
 

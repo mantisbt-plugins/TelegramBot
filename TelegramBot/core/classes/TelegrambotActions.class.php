@@ -28,12 +28,37 @@ class TelegrambotActions {
         const REPORT_BUG_TAG            = 'rb';
         const GET_PROJECT               = 'gp';
         const SET_PROJECT               = 'sp';
-        const GET_CATEGORY              = 'gc';
         const SET_CATEGORY              = 'sc';
-        const GET_REPRODUCIBILITY       = 'greproducibility';
         const SET_REPRODUCIBILITY       = 'sreproducibility';
-        const GET_ETA                   = 'geta';
         const SET_ETA                   = 'seta';
+        const SET_SEVERITY              = 'sseverity';
+        const SET_PRIORITY              = 'spriority';
+        const SET_STATUS                = 'sstatus';
+        const SET_RESOLUTION            = 'sresolution';
+        # Leaf through the calendar of the due date, the value is the date shown
+        const GET_DUE_DATE              = 'gduedate';
+        const SET_DUE_DATE              = 'sduedate';
+        const SET_PROFILE               = 'splatform';
+        const SET_PRODUCT_VERSION       = 'spversion';
+        const SET_TARGET_VERSION        = 'stargetv';
+        const SET_HANDLER               = 'shandler';
+        # Skip an optional standard field of the draft, the value is the field name
+        const SKIP_FIELD                = 'skipf';
+        # Marker used instead of a value to skip a field answered with a keyboard of its own
+        const SKIP_VALUE                = 'skip';
+        # Go back to the question answered last, the answer is asked for again
+        const BACK_FIELD                = 'back';
+        # Create the issue out of the draft as it is
+        const CREATE_ISSUE              = 'crt';
+        # Go on with the optional fields of the draft instead of creating the issue
+        const FILL_OPTIONAL             = 'opt';
+        const GET_CUSTOM_FIELD          = 'gcf';
+        const SET_CUSTOM_FIELD          = 'scf';
+        const SKIP_CUSTOM_FIELD         = 'skipcf';
+        const TOGGLE_CUSTOM_FIELD       = 'tcf';
+        const END_CUSTOM_FIELD          = 'endcf';
+        # Marker used instead of a value index to request the default value of a custom field
+        const CUSTOM_FIELD_DEFAULT_MARK = 'd';
 
         private $text = array();
         private $buttons;

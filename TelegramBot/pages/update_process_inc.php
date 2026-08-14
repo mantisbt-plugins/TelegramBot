@@ -71,7 +71,8 @@ foreach ( $t_results as $t_result ) {
                     case 'video':
                     case 'photo':
                     case 'text':
-                        $t_bug_data_draft_raw = plugin_config_get( 'bug_data_draft', '', FALSE, auth_get_current_user_id() );
+                        $t_user_id            = auth_get_current_user_id();
+                        $t_bug_data_draft_raw = plugin_config_get( 'bug_data_draft', '', FALSE, $t_user_id );
 
                         //Create a new draft of the issue
                         if( is_blank( $t_bug_data_draft_raw ) ) {
@@ -80,172 +81,68 @@ foreach ( $t_results as $t_result ) {
                             break;
                         }
                         //Otherwise, continue to enter data into the current draft
-                        $t_bug_data_draft_text_msg = plugin_config_get( 'bug_data_draft_text_msg', '', FALSE, auth_get_current_user_id() );
-                        $t_bug_data_draft_current_field_to_save = plugin_config_get( 'bug_data_draft_current_field_to_save', '', FALSE, auth_get_current_user_id() );
+                        $t_bug_data_draft_current_field_to_save = plugin_config_get( 'bug_data_draft_current_field_to_save', '', FALSE, $t_user_id );
 
-                        $t_bug_data_draft = json_decode($t_bug_data_draft_raw, TRUE);
+                        $t_bug_data_draft = json_decode( $t_bug_data_draft_raw, TRUE );
 
-                        if (is_blank($t_bug_data_draft['summary'])) {
+                        $t_message_text    = $t_update_content->getText();
+                        $t_custom_field_id = telegram_custom_field_pending_id( $t_bug_data_draft_current_field_to_save );
+                        $t_error_text      = '';
+                        $t_answer_taken    = FALSE;
 
-                            $t_bug_data_draft['summary'] = $t_update_content->getText();
-                            
-                            $t_bug_data_draft_text_msg .= $t_bug_data_draft['summary'];
-                            $t_bug_data_draft_text_msg .= PHP_EOL;
-                            $t_bug_data_draft_text_msg .= lang_get( 'description' ) . ': ';
-                            
-                            plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
-                            plugin_config_set( 'bug_data_draft_text_msg', $t_bug_data_draft_text_msg, auth_get_current_user_id() );
-                            
+                        if( $t_custom_field_id > 0 ) {
+                            //A rejected value leaves the state of the field untouched, so the same question is asked again
+                            telegram_custom_field_text_set(
+                                                      $t_bug_data_draft,
+                                                      $t_custom_field_id,
+                                                      $t_message_text,
+                                                      $t_error_text
+                                    );
 
-                            $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-                            $t_inline_keyboard->addRow( [
-                                                  'text'          => '('. plugin_lang_get( 'keyboard_button_delete_draft' ) . ')',
-                                                  'callback_data' => json_encode( array( 'stop_report_issue' => 1 ) )
-                            ] );
-                            
-                            $t_data = [
-                                'chat_id' => plugin_config_get('bug_data_draft_chat_id', NULL, FALSE, auth_get_current_user_id()),
-                                'message_id' => plugin_config_get('bug_data_draft_message_id', NULL, FALSE, auth_get_current_user_id()),
-                                'text' => $t_bug_data_draft_text_msg,
-                                'reply_markup' => $t_inline_keyboard,
-                            ];
-                            $t_data_del['chat_id'] = $t_update_content->getChat()->getId();
-                            $t_data_del['message_id'] = $t_update_content->getMessageId();
+                            $t_answer_taken = TRUE;
+                        } else if( !is_blank( $t_message_text ) ) {
+                            $t_step = telegram_draft_text_step_pending( $t_bug_data_draft, $t_bug_data_draft_current_field_to_save );
 
-                            $t_result = Longman\TelegramBot\Request::deleteMessage($t_data_del);
-                            $t_result = Longman\TelegramBot\Request::editMessageText($t_data);
+                            if( $t_step !== NULL ) {
+                                $t_bug_data_draft[$t_step] = $t_message_text;
+                                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), $t_user_id );
+
+                                $t_answer_taken = TRUE;
+                            }
+                        }
+
+                        $t_data_del = [
+                            'chat_id'    => $t_update_content->getChat()->getId(),
+                            'message_id' => $t_update_content->getMessageId(),
+                        ];
+                        $t_result = Longman\TelegramBot\Request::deleteMessage( $t_data_del );
+
+                        //A message answering no question of the wizard leaves the draft card as it is
+                        if( !$t_answer_taken ) {
                             break;
                         }
-                        
-                        if( is_blank ( $t_bug_data_draft['description'] ) ) {
-                            $t_bug_data_draft['description'] = $t_update_content->getText();
-                            plugin_config_set('bug_data_draft', json_encode($t_bug_data_draft), auth_get_current_user_id());
 
-                            $t_bug_data_draft_text_msg .= $t_bug_data_draft['description'];
-                            
-//                            plugin_config_set( 'bug_data_draft_text_msg', $t_text, auth_get_current_user_id() );
-                        }
+                        $t_next = telegram_draft_ask_next_step( $t_bug_data_draft );
 
-                        if( key_exists( 'steps_to_reproduce', $t_bug_data_draft ) && is_blank( $t_bug_data_draft['steps_to_reproduce'] ) ) {
-                            if( $t_bug_data_draft_current_field_to_save == 'steps_to_reproduce' ) {
-                                
-                                $t_bug_data_draft['steps_to_reproduce'] = $t_update_content -> getText();
-                                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
-                                
-                                $t_bug_data_draft_text_msg .= $t_bug_data_draft['steps_to_reproduce'];
-//                                plugin_config_set( 'bug_data_draft_text_msg', $t_bug_data_draft_text_msg, auth_get_current_user_id() );
-                                
-                            } else {
-//                                $t_data = [
-//                                    'chat_id' => $t_update_content->getChat()->getId(),
-//                                    'text' => lang_get('steps_to_reproduce')
-//                                ];
+                        if( $t_next['state'] == TELEGRAM_DRAFT_NEXT_SUBMIT ) {
+                            $t_data_send = telegram_draft_submit( $t_bug_data_draft );
+                        } else {
+                            $t_inline_keyboard = $t_next['keyboard'];
 
-                                $t_bug_data_draft_text_msg .= PHP_EOL;
-                                $t_bug_data_draft_text_msg .= lang_get( 'steps_to_reproduce' ) . ': ';
-
-                                plugin_config_set( 'bug_data_draft_text_msg', $t_bug_data_draft_text_msg, auth_get_current_user_id() );
-                                plugin_config_set( 'bug_data_draft_current_field_to_save', 'steps_to_reproduce', auth_get_current_user_id() );
-
+                            if( $t_inline_keyboard === NULL ) {
                                 $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-                                $t_inline_keyboard->addRow( [
-                                                  'text'          => '(Удалить черновик)',
-                                                  'callback_data' => json_encode( array( 'stop_report_issue' => 1 ) )
-                                ] );
-                            
-                                $t_data = [
-                                    'chat_id' => plugin_config_get( 'bug_data_draft_chat_id', NULL, FALSE, auth_get_current_user_id() ),
-                                    'message_id' => plugin_config_get( 'bug_data_draft_message_id', NULL, FALSE, auth_get_current_user_id() ),
-                                    'text' => $t_bug_data_draft_text_msg,
-                                    'reply_markup' => $t_inline_keyboard,
-                                ];
-                                $t_data_del['chat_id'] = $t_update_content -> getChat() -> getId();
-                                $t_data_del['message_id'] = $t_update_content -> getMessageId();
-
-                                $t_result = Longman\TelegramBot\Request::deleteMessage( $t_data_del );
-                                $t_result = Longman\TelegramBot\Request::editMessageText( $t_data );
-                                break;
                             }
-                        }
 
-                        if( key_exists( 'additional_info', $t_bug_data_draft ) && is_blank( $t_bug_data_draft['additional_info'] ) ) {
-                            if( $t_bug_data_draft_current_field_to_save == 'additional_info' ) {
-                                
-                                $t_bug_data_draft['additional_info'] = $t_update_content -> getText();
-                                plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
-                                
-                                $t_bug_data_draft_text_msg .= $t_bug_data_draft['additional_info'];
-//                                plugin_config_set( 'bug_data_draft_text_msg', $t_bug_data_draft_text_msg, auth_get_current_user_id() );
-                                
-                            } else {
-                                
-                                $t_bug_data_draft_text_msg .= PHP_EOL;
-                                $t_bug_data_draft_text_msg .= lang_get( 'additional_information' ) . ': ';
-
-                                plugin_config_set( 'bug_data_draft_text_msg', $t_bug_data_draft_text_msg, auth_get_current_user_id() );
-                                plugin_config_set( 'bug_data_draft_current_field_to_save', 'additional_info', auth_get_current_user_id() );
-
-                                $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-                                $t_inline_keyboard->addRow( [
-                                                  'text'          => '(Удалить черновик)',
-                                                  'callback_data' => json_encode( array( 'stop_report_issue' => 1 ) )
-                                ] );
-                                
-                                $t_data = [
-                                    'chat_id'       => plugin_config_get( 'bug_data_draft_chat_id', NULL, FALSE, auth_get_current_user_id() ),
-                                    'message_id'    => plugin_config_get( 'bug_data_draft_message_id', NULL, FALSE, auth_get_current_user_id() ),
-                                    'text'          => $t_bug_data_draft_text_msg,
-                                    'reply_markup' => $t_inline_keyboard,
-                                ];
-                                $t_data_del['chat_id'] = $t_update_content -> getChat() -> getId();
-                                $t_data_del['message_id'] = $t_update_content -> getMessageId();
-
-                                $t_result = Longman\TelegramBot\Request::deleteMessage( $t_data_del );
-                                $t_result = Longman\TelegramBot\Request::editMessageText( $t_data );
-                                break;
-                                
-                            }
-                        }
-                        
-                        try {
-                            $t_issue_id = telegram_bug_add( $t_bug_data_draft, $t_update_content -> getChat() -> getId(), $t_update_content -> getMessageId() );
-
-                            $t_bug_data_draft_text_msg .= PHP_EOL;
-                            $t_bug_data_draft_text_msg .= '=======================================';
-                            $t_bug_data_draft_text_msg .= PHP_EOL;
-                            $t_bug_data_draft_text_msg .= sprintf( plugin_lang_get( 'bug_creation_complete' ), lang_get( 'bug' ) ) . $t_issue_id;
+                            keyboard_draft_buttons_add( $t_inline_keyboard, $t_bug_data_draft );
 
                             $t_data_send = [
-                                'chat_id' => plugin_config_get( 'bug_data_draft_chat_id', NULL, FALSE, auth_get_current_user_id() ),
-                                'message_id' => plugin_config_get( 'bug_data_draft_message_id', NULL, FALSE, auth_get_current_user_id() ),
-                                'text' => $t_bug_data_draft_text_msg,
-                            ];
-                        } catch ( Mantis\Exceptions\MantisException $t_error ) {
-
-                            $t_params = $t_error -> getParams();
-                            if( !empty( $t_params ) ) {
-                                call_user_func_array( 'error_parameters', $t_params );
-                            }
-
-                            $t_error_text = error_string( $t_error -> getCode() );
-
-                            $t_data_send = [
-                                'chat_id' => plugin_config_get( 'bug_data_draft_chat_id', NULL, FALSE, auth_get_current_user_id() ),
-                                'message_id' => plugin_config_get( 'bug_data_draft_message_id', NULL, FALSE, auth_get_current_user_id() ),
-                                'text' => $t_error_text,
+                                'chat_id'      => plugin_config_get( 'bug_data_draft_chat_id', NULL, FALSE, $t_user_id ),
+                                'message_id'   => plugin_config_get( 'bug_data_draft_message_id', NULL, FALSE, $t_user_id ),
+                                'text'         => telegram_draft_card_compose( $t_bug_data_draft, $t_next['suffix'], $t_error_text ),
+                                'reply_markup' => $t_inline_keyboard,
                             ];
                         }
 
-                        plugin_config_delete( 'bug_data_draft', auth_get_current_user_id() );
-                        plugin_config_delete( 'bug_data_draft_chat_id', auth_get_current_user_id() );
-                        plugin_config_delete( 'bug_data_draft_message_id', auth_get_current_user_id() );
-                        plugin_config_delete( 'bug_data_draft_text_msg', auth_get_current_user_id() );
-                        plugin_config_delete( 'bug_data_draft_current_field_to_save', auth_get_current_user_id() );
-
-                        $t_data_del['chat_id'] = $t_update_content -> getChat() -> getId();
-                        $t_data_del['message_id'] = $t_update_content -> getMessageId();
-
-                        $t_result = Longman\TelegramBot\Request::deleteMessage( $t_data_del );
                         $t_result = Longman\TelegramBot\Request::editMessageText( $t_data_send );
                         break;
 
@@ -282,13 +179,13 @@ foreach ( $t_results as $t_result ) {
 
             $t_data = json_decode( $t_update_content->getData(), TRUE );
 
-            if ($t_data == null) {
-                plugin_error('BAD_REQUEST');
+            //The placeholder buttons (the header of the calendar, the days of the week)
+            //carry no action, such a press is only acknowledged to drop the spinner
+            if( !is_array( $t_data ) ) {
+                $t_update_content->answer();
                 break;
             }
             
-            $t_update_content->answer();
-
             $t_command = array_keys( $t_data );
 
             switch( $t_command[0] ) {
@@ -328,6 +225,9 @@ foreach ( $t_results as $t_result ) {
                     $t_result = Request::editMessageText( $t_data );
                     break;
             }
+
+            //A callback query can only be answered once, so it is done after the whole callback is processed
+            $t_update_content->answer( telegram_callback_alert_get() );
 
             break;
     //END CALLBACK

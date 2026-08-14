@@ -28,7 +28,13 @@ Features
     - mention of the user in the commentary.
 - Respond to chat alerts about events using the built-in function "Reply to message". The answer will be added as a comment to the bug (v. >= 1.3);
 - Support SOCKS5 proxy server ( Requires curl >= 7.21.7 );
-- Two ways of getting updates from Telegram: webhook and long polling (v. >= 2.0).
+- Two ways of getting updates from Telegram: webhook and long polling (v. >= 2.0);
+- Guided issue creation covering every field of the report form (v. >= 2.0):
+    - custom fields of all MantisBT types, including the ones defined by third party cfdef files;
+    - the required fields are asked first, then the issue can be created right away or the optional fields filled in;
+    - inline navigation: go back to any answered step, skip any optional field;
+    - an inline calendar for the date fields with the month, year and twelve year views;
+    - required fields and value formats are validated right in the dialog.
 
 Download
 --------

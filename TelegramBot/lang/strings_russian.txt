@@ -192,6 +192,8 @@ $s_plugin_TelegramBot_monitor_page_is_self_signed_cert = 'Используетс
 $s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Данные запрашиваются через API Telegram при каждом обновлении страницы.'; 
 $s_plugin_TelegramBot_command_not_found = 'Команда не найдена.';
 
+$s_plugin_TelegramBot_menu_main_broadcast_message_page = 'Отправить сообщение';
+
 $s_plugin_TelegramBot_month_january = 'Январь';
 $s_plugin_TelegramBot_month_february = 'Февраль';
 $s_plugin_TelegramBot_month_march = 'Март';
@@ -219,5 +221,32 @@ $s_plugin_TelegramBot_prev_month = 'Пред. месяц';
 $s_plugin_TelegramBot_BAD_REQUEST = 'ОШИБКА В ТЕЛЕ ЗАПРОСА.';
 $s_plugin_TelegramBot_ERROR_CERT_FILE_NOT_FOUND = 'ОТСУТСТВУЕТ ФАЙЛ С СЕРТИФИКАТОМ';
 $s_plugin_TelegramBot_ERROR_TG_SESSION_NOT_INITIALIZED = 'ОШИБКА: TELEGRAM СЕССИЯ НЕ ИНИЦИАЛИЗИРОВАНА';
+$s_plugin_TelegramBot_ERROR_TG_GET_UPDATE = 'ОШИБКА ПОЛУЧЕНИЯ ОБНОВЛЕНИЙ TELEGRAM - %1$s';
 
 $s_plugin_TelegramBot_skip_button = 'Пропустить';
+$s_plugin_TelegramBot_back_button = 'Назад';
+$s_plugin_TelegramBot_skipped_mark = '—';
+$s_plugin_TelegramBot_back_nothing = 'Отменять пока нечего';
+$s_plugin_TelegramBot_create_button = 'Создать';
+$s_plugin_TelegramBot_fill_optional_button = 'Заполнить необязательные поля';
+$s_plugin_TelegramBot_draft_menu_prompt = 'Обязательные поля заполнены. Создайте задачу или сначала заполните необязательные поля.';
+$s_plugin_TelegramBot_draft_required_missing = 'Сначала ответьте на обязательные вопросы.';
+$s_plugin_TelegramBot_card_separator = '———————————';
+$s_plugin_TelegramBot_card_question_prefix = '❓ ';
+$s_plugin_TelegramBot_card_error_prefix = '⚠ ';
+
+$s_plugin_TelegramBot_custom_field_done_button = 'Готово';
+$s_plugin_TelegramBot_custom_field_today_button = 'Сегодня';
+$s_plugin_TelegramBot_custom_field_default_button = 'По умолчанию: %1$s';
+$s_plugin_TelegramBot_custom_field_default_mark = 'По умолчанию';
+$s_plugin_TelegramBot_custom_field_error_required = 'Поле обязательно для заполнения, введите значение.';
+$s_plugin_TelegramBot_custom_field_error_empty = 'Введите значение или нажмите «Пропустить».';
+$s_plugin_TelegramBot_custom_field_error_invalid = 'Значение не соответствует формату поля, введите его заново.';
+$s_plugin_TelegramBot_custom_field_error_select = 'Выберите хотя бы одно значение.';
+$s_plugin_TelegramBot_custom_field_error_not_available = 'Поле больше недоступно, вероятно, черновик изменился.';
+$s_plugin_TelegramBot_custom_field_hint_numeric = 'целое число';
+$s_plugin_TelegramBot_custom_field_hint_float = 'число';
+$s_plugin_TelegramBot_custom_field_hint_email = 'адрес электронной почты';
+$s_plugin_TelegramBot_custom_field_hint_length_min = 'от %1$d символов';
+$s_plugin_TelegramBot_custom_field_hint_length_max = 'до %1$d символов';
+$s_plugin_TelegramBot_custom_field_hint_length_range = 'от %1$d до %2$d символов';

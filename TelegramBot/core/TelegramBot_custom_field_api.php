@@ -68,7 +68,15 @@
 //	require_once( config_get_global( 'core_path' ) . 'cfdefs/cfdef_' . $t_type . '.php' );
 //}
 //unset( $t_type );
+
+# The plugin only adds the Telegram specific input handling on top of the custom
+# field API of the core, everything else is used from the core as is.
+require_api( 'custom_field_api.php' );
 require_once 'cfdefs/TelegramBot_cfdef_standard.php';
+
+# Prefix of the "bug_data_draft_current_field_to_save" value while the plugin is
+# waiting for the text value of a custom field.
+define( 'TELEGRAM_CUSTOM_FIELD_STATE_PREFIX', 'cf_' );
 ///**
 // * Return true whether to display custom field
 // * @param integer $p_type    Custom field type.
@@ -1443,21 +1451,24 @@ require_once 'cfdefs/TelegramBot_cfdef_standard.php';
 //}
 //
 /**
- * Print an input field
+ * Build the inline keyboard of a custom field input
  * $p_field_def contains the definition of the custom field (including it's field id
  * $p_bug_id    contains the bug where this field belongs to. If it's left
  * away, it'll default to 0 and thus belongs to a new (i.e. non-existent) bug
- * NOTE: This probably belongs in the print_api.php
- * @param array   $p_field_def Custom field definition.
- * @param integer $p_bug_id    A bug identifier.
- * @param boolean $p_required  True if the field is required for form submission
- * @return void
+ * @param array   $p_field_def     Custom field definition.
+ * @param integer $p_bug_id        A bug identifier.
+ * @param boolean $p_required      True if the field is required for form submission
+ * @param mixed   $p_cheked_values Value already entered by the user, null when there is none.
+ * @param mixed   $p_page          Page of the possible values list, or month of the calendar.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
  * @access public
  */
-function telegrambot_print_custom_field_input( array $p_field_def, $p_bug_id = null, $p_required = false, $p_cheked_values = null ) {
-        if( null === $p_bug_id ) {
+function telegrambot_print_custom_field_input( array $p_field_def, $p_bug_id = null, $p_required = false, $p_cheked_values = null, $p_page = 1 ) {
+        if( $p_cheked_values !== null ) {
+                $t_custom_field_value = $p_cheked_values;
+        } else if( null === $p_bug_id ) {
 		$t_custom_field_value = custom_field_default_to_value( $p_field_def['default_value'], $p_field_def['type'] );
-	} else if( $p_cheked_values === null ) {
+	} else {
 		$t_custom_field_value = custom_field_get_value( $p_field_def['id'], $p_bug_id );
 		# If the custom field value is undefined, and either the field cannot hold a null value
 		# or the field is a date and is required, then use the default value instead
@@ -1470,18 +1481,533 @@ function telegrambot_print_custom_field_input( array $p_field_def, $p_bug_id = n
 				  $p_required ) ) ) {
 			$t_custom_field_value = custom_field_default_to_value( $p_field_def['default_value'], $p_field_def['type'] );
 		}
-	} else {
-                $t_custom_field_value = $p_cheked_values;
         }
 
-	global $g_telegrambot_custom_field_type_definition;
-	if( isset( $g_telegrambot_custom_field_type_definition[$p_field_def['type']]['#function_print_input'] ) ) {
+	if( telegram_custom_field_type_is_known( $p_field_def['type'] ) ) {
+		global $g_telegrambot_custom_field_type_definition;
+
 		return call_user_func( $g_telegrambot_custom_field_type_definition[$p_field_def['type']]['#function_print_input'], $p_field_def,
-			$t_custom_field_value, $p_required ? ' required ' : '' );
-//		print_hidden_input( custom_field_presence_field_name( $p_field_def['id'] ), '1' );
-	} else {
-		trigger_error( ERROR_CUSTOM_FIELD_INVALID_DEFINITION, ERROR );
+			$t_custom_field_value, $p_required ? ' required ' : '', $p_page );
 	}
+
+	# Universal input for a type registered by a third party cfdef file of the core.
+	# The core side of such a type (database conversion, default value) keeps
+	# working, only the way the value is entered is guessed here: a single choice
+	# of the possible values, or a plain text question when there are none.
+	if( !is_blank( $p_field_def['possible_values'] ) ) {
+		return telegrambot_cfdef_keyboard_values( $p_field_def, $t_custom_field_value, false, $p_page );
+	}
+
+	return telegrambot_cfdef_keyboard_text( $p_field_def, $t_custom_field_value );
+}
+
+/**
+ * Return true when the bot has its own input for the given custom field type.
+ *
+ * @param integer $p_type Custom field type.
+ * @return boolean
+ */
+function telegram_custom_field_type_is_known( $p_type ) {
+	global $g_telegrambot_custom_field_type_definition;
+
+	return isset( $g_telegrambot_custom_field_type_definition[$p_type]['#function_print_input'] );
+}
+
+/**
+ * Make sure the issue draft is able to keep custom field values.
+ *
+ * Drafts created before the custom fields support have no such key.
+ *
+ * @param array $p_bug_data_draft Issue draft.
+ * @return void
+ */
+function telegram_custom_field_draft_prepare( array &$p_bug_data_draft ) {
+	if( !array_key_exists( 'custom_fields', $p_bug_data_draft ) || !is_array( $p_bug_data_draft['custom_fields'] ) ) {
+		$p_bug_data_draft['custom_fields'] = array();
+	}
+}
+
+/**
+ * Return true when the custom field has to be filled in while reporting an issue
+ * of the given project.
+ *
+ * @param integer $p_field_id   Custom field identifier.
+ * @param integer $p_project_id Project identifier.
+ * @return boolean
+ */
+function telegram_custom_field_is_askable( $p_field_id, $p_project_id ) {
+	if( is_blank( $p_project_id ) || !in_array( (int)$p_field_id, custom_field_get_linked_ids( $p_project_id ) ) ) {
+		return false;
+	}
+
+	$t_def = custom_field_get_definition( $p_field_id );
+
+	return ( $t_def['display_report'] || $t_def['require_report'] )
+		&& custom_field_has_write_access_to_project( $p_field_id, $p_project_id );
+}
+
+/**
+ * Return true for the custom field types allowing several values to be selected.
+ *
+ * @param integer $p_type Custom field type.
+ * @return boolean
+ */
+function telegram_custom_field_is_multi( $p_type ) {
+	return $p_type == CUSTOM_FIELD_TYPE_MULTILIST || $p_type == CUSTOM_FIELD_TYPE_CHECKBOX;
+}
+
+/**
+ * Return true for the custom fields the value of which is picked from a keyboard
+ * of the possible values.
+ *
+ * @param array $p_field_def Custom field definition.
+ * @return boolean
+ */
+function telegram_custom_field_is_select( array $p_field_def ) {
+	switch( $p_field_def['type'] ) {
+		case CUSTOM_FIELD_TYPE_ENUM:
+		case CUSTOM_FIELD_TYPE_LIST:
+		case CUSTOM_FIELD_TYPE_RADIO:
+		case CUSTOM_FIELD_TYPE_MULTILIST:
+		case CUSTOM_FIELD_TYPE_CHECKBOX:
+			return true;
+	}
+
+	return !telegram_custom_field_type_is_known( $p_field_def['type'] )
+		&& !is_blank( $p_field_def['possible_values'] );
+}
+
+/**
+ * Return the indexes of the default values of a custom field within its possible
+ * values, the way the web report form preselects them.
+ *
+ * @param array $p_field_def Custom field definition.
+ * @return array
+ */
+function telegram_custom_field_default_indexes( array $p_field_def ) {
+	$t_default = custom_field_default_to_value( $p_field_def['default_value'], $p_field_def['type'] );
+
+	if( $t_default === null || is_blank( $t_default ) ) {
+		return array();
+	}
+
+	$t_values  = telegram_custom_field_possible_values( $p_field_def );
+	$t_indexes = array();
+
+	foreach( explode( '|', $t_default ) as $t_value ) {
+		$t_index = array_search( $t_value, $t_values, true );
+		if( $t_index !== false ) {
+			$t_indexes[] = $t_index;
+		}
+	}
+
+	return $t_indexes;
+}
+
+/**
+ * Return true for the custom fields the value of which is typed in by the user.
+ *
+ * @param array $p_field_def Custom field definition.
+ * @return boolean
+ */
+function telegram_custom_field_is_text( array $p_field_def ) {
+	switch( $p_field_def['type'] ) {
+		case CUSTOM_FIELD_TYPE_STRING:
+		case CUSTOM_FIELD_TYPE_TEXTAREA:
+		case CUSTOM_FIELD_TYPE_NUMERIC:
+		case CUSTOM_FIELD_TYPE_FLOAT:
+		case CUSTOM_FIELD_TYPE_EMAIL:
+			return true;
+	}
+
+	# A type of a third party cfdef file without possible values is answered
+	# with a plain text message, see telegrambot_print_custom_field_input()
+	return !telegram_custom_field_type_is_known( $p_field_def['type'] )
+		&& is_blank( $p_field_def['possible_values'] );
+}
+
+/**
+ * Return the possible values of a custom field as an array indexed the same way
+ * as the buttons of the keyboard are.
+ *
+ * @param array $p_field_def Custom field definition.
+ * @return array
+ */
+function telegram_custom_field_possible_values( array $p_field_def ) {
+	return explode( '|', custom_field_prepare_possible_values( $p_field_def['possible_values'] ) );
+}
+
+/**
+ * Build the hint about the format expected from the user, an empty string when
+ * the field has no restrictions.
+ *
+ * @param array $p_field_def Custom field definition.
+ * @return string
+ */
+function telegram_custom_field_hint( array $p_field_def ) {
+	$t_hints = array();
+
+	switch( $p_field_def['type'] ) {
+		case CUSTOM_FIELD_TYPE_NUMERIC:
+			$t_hints[] = plugin_lang_get( 'custom_field_hint_numeric' );
+			break;
+		case CUSTOM_FIELD_TYPE_FLOAT:
+			$t_hints[] = plugin_lang_get( 'custom_field_hint_float' );
+			break;
+		case CUSTOM_FIELD_TYPE_EMAIL:
+			$t_hints[] = plugin_lang_get( 'custom_field_hint_email' );
+			break;
+	}
+
+	$t_length_min = (int)$p_field_def['length_min'];
+	$t_length_max = (int)$p_field_def['length_max'];
+
+	if( $t_length_min > 0 && $t_length_max > 0 ) {
+		$t_hints[] = sprintf( plugin_lang_get( 'custom_field_hint_length_range' ), $t_length_min, $t_length_max );
+	} else if( $t_length_min > 0 ) {
+		$t_hints[] = sprintf( plugin_lang_get( 'custom_field_hint_length_min' ), $t_length_min );
+	} else if( $t_length_max > 0 ) {
+		$t_hints[] = sprintf( plugin_lang_get( 'custom_field_hint_length_max' ), $t_length_max );
+	}
+
+	if( empty( $t_hints ) ) {
+		return '';
+	}
+
+	return ' (' . implode( ', ', $t_hints ) . ')';
+}
+
+/**
+ * Convert the state kept in the draft into a custom field value.
+ *
+ * While several values are being selected the draft keeps their indexes within
+ * the possible values list.
+ *
+ * @param array $p_field_def Custom field definition.
+ * @param mixed $p_state     State kept in the draft.
+ * @return string|null
+ */
+function telegram_custom_field_state_to_value( array $p_field_def, $p_state ) {
+	if( !is_array( $p_state ) ) {
+		return $p_state;
+	}
+
+	$t_values = telegram_custom_field_possible_values( $p_field_def );
+	$t_result = array();
+
+	foreach( $p_state as $t_index ) {
+		if( array_key_exists( (int)$t_index, $t_values ) ) {
+			$t_result[] = $t_values[(int)$t_index];
+		}
+	}
+
+	return implode( '|', $t_result );
+}
+
+/**
+ * Return the indexes of the values selected so far for a multiple choice custom
+ * field of the issue draft.
+ *
+ * @param array   $p_bug_data_draft Issue draft.
+ * @param integer $p_field_id       Custom field identifier.
+ * @return array
+ */
+function telegram_custom_field_selected_get( array $p_bug_data_draft, $p_field_id ) {
+	if( !array_key_exists( 'custom_fields', $p_bug_data_draft )
+		|| !array_key_exists( (int)$p_field_id, $p_bug_data_draft['custom_fields'] )
+		|| !is_array( $p_bug_data_draft['custom_fields'][(int)$p_field_id] ) ) {
+		return array();
+	}
+
+	return $p_bug_data_draft['custom_fields'][(int)$p_field_id];
+}
+
+/**
+ * Prepare a custom field value to be shown in the draft card.
+ *
+ * @param array $p_field_def Custom field definition.
+ * @param mixed $p_value     Custom field value.
+ * @return string
+ */
+function telegram_custom_field_display_value( array $p_field_def, $p_value ) {
+	if( $p_field_def['type'] == CUSTOM_FIELD_TYPE_DATE ) {
+		return is_numeric( $p_value ) ? date( config_get( 'normal_date_format' ), $p_value ) : '';
+	}
+
+	return str_replace( '|', ', ', (string)$p_value );
+}
+
+/**
+ * Return the identifier of the custom field the text value of which is expected
+ * from the user, 0 when the plugin is waiting for something else.
+ *
+ * @param string $p_current_field_to_save Value of the "bug_data_draft_current_field_to_save" config.
+ * @return integer
+ */
+function telegram_custom_field_pending_id( $p_current_field_to_save ) {
+	if( strpos( (string)$p_current_field_to_save, TELEGRAM_CUSTOM_FIELD_STATE_PREFIX ) !== 0 ) {
+		return 0;
+	}
+
+	return (int)substr( $p_current_field_to_save, strlen( TELEGRAM_CUSTOM_FIELD_STATE_PREFIX ) );
+}
+
+/**
+ * Ask the user about the next custom field of the issue draft.
+ *
+ * The question is given back as the suffix of the draft card and the state of the
+ * field is stored in the draft: a key with the null value means that the question
+ * has been asked, an array means that several values are being selected, a string
+ * (an empty one for a skipped field) means that the field is answered.
+ *
+ * @param array   $p_bug_data_draft Issue draft, saved by the function.
+ * @param string  $p_suffix         Question shown under the answers given so far.
+ * @param mixed   $p_page           Page of the possible values list (month of the calendar
+ *                                  for a date field) used when the question is asked again.
+ * @param boolean $p_required_only  True to ask about the mandatory fields only, the way
+ *                                  the first phase of the wizard does.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard|null Keyboard of the question,
+ *         null when there is nothing left to ask in this phase of the wizard.
+ */
+function telegram_custom_field_ask_next( array &$p_bug_data_draft, &$p_suffix, $p_page = 1, $p_required_only = false ) {
+	telegram_custom_field_draft_prepare( $p_bug_data_draft );
+
+	$t_user_id    = auth_get_current_user_id();
+	$t_project_id = array_key_exists( 'project', $p_bug_data_draft ) ? $p_bug_data_draft['project'] : '';
+
+	if( !is_blank( $t_project_id ) ) {
+		foreach( custom_field_get_linked_ids( $t_project_id ) as $t_id ) {
+			$t_id = (int)$t_id;
+
+			if( !telegram_custom_field_is_askable( $t_id, $t_project_id ) ) {
+				continue;
+			}
+
+			$t_asked = array_key_exists( $t_id, $p_bug_data_draft['custom_fields'] );
+			$t_state = $t_asked ? $p_bug_data_draft['custom_fields'][$t_id] : null;
+
+			# The field is answered when it holds a value, an empty string means that it was skipped
+			if( $t_asked && $t_state !== null && !is_array( $t_state ) ) {
+				continue;
+			}
+
+			$t_def = custom_field_get_definition( $t_id );
+
+			# An optional field is asked only in the second phase of the wizard
+			if( $p_required_only && !$t_def['require_report'] ) {
+				continue;
+			}
+
+			$p_suffix = lang_get_defaulted( $t_def['name'] ) . telegram_custom_field_hint( $t_def ) . ': ';
+
+			# The state of the field is prepared once, further calls only redraw the keyboard
+			if( !$t_asked ) {
+				# The web report form preselects the default values, so does the bot
+				$t_state = telegram_custom_field_is_select( $t_def )
+					? telegram_custom_field_default_indexes( $t_def )
+					: null;
+				$p_bug_data_draft['custom_fields'][$t_id] = $t_state;
+
+				$p_page = 1;
+			}
+
+			if( telegram_custom_field_is_text( $t_def ) ) {
+				plugin_config_set( 'bug_data_draft_current_field_to_save', TELEGRAM_CUSTOM_FIELD_STATE_PREFIX . $t_id, $t_user_id );
+			} else {
+				plugin_config_set( 'bug_data_draft_current_field_to_save', '', $t_user_id );
+			}
+
+			plugin_config_set( 'bug_data_draft', json_encode( $p_bug_data_draft ), $t_user_id );
+
+			return telegrambot_print_custom_field_input(
+				$t_def,
+				null,
+				$t_def['require_report'],
+				telegram_custom_field_state_to_value( $t_def, $t_state ),
+				$p_page
+			);
+		}
+	}
+
+	plugin_config_set( 'bug_data_draft_current_field_to_save', '', $t_user_id );
+
+	return null;
+}
+
+/**
+ * Store the text value of a custom field entered by the user.
+ *
+ * @param array   $p_bug_data_draft Issue draft, saved by the function on success.
+ * @param integer $p_field_id       Custom field identifier.
+ * @param string  $p_value          Value entered by the user.
+ * @param string  $p_error          Message shown to the user when the value is rejected.
+ * @return boolean true when the value is stored.
+ */
+function telegram_custom_field_text_set( array &$p_bug_data_draft, $p_field_id, $p_value, &$p_error ) {
+	telegram_custom_field_draft_prepare( $p_bug_data_draft );
+
+	if( !custom_field_exists( $p_field_id ) ) {
+		$p_error = plugin_lang_get( 'custom_field_error_not_available' );
+
+		return false;
+	}
+
+	$t_def   = custom_field_get_definition( $p_field_id );
+	$t_value = $p_value === null ? '' : trim( $p_value );
+
+	if( is_blank( $t_value ) ) {
+		$p_error = $t_def['require_report']
+			? plugin_lang_get( 'custom_field_error_required' )
+			: plugin_lang_get( 'custom_field_error_empty' );
+
+		return false;
+	}
+
+	if( !custom_field_validate( $p_field_id, $t_value ) ) {
+		$p_error = plugin_lang_get( 'custom_field_error_invalid' ) . telegram_custom_field_hint( $t_def );
+
+		return false;
+	}
+
+	$p_bug_data_draft['custom_fields'][(int)$p_field_id] = $t_value;
+	plugin_config_set( 'bug_data_draft', json_encode( $p_bug_data_draft ), auth_get_current_user_id() );
+
+	return true;
+}
+
+/**
+ * Apply a custom field action of an inline keyboard to the issue draft.
+ *
+ * The question to be asked afterwards is chosen by the wizard itself, this function
+ * only reports the page the keyboard of the field has to be redrawn on.
+ *
+ * @param string $p_action          Action tag of the callback data.
+ * @param array  $p_payload         Payload of the callback data ( field id => value ).
+ * @param array  $p_bug_data_draft  Issue draft.
+ * @param mixed  $p_page            Page of the possible values list ( month of the calendar
+ *                                  for a date field ) to show the field on.
+ * @return void
+ */
+function telegram_custom_field_callback_process( $p_action, array $p_payload, array &$p_bug_data_draft, &$p_page ) {
+	telegram_custom_field_draft_prepare( $p_bug_data_draft );
+
+	$p_page = 1;
+	$t_keys = array_keys( $p_payload );
+
+	if( empty( $t_keys ) ) {
+		return;
+	}
+
+	$t_field_id = (int)$t_keys[0];
+	$t_value    = $p_payload[$t_keys[0]];
+	$t_project_id = array_key_exists( 'project', $p_bug_data_draft ) ? $p_bug_data_draft['project'] : '';
+
+	if( !telegram_custom_field_is_askable( $t_field_id, $t_project_id ) ) {
+		telegram_callback_alert_set( plugin_lang_get( 'custom_field_error_not_available' ) );
+
+		return;
+	}
+
+	$t_def    = custom_field_get_definition( $t_field_id );
+	$t_values = telegram_custom_field_possible_values( $t_def );
+
+	switch( $p_action ) {
+		case TelegrambotActions::GET_CUSTOM_FIELD:
+			# Another page of the possible values list, or another month of the calendar
+			if( is_array( $t_value ) ) {
+				$p_page = array_key_exists( 'p', $t_value ) ? (int)$t_value['p'] : 1;
+			} else {
+				$p_page = $t_value;
+			}
+			break;
+
+		case TelegrambotActions::SKIP_CUSTOM_FIELD:
+			if( $t_def['require_report'] ) {
+				telegram_callback_alert_set( plugin_lang_get( 'custom_field_error_required' ) );
+				break;
+			}
+
+			$p_bug_data_draft['custom_fields'][$t_field_id] = '';
+			break;
+
+		case TelegrambotActions::TOGGLE_CUSTOM_FIELD:
+			$t_index = (int)$t_value;
+
+			if( !array_key_exists( $t_index, $t_values ) ) {
+				telegram_callback_alert_set( plugin_lang_get( 'custom_field_error_not_available' ) );
+				break;
+			}
+
+			$t_selected = telegram_custom_field_selected_get( $p_bug_data_draft, $t_field_id );
+
+			$t_position = array_search( $t_index, $t_selected );
+			if( $t_position !== false ) {
+				unset( $t_selected[$t_position] );
+			} else if( telegram_custom_field_is_multi( $t_def['type'] ) ) {
+				$t_selected[] = $t_index;
+			} else {
+				# Only one of the values of a single select field can be picked
+				$t_selected = array( $t_index );
+			}
+
+			sort( $t_selected );
+			$p_bug_data_draft['custom_fields'][$t_field_id] = $t_selected;
+
+			# Keep the keyboard on the page holding the value that has just been switched
+			$p_page = intdiv( $t_index, 10 ) + 1;
+			break;
+
+		case TelegrambotActions::END_CUSTOM_FIELD:
+			$t_selected = telegram_custom_field_selected_get( $p_bug_data_draft, $t_field_id );
+
+			if( empty( $t_selected ) && $t_def['require_report'] ) {
+				telegram_callback_alert_set( plugin_lang_get( 'custom_field_error_select' ) );
+				break;
+			}
+
+			$t_new_value = telegram_custom_field_state_to_value( $t_def, $t_selected );
+
+			if( !custom_field_validate( $t_field_id, $t_new_value ) ) {
+				telegram_callback_alert_set( plugin_lang_get( 'custom_field_error_invalid' ) );
+				break;
+			}
+
+			# An empty confirmed selection of an optional field equals a skip, the card
+			# shows the dash of a skipped step for it
+			$p_bug_data_draft['custom_fields'][$t_field_id] = $t_new_value;
+			break;
+
+		case TelegrambotActions::SET_CUSTOM_FIELD:
+			if( $t_def['type'] == CUSTOM_FIELD_TYPE_DATE ) {
+				$t_new_value = is_array( $t_value ) ? false : strtotime( (string)$t_value );
+
+				if( $t_new_value === false ) {
+					telegram_callback_alert_set( plugin_lang_get( 'custom_field_error_invalid' ) );
+					break;
+				}
+			} else if( $t_value === TelegrambotActions::CUSTOM_FIELD_DEFAULT_MARK ) {
+				$t_new_value = custom_field_default_to_value( $t_def['default_value'], $t_def['type'] );
+			} else {
+				$t_index = (int)$t_value;
+
+				if( !array_key_exists( $t_index, $t_values ) ) {
+					telegram_callback_alert_set( plugin_lang_get( 'custom_field_error_not_available' ) );
+					break;
+				}
+
+				$t_new_value = $t_values[$t_index];
+			}
+
+			if( !custom_field_validate( $t_field_id, $t_new_value ) ) {
+				telegram_callback_alert_set( plugin_lang_get( 'custom_field_error_invalid' ) . telegram_custom_field_hint( $t_def ) );
+				break;
+			}
+
+			$p_bug_data_draft['custom_fields'][$t_field_id] = $t_new_value;
+			break;
+	}
+
+	plugin_config_set( 'bug_data_draft', json_encode( $p_bug_data_draft ), auth_get_current_user_id() );
 }
 //
 ///*

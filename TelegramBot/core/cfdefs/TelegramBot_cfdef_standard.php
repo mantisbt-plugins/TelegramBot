@@ -358,211 +358,302 @@ function telegrambot_cfdef_prepare_date_value( $p_value ) {
 }
 
 /**
- * print_custom_field_input
- * @param array $p_field_def          Custom field definition.
- * @param mixed $p_custom_field_value Custom field value.
- * @param string $p_required          The "required" attribute to add to the field
- * @return void
+ * Split a custom field value into an array of single values.
+ *
+ * @param string|array|null $p_value Custom field value, single values are separated by "|".
+ * @return array
  */
-function telegrambot_cfdef_input_list( array $p_field_def, $p_custom_field_value, $p_required = '' ) {
-	$t_values = explode( '|', custom_field_prepare_possible_values( $p_field_def['possible_values'] ) );
-	$t_list_size = $t_possible_values_count = count( $t_values );
-
-	if( $t_possible_values_count > 5 ) {
-		$t_list_size = 5;
+function telegrambot_cfdef_value_to_array( $p_value ) {
+	if( is_array( $p_value ) ) {
+		return $p_value;
 	}
 
-	if( $p_field_def['type'] == CUSTOM_FIELD_TYPE_ENUM ) {
-		$t_list_size = 0;	# for enums the size is 0
+	if( $p_value === null || $p_value === '' ) {
+		return array();
 	}
 
-	if( $p_field_def['type'] == CUSTOM_FIELD_TYPE_MULTILIST ) {
-		echo '<select ' . helper_get_tab_index() . ' id="custom_field_' . $p_field_def['id'] . '" name="custom_field_' . $p_field_def['id'] . '[]" size="' . $t_list_size . '" multiple="multiple"' . $p_required .'>';
-	} else {
-		echo '<select ' . helper_get_tab_index() . ' id="custom_field_' . $p_field_def['id'] . '" name="custom_field_' . $p_field_def['id'] . '" size="' . $t_list_size . '"' . $p_required .'>';
-	}
-
-	$t_selected_values = explode( '|', $p_custom_field_value );
-	foreach( $t_values as $t_option ) {
-		if( in_array( $t_option, $t_selected_values, true ) ) {
-			echo '<option value="' . string_attribute( $t_option ) . '" selected="selected"> ' . string_display_line( $t_option ) . '</option>';
-		} else {
-			echo '<option value="' . string_attribute( $t_option ) . '">' . string_display_line( $t_option ) . '</option>';
-		}
-	}
-	echo '</select>';
+	return explode( '|', trim( $p_value, '|' ) );
 }
 
 /**
- * print_custom_field_input
+ * Add the pagination buttons of a possible values list to the keyboard.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the buttons to.
+ * @param integer $p_field_id Custom field identifier.
+ * @param integer $p_page     Current page ( 10 values per page ).
+ * @param integer $p_count    Total count of possible values.
+ * @return void
+ */
+function telegrambot_cfdef_keyboard_pages_add( $p_inline_keyboard, $p_field_id, $p_page, $p_count ) {
+	$t_row = array();
+
+	if( $p_page > 1 ) {
+		$t_row[] = array(
+			'text'          => '<<',
+			'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array(
+				TelegrambotActions::GET_CUSTOM_FIELD => array( $p_field_id => array( 'p' => $p_page - 1 ) )
+			) ) )
+		);
+	}
+
+	if( $p_count > $p_page * 10 ) {
+		$t_row[] = array(
+			'text'          => '>>',
+			'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array(
+				TelegrambotActions::GET_CUSTOM_FIELD => array( $p_field_id => array( 'p' => $p_page + 1 ) )
+			) ) )
+		);
+	}
+
+	if( !empty( $t_row ) ) {
+		call_user_func_array( array( $p_inline_keyboard, 'addRow' ), $t_row );
+	}
+}
+
+/**
+ * Add the "skip" button to the keyboard of an optional custom field.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the button to.
+ * @param array $p_field_def Custom field definition.
+ * @return void
+ */
+function telegrambot_cfdef_keyboard_skip_add( $p_inline_keyboard, array $p_field_def ) {
+	if( $p_field_def['require_report'] ) {
+		return;
+	}
+
+	keyboard_skip_button_add( $p_inline_keyboard, array( TelegrambotActions::REPORT_BUG_TAG => array(
+		TelegrambotActions::SKIP_CUSTOM_FIELD => array( (int)$p_field_def['id'] => 1 )
+	) ) );
+}
+
+/**
+ * Build the keyboard of the possible values of a custom field.
+ *
+ * Buttons carry the index of the value within the possible values list, because
+ * the callback data is limited to 64 bytes.
+ *
+ * @param array   $p_field_def          Custom field definition.
+ * @param mixed   $p_custom_field_value Currently selected value(s).
+ * @param boolean $p_multi              True when several values can be selected.
+ * @param integer $p_page               Page of the possible values list.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function telegrambot_cfdef_keyboard_values( array $p_field_def, $p_custom_field_value, $p_multi, $p_page = 1 ) {
+	$t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+	$t_field_id   = (int)$p_field_def['id'];
+	$t_values     = explode( '|', custom_field_prepare_possible_values( $p_field_def['possible_values'] ) );
+	$t_count      = count( $t_values );
+	$t_page       = (int)$p_page < 1 ? 1 : (int)$p_page;
+	$t_max_length = config_get( 'max_dropdown_length' );
+
+	$t_selected = telegrambot_cfdef_value_to_array( $p_custom_field_value );
+	$t_defaults = telegrambot_cfdef_value_to_array( $p_field_def['default_value'] );
+
+	for( $i = ( $t_page * 10 ) - 10; $i < $t_page * 10 && $i < $t_count; $i++ ) {
+		$t_text = string_shorten( $t_values[$i], $t_max_length );
+
+		# Any value press only switches the selection, the choice is confirmed
+		# by the done button. A radio style mark shows that only one of the
+		# values of a single select field can be picked.
+		if( $p_multi ) {
+			$t_text = ( in_array( $t_values[$i], $t_selected, true ) ? '☑ ' : '☐ ' ) . $t_text;
+		} else {
+			$t_text = ( in_array( $t_values[$i], $t_selected, true ) ? '🔘 ' : '⚪ ' ) . $t_text;
+		}
+		$t_action = TelegrambotActions::TOGGLE_CUSTOM_FIELD;
+
+		if( in_array( $t_values[$i], $t_defaults, true ) ) {
+			$t_text .= ' (' . plugin_lang_get( 'custom_field_default_mark' ) . ')';
+		}
+
+		$t_inline_keyboard->addRow( array(
+			'text'          => $t_text,
+			'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array(
+				$t_action => array( $t_field_id => $i )
+			) ) )
+		) );
+	}
+
+	telegrambot_cfdef_keyboard_pages_add( $t_inline_keyboard, $t_field_id, $t_page, $t_count );
+
+	$t_inline_keyboard->addRow( array(
+		'text'          => '(' . plugin_lang_get( 'custom_field_done_button' ) . ')',
+		'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array(
+			TelegrambotActions::END_CUSTOM_FIELD => array( $t_field_id => 1 )
+		) ) )
+	) );
+
+	telegrambot_cfdef_keyboard_skip_add( $t_inline_keyboard, $p_field_def );
+
+	return $t_inline_keyboard;
+}
+
+/**
+ * Build the keyboard of a custom field the value of which is typed in by the user.
+ *
+ * @param array $p_field_def          Custom field definition.
+ * @param mixed $p_custom_field_value Default value of the custom field.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function telegrambot_cfdef_keyboard_text( array $p_field_def, $p_custom_field_value ) {
+	$t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+	if( !is_blank( $p_custom_field_value ) ) {
+		$t_inline_keyboard->addRow( array(
+			'text'          => sprintf(
+				plugin_lang_get( 'custom_field_default_button' ),
+				string_shorten( $p_custom_field_value, config_get( 'max_dropdown_length' ) )
+			),
+			'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array(
+				TelegrambotActions::SET_CUSTOM_FIELD => array( (int)$p_field_def['id'] => TelegrambotActions::CUSTOM_FIELD_DEFAULT_MARK )
+			) ) )
+		) );
+	}
+
+	telegrambot_cfdef_keyboard_skip_add( $t_inline_keyboard, $p_field_def );
+
+	return $t_inline_keyboard;
+}
+
+/**
+ * Keyboard of a list custom field.
+ *
  * @param array $p_field_def          Custom field definition.
  * @param mixed $p_custom_field_value Custom field value.
  * @param string $p_required          (Unused) The "required" attribute to add to the field
- * @return void
+ * @param integer $p_page             Page of the possible values list.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
  *
  * @noinspection PhpUnusedParameterInspection
  */
-function telegrambot_cfdef_input_checkbox( array $p_field_def, $p_custom_field_value, $p_required = '' ) {
-	$t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-        
-        $t_values = explode( '|', custom_field_prepare_possible_values( $p_field_def['possible_values'] ) );
-	$t_checked_values = explode( '|', $p_custom_field_value );
-	for( $i = 0; $i < count( $t_values ); $i++ ) {
-//		$t_input_id = 'custom_field_' . $p_field_def['id'] . '_value_' . $i;
-//		$t_input_name = 'custom_field_' . $p_field_def['id'] . '[]';
-//		echo '<label for="' . $t_input_id . '">' . "\n";
-//		echo '<input class="ace" id="' . $t_input_id . '" '
-//			. helper_get_tab_index()
-//			. ' type="checkbox" name="' . $t_input_name
-//			. '" value="' . string_attribute( $t_values[$i] ) . '"';
-//		check_checked( $t_checked_values, $t_values[$i] );
-//		echo " />\n";
-//		echo '<span class="lbl">&#160;' . string_display_line( $t_values[$i] ) . '</label>' . "\n";
-//		echo '</label>&#160;&#160;&#160;&#160;' . "\n";
-                
-                $t_inline_keyboard -> addRow( [
-                                                'text' => $t_values[$i] . ( telegrambot_check_default( $t_checked_values, $t_values[$i] ) ? ' (Default)' : '' ),
-                                                'callback_data' =>  json_encode(    array( 'rb' =>  array( 'scf' =>  array( 
-                                                                                                                            $p_field_def['id'] => $i
-                                                                                                                     )
-                                                                                                    )
-                                                                                    )
-                                                                    )
-                ] );
-	}
-        
-        $t_inline_keyboard -> addRow( [
-                                                'text' => 'END SELECT',
-                                                'callback_data' =>  json_encode(    array( 'rb' =>  array( 'scf' =>  array( 
-                                                                                                                            $p_field_def['id'] => 'END'
-                                                                                                                     )
-                                                                                                    )
-                                                                                    )
-                                                                    )
-        ] );
-        
-        return $t_inline_keyboard;
+function telegrambot_cfdef_input_list( array $p_field_def, $p_custom_field_value, $p_required = '', $p_page = 1 ) {
+	return telegrambot_cfdef_keyboard_values(
+		$p_field_def,
+		$p_custom_field_value,
+		$p_field_def['type'] == CUSTOM_FIELD_TYPE_MULTILIST,
+		$p_page
+	);
 }
 
 /**
- * print_custom_field_input
+ * Keyboard of a checkbox custom field.
+ *
  * @param array $p_field_def          Custom field definition.
  * @param mixed $p_custom_field_value Custom field value.
- * @param string $p_required          The "required" attribute to add to the field
- * @return void
+ * @param string $p_required          (Unused) The "required" attribute to add to the field
+ * @param integer $p_page             Page of the possible values list.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ *
+ * @noinspection PhpUnusedParameterInspection
  */
-function telegrambot_cfdef_input_radio( array $p_field_def, $p_custom_field_value, $p_required = '' ) {
-        $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-        
-	$t_values = explode( '|', custom_field_prepare_possible_values( $p_field_def['possible_values'] ) );
-
-	$t_len = strlen( $p_custom_field_value );
-	if( $t_len >= 2 && ( $p_custom_field_value[0] == '|' ) && ( $p_custom_field_value[$t_len-1] == '|' ) ) {
-		$t_checked_value = substr( $p_custom_field_value, 1, $t_len - 2 );
-	} else {
-		$t_checked_value = $p_custom_field_value;
-	}
-
-	for( $i = 0; $i < count( $t_values ); $i++ ) {
-//		$t_input_id = 'custom_field_' . $p_field_def['id'] . '_value_' . $i;
-//		$t_input_name = 'custom_field_' . $p_field_def['id'];
-//		echo '<label for="' . $t_input_id . '">';
-//		echo '<input class="ace" id="' . $t_input_id . '" ' . helper_get_tab_index() . ' type="radio" name="' . $t_input_name . '" value="' . string_attribute( $t_values[$i] ) . '"' . $p_required;
-//		check_checked( $t_checked_value, $t_values[$i] );
-//		echo " />\n";
-//		echo '<span class="lbl">&#160;' . string_display_line( $t_values[$i] ) . '</span>' . "\n";
-//		echo '</label>&#160;&#160;&#160;&#160;' . "\n";
-                
-                $t_inline_keyboard -> addRow( [
-                                                'text' => $t_values[$i] . ( telegrambot_check_default( $t_checked_value, $t_values[$i] ) ? ' (Default)' : '' ),
-                                                'callback_data' =>  json_encode(    array( 'rb' =>  array( 'scf' =>  array( 
-                                                                                                                            $p_field_def['id'] => $i
-                                                                                                                     )
-                                                                                                    )
-                                                                                    )
-                                                                    )
-                ] );
-        }
-        
-        return $t_inline_keyboard;
+function telegrambot_cfdef_input_checkbox( array $p_field_def, $p_custom_field_value, $p_required = '', $p_page = 1 ) {
+	return telegrambot_cfdef_keyboard_values( $p_field_def, $p_custom_field_value, true, $p_page );
 }
 
 /**
- * print_custom_field_input
+ * Keyboard of a radio custom field.
+ *
  * @param array $p_field_def          Custom field definition.
  * @param mixed $p_custom_field_value Custom field value.
- * @param string $p_required          The "required" attribute to add to the field
- * @return void
+ * @param string $p_required          (Unused) The "required" attribute to add to the field
+ * @param integer $p_page             Page of the possible values list.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ *
+ * @noinspection PhpUnusedParameterInspection
  */
-function telegrambot_cfdef_input_textbox( array $p_field_def, $p_custom_field_value, $p_required = '' ) {
-	echo '<input ', helper_get_tab_index(), ' type="text" id="custom_field_', $p_field_def['id']
-			, '" name="custom_field_', $p_field_def['id'], '" ', $p_required;
-	if( $p_field_def['length_max'] > 0 ) {
-		echo ' maxlength="' . $p_field_def['length_max'] . '"'
-				, ' size="' .  min( 80, $p_field_def['length_max'] ) . '"';
-	} else {
-		echo ' maxlength="255" size="80"';
-	}
-	if( !empty( $p_field_def['valid_regexp'] ) ) {
-		# the custom field regex is evaluated with preg_match and looks for a partial match in the string
-		# however, the html property is matched for the whole string.
-		# unless we have explicit start and end tokens, adapt the html regex to allow a substring match.
-		$t_cf_regex = $p_field_def['valid_regexp'];
-		if( substr( $t_cf_regex, 0, 1 ) != '^' ) {
-			$t_cf_regex = '.*' . $t_cf_regex;
-		}
-		if( substr( $t_cf_regex, -1 ) != '$' ) {
-			$t_cf_regex .= '.*';
-		}
-		echo ' pattern="' . string_attribute( $t_cf_regex ) . '"';
-	}
-	echo ' value="' . string_attribute( $p_custom_field_value ) .'" />';
+function telegrambot_cfdef_input_radio( array $p_field_def, $p_custom_field_value, $p_required = '', $p_page = 1 ) {
+	return telegrambot_cfdef_keyboard_values( $p_field_def, $p_custom_field_value, false, $p_page );
 }
 
 /**
- * print_custom_field_input
+ * Keyboard of a custom field the value of which is typed in by the user.
+ *
  * @param array $p_field_def          Custom field definition.
  * @param mixed $p_custom_field_value Custom field value.
- * @param string $p_required          The "required" attribute to add to the field
- * @return void
+ * @param string $p_required          (Unused) The "required" attribute to add to the field
+ * @param integer $p_page             (Unused) Page of the possible values list.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ *
+ * @noinspection PhpUnusedParameterInspection
  */
-function telegrambot_cfdef_input_textarea( array $p_field_def, $p_custom_field_value, $p_required = '' ) {
-	echo '<textarea class="form-control" ', helper_get_tab_index(), ' id="custom_field_' . $p_field_def['id']
-			, '" name="custom_field_', $p_field_def['id'], '"', $p_required;
-	if( $p_field_def['length_max'] > 0 ) {
-		echo ' maxlength="', $p_field_def['length_max'], '"';
-	}
-	echo ' cols="70" rows="8">', $p_custom_field_value, '</textarea>';
+function telegrambot_cfdef_input_textbox( array $p_field_def, $p_custom_field_value, $p_required = '', $p_page = 1 ) {
+	return telegrambot_cfdef_keyboard_text( $p_field_def, $p_custom_field_value );
 }
 
 /**
- * Prints the controls for the date selector.
+ * Keyboard of a textarea custom field, the value of which is typed in by the user.
+ *
+ * @param array $p_field_def          Custom field definition.
+ * @param mixed $p_custom_field_value Custom field value.
+ * @param string $p_required          (Unused) The "required" attribute to add to the field
+ * @param integer $p_page             (Unused) Page of the possible values list.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ *
+ * @noinspection PhpUnusedParameterInspection
+ */
+function telegrambot_cfdef_input_textarea( array $p_field_def, $p_custom_field_value, $p_required = '', $p_page = 1 ) {
+	return telegrambot_cfdef_keyboard_text( $p_field_def, $p_custom_field_value );
+}
+
+/**
+ * Keyboard of a date custom field: a calendar, the current date and the default
+ * value of the field.
  *
  * @param array  $p_field_def          The custom field definition.
- * @param string $p_custom_field_value The custom field value to print.
- * @param string $p_required           The "required" attribute to add to the field
- * @return void
+ * @param string $p_custom_field_value The custom field value ( timestamp ).
+ * @param string $p_required           (Unused) The "required" attribute to add to the field
+ * @param string $p_page               Month shown by the calendar, "Y-m".
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ *
+ * @noinspection PhpUnusedParameterInspection
  */
-function telegrambot_cfdef_input_date( $p_field_def, $p_custom_field_value, $p_required = '' ) {
-        if( !is_numeric( $p_custom_field_value ) ) {
+function telegrambot_cfdef_input_date( $p_field_def, $p_custom_field_value, $p_required = '', $p_page = 1 ) {
+	if( !is_numeric( $p_custom_field_value ) ) {
 		$p_custom_field_value = 0;
 	}
 
-        $t_calendar = new TelegramBotInlineKeyboardCalendar( date( "Y-n", time() ) );
-        $t_inline_keyboard = $t_calendar -> getKeyboard( 'cf', $p_field_def['id'] );
+	$t_field_id = (int)$p_field_def['id'];
 
-        if( $p_custom_field_value != 0 ) {
-                $t_inline_keyboard->addRow( [
-                              'text'          => date( 'Y-m-d', $p_custom_field_value ) . ' (' . lang_get( 'custom_field_default_value' ) . ')',
-                              'callback_data' => json_encode( array( 'rb' => array( 'scf' => array( $p_field_def['id'] => date( 'Y-m-d', $p_custom_field_value ) ) ) ) )
-                ] );
-        }
+	# A 'd' prefixed year requests the overview of the years, a bare year the
+	# overview of its months, a year-month the grid of the month
+	if( is_string( $p_page ) && preg_match( '/^d\d{4}$/', $p_page ) ) {
+		$t_calendar = new TelegramBotInlineKeyboardCalendar( $p_page );
+		$t_inline_keyboard = $t_calendar->getYearsKeyboard( 'cf', $t_field_id );
+	} else if( is_string( $p_page ) && preg_match( '/^\d{4}$/', $p_page ) ) {
+		$t_calendar = new TelegramBotInlineKeyboardCalendar( $p_page );
+		$t_inline_keyboard = $t_calendar->getYearKeyboard( 'cf', $t_field_id );
+	} else {
+		if( is_string( $p_page ) && preg_match( '/^\d{4}-\d{1,2}$/', $p_page ) ) {
+			$t_month = $p_page;
+		} else {
+			$t_month = date( 'Y-n', time() );
+		}
 
-        if( !$p_field_def['require_report'] ) {
-                keyboard_skip_button_add( $t_inline_keyboard, array( 'rb' => array( 'skipcf' => $p_field_def['id'] ) ) );
-        }
+		$t_calendar = new TelegramBotInlineKeyboardCalendar( $t_month );
+		$t_inline_keyboard = $t_calendar->getKeyboard( 'cf', $t_field_id );
+	}
 
-        return $t_inline_keyboard;
+	$t_inline_keyboard->addRow( array(
+		'text'          => plugin_lang_get( 'custom_field_today_button' ),
+		'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array(
+			TelegrambotActions::SET_CUSTOM_FIELD => array( $t_field_id => date( 'Y-m-d', time() ) )
+		) ) )
+	) );
+
+	if( $p_custom_field_value != 0 ) {
+		$t_inline_keyboard->addRow( array(
+			'text'          => date( 'Y-m-d', $p_custom_field_value ) . ' (' . plugin_lang_get( 'custom_field_default_mark' ) . ')',
+			'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array(
+				TelegrambotActions::SET_CUSTOM_FIELD => array( $t_field_id => date( 'Y-m-d', $p_custom_field_value ) )
+			) ) )
+		) );
+	}
+
+	telegrambot_cfdef_keyboard_skip_add( $t_inline_keyboard, $p_field_def );
+
+	return $t_inline_keyboard;
 }
 
 /**

@@ -199,16 +199,18 @@ function keyboard_category_get( $p_project_id ) {
 
     $t_category_rows = category_get_all_rows( $p_project_id, null, true );
 
+    # The core allows an issue without a category only with this option on,
+    # the button plays the role of the skip one then
+    if( config_get( 'allow_no_category' ) ) {
+        $t_inline_keyboard -> addRow( [
+                                        'text' => lang_get( 'no_category' ),
+                                        'callback_data' => json_encode( array(
+                                                                                TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::SET_CATEGORY => array('id' => 0))
+                                                           ) )
+        ] );
+    }
+
     foreach( $t_category_rows as $t_category ) {
-        
-        if( config_get( 'allow_no_category' ) ) {
-            $t_inline_keyboard -> addRow( [
-                                            'text' => lang_get( 'no_category' ),
-                                            'callback_data' => json_encode( array(
-                                                                                    TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::SET_CATEGORY => array('id' => 0))
-                                                               ) )
-            ] );
-        }
 
         $t_inline_keyboard->addRow( [
                                   'text'          => $p_project_id == $t_category['project_id'] ? $t_category['name'] : '[' .
@@ -220,16 +222,6 @@ function keyboard_category_get( $p_project_id ) {
         ] );
     }
 
-    $t_inline_keyboard->addRow( [
-                              'text'          => '<<',
-                              'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
-                                                                                                            'id' => 0,
-                                                                                                            'p'  => 1,
-                                                                                                            'fp' => 1
-                                                                                  ) )
-                              ) )
-    ] );
-    
     return $t_inline_keyboard;
 }
 
@@ -310,7 +302,7 @@ function keyboard_profile_option_list_from_profiles( array $p_profiles, $p_selec
         return $t_inline_keyboard;
 }
 
-function keyboard_version_option_list( $p_version = '', $p_project_ids = null, $p_released = VERSION_ALL, $p_action ) {
+function keyboard_version_option_list( $p_version, $p_project_ids, $p_released, $p_action ) {
         $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
         
 	if( null === $p_project_ids ) {
@@ -534,14 +526,95 @@ function keyboard_buttons_bug_change_status( BugData $p_bug ) {
     return $t_inline_keyboard;
 }
 
+/**
+ * Add the "back to the previous question" button to the keyboard of a question of
+ * the issue draft wizard.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the button to.
+ * @return void
+ */
+function keyboard_back_button_add( $p_inline_keyboard ) {
+
+        $p_inline_keyboard->addRow( [
+                              'text'          => '(← ' . plugin_lang_get( 'back_button' ) . ')',
+                              'callback_data' => json_encode( array(
+                                                        TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::BACK_FIELD => 1 )
+                              ) )
+        ] );
+}
+
 function keyboard_skip_button_add( &$p_inline_keyboard, $p_action ) {
-        
+
 //        $t_inline_keyboard = $p_inline_keyboard == null ? new Longman\TelegramBot\Entities\InlineKeyboard( array() ) : $p_inline_keyboard;
-        
+
         $p_inline_keyboard->addRow( [
                               'text'          => '(' . plugin_lang_get( 'skip_button' ) . ')',
                               'callback_data' => json_encode( $p_action )
         ] );
-        
+
 //        return $t_inline_keyboard;
+}
+
+/**
+ * Add the "create the issue" button to the keyboard of the issue draft wizard.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the button to.
+ * @return void
+ */
+function keyboard_create_button_add( $p_inline_keyboard ) {
+
+        $p_inline_keyboard->addRow( [
+                              'text'          => '(' . plugin_lang_get( 'create_button' ) . ')',
+                              'callback_data' => json_encode( array(
+                                                        TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::CREATE_ISSUE => 1 )
+                              ) )
+        ] );
+}
+
+/**
+ * Build the keyboard of the menu shown once every mandatory question of the issue
+ * draft wizard is answered: the issue can be created right away or the optional
+ * fields can be filled in first.
+ *
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function keyboard_draft_menu_get() {
+
+        $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+        keyboard_create_button_add( $t_inline_keyboard );
+
+        $t_inline_keyboard->addRow( [
+                              'text'          => '(' . plugin_lang_get( 'fill_optional_button' ) . ')',
+                              'callback_data' => json_encode( array(
+                                                        TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::FILL_OPTIONAL => 1 )
+                              ) )
+        ] );
+
+        return $t_inline_keyboard;
+}
+
+/**
+ * Add the buttons available at every step of the issue draft wizard to the keyboard
+ * of the current question.
+ *
+ * While the optional fields are being filled in the issue can be created at any
+ * moment, so the create button is shown along with the question.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the buttons to.
+ * @param array $p_bug_data_draft Issue draft.
+ * @return void
+ */
+function keyboard_draft_buttons_add( $p_inline_keyboard, array $p_bug_data_draft ) {
+
+        if( telegram_draft_optional_phase_is_on( $p_bug_data_draft ) ) {
+                keyboard_create_button_add( $p_inline_keyboard );
+        }
+
+        keyboard_back_button_add( $p_inline_keyboard );
+
+        $p_inline_keyboard->addRow( [
+                              'text'          => '(' . plugin_lang_get( 'keyboard_button_delete_draft' ) . ')',
+                              'callback_data' => json_encode( array( TelegrambotActions::STOP_REPORT_ISSUE_TAG => 1 ) )
+        ] );
 }

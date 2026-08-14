@@ -108,9 +108,10 @@ class TelegramBotPlugin extends MantisPlugin {
         require_once 'core/classes/TelegrambotActions.class.php';
         require_once 'core/TelegramBot_custom_field_api.php';
         
-        global $g_skip_sending_bugnote, $g_account_telegram_menu_active;
+        global $g_skip_sending_bugnote, $g_account_telegram_menu_active, $g_telegram_callback_alert;
         $g_skip_sending_bugnote         = FALSE;
         $g_account_telegram_menu_active = FALSE;
+        $g_telegram_callback_alert      = array();
         
         telegram_session_start();
     }
@@ -140,7 +141,6 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'bug_data_draft'                              => '',
                                   'bug_data_draft_chat_id'                      => '',
                                   'bug_data_draft_message_id'                   => '',
-                                  'bug_data_draft_text_msg'                     => '',
                                   'bug_data_draft_current_field_to_save'        => '',
                                   'cli_g_path'                                  => '',
                                   'broadcast_send_threshold'                    => 'Administrator',

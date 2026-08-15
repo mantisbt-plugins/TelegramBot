@@ -1,5 +1,5 @@
 <?php
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2024 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -24,15 +24,18 @@ telegrambot_print_menu_config( 'monitor_page' );
 ?>
 
 <div class="col-md-12 col-xs-12">
-    <div class="space-10"></div>
-    <div class="form-container">
-        <form action="<?php echo plugin_page( 'config' ) ?>" method="post" enctype="multipart/form-data"> 
-            <?php echo form_security_field( 'config' ) ?>
+            <div class="space-10"></div>
+                <div class="well">
+                <p><i class="fa fa-info-circle"></i>
+                    <?php echo plugin_lang_get( 'monitor_page_info_receiving_updates_text' ) ?>
+                </p>
+            </div>
+    
             <div class="widget-box widget-color-blue2">
                 <div class="widget-header widget-header-small">
                     <h4 class="widget-title lighter">
-                        <i class="ace-icon fa fa-cubes"></i>
-                        <?php echo plugin_lang_get( 'name_plugin_description_page' ) . ': ' . plugin_lang_get( 'monitor_page' ) ?>
+                        <i class="ace-icon fa fa-telegram"></i>
+                        <?php echo plugin_lang_get( 'monitor_page' ) ?>
                     </h4>
                 </div>
 
@@ -52,7 +55,7 @@ telegrambot_print_menu_config( 'monitor_page' );
                                 if( $t_bot_name && $t_api_key ) {
 
                                     try {
-					telegram_session_start();
+//					telegram_session_start();
                                         $t_result      = Longman\TelegramBot\Request::getWebhookInfo();
                                         $t_webhook_url = $t_result->result->getUrl();
                                         $t_pending_update_count = $t_result->result->getPendingUpdateCount();
@@ -60,11 +63,15 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         $t_last_error_message = $t_result->result->getLastErrorMessage();
                                         $t_max_connection_current_settings = $t_result->result->getMaxConnections();
                                         $t_current_subscribe_updates = $t_result->result->getAllowedUpdates();
+                                        $t_is_self_signed_cert = $t_result->result->getHasCustomCertificate();
                                     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
+                                        $t_webhook_url = $t_errors->getMessage();
+                                    } catch( GuzzleHttp\Exception\GuzzleException $t_errors ) {
+                                        # network errors (no route to api.telegram.org, timeout, proxy)
                                         $t_webhook_url = $t_errors->getMessage();
                                     }
 
-                                        echo '<tr' . helper_alternate_class() . '>';
+                                        echo '<tr>';
                                         echo '<td class="category" width="50%">';
                                         echo plugin_lang_get( 'current_config' );
                                         echo '</td>';
@@ -74,7 +81,36 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         echo '</tr>';
                                         
                                     if( isset( $t_result ) ) {
-                                        echo '<tr' . helper_alternate_class() . '>';
+                                        if(!is_blank( $t_webhook_url )){
+                                                echo '<tr>';
+                                                echo '<td class="category" width="50%">';
+                                                echo plugin_lang_get( 'monitor_page_is_self_signed_cert' );
+                                                echo '</td>';
+                                                echo '<td colspan="2">';
+                                                echo $t_is_self_signed_cert == true ? lang_get('yes') : lang_get('no');
+                                                echo '</td>';
+                                                echo '</tr>';
+                                        
+                                                echo '<tr>';
+                                                echo '<td class="category" width="50%">';
+                                                echo plugin_lang_get( 'monitor_page_last_error_date' );
+                                                echo '</td>';
+                                                echo '<td colspan="2">';
+                                                echo $t_last_error_date !== null ? date( config_get_global( 'normal_date_format' ), $t_last_error_date ) : '';
+                                                echo '</td>';
+                                                echo '</tr>';
+                                                
+                                                echo '<tr>';
+                                                echo '<td class="category" width="50%">';
+                                                echo plugin_lang_get( 'monitor_page_last_error_message' );
+                                                echo '</td>';
+                                                echo '<td colspan="2">';
+                                                echo $t_last_error_message !== null ? $t_last_error_message : '';
+                                                echo '</td>';
+                                                echo '</tr>';
+                                        }
+
+                                        echo '<tr>';
                                         echo '<td class="category" width="50%">';
                                         echo plugin_lang_get( 'monitor_page_pending_update_count' );
                                         echo '</td>';
@@ -82,30 +118,62 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         echo $t_pending_update_count;
                                         echo '</td>';
                                         echo '</tr>';
-                                        
-                                        echo '<tr' . helper_alternate_class() . '>';
+
+                                    }
+
+                                    if( (int)plugin_config_get( 'reinstall_webhook' ) == OFF ) {
+                                        # The script stamps every start, so a missing or stale value means it is not
+                                        # scheduled - the schedule itself cannot be read from the web.
+                                        $t_last_run = (int)plugin_config_get( 'get_updates_last_run' );
+
+                                        echo '<tr>';
                                         echo '<td class="category" width="50%">';
-                                        echo plugin_lang_get( 'monitor_page_last_error_date' );
+                                        echo plugin_lang_get( 'get_updates_last_run' );
                                         echo '</td>';
                                         echo '<td colspan="2">';
-                                        echo $t_last_error_date !== null ? date( config_get_global( 'normal_date_format' ), $t_last_error_date ) : '';
+
+                                        if( $t_last_run == 0 ) {
+                                                echo '<span class="red">' . plugin_lang_get( 'get_updates_last_run_never' ) . '</span>';
+                                        } else {
+                                                echo date( config_get( 'normal_date_format' ), $t_last_run );
+
+                                                if( time() - $t_last_run > 300 ) {
+                                                        echo '<br><span class="small red">' . plugin_lang_get( 'get_updates_last_run_stale' ) . '</span>';
+                                                }
+                                        }
+
                                         echo '</td>';
                                         echo '</tr>';
-
-                                        echo '<tr' . helper_alternate_class() . '>';
-                                        echo '<td class="category" width="50%">';
-                                        echo plugin_lang_get( 'monitor_page_last_error_message' );
-                                        echo '</td>';
-                                        echo '<td colspan="2">';
-                                        echo $t_last_error_message !== null ? $t_last_error_message : '';
-                                        echo '</td>';
-                                        echo '</tr>';                                        
-
                                     }
                                 }
                                 ?>
 
-                                <tr <?php echo helper_alternate_class() ?>>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+</div>
+
+<div class="col-md-12 col-xs-12">
+    <div class="space-10"></div>
+            <div class="widget-box widget-color-blue2">
+                <div class="widget-header widget-header-small">
+                    <h4 class="widget-title lighter">
+                        <i class="ace-icon fa fa-users"></i>
+                        <?php echo plugin_lang_get( 'user_info' ) ?>
+                    </h4>
+                </div>
+
+                <div class="widget-body">
+                    <div class="widget-main no-padding">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-condensed table-hover">
+                                <colgroup>
+                                    <col style="width:25%" />
+                                </colgroup>
+
+                                <tr>
                                     <th class="category" width="5%">
                                         <?php echo plugin_lang_get( 'account_telegram_prefs_associated_users_head' ) ?>
                                     </th>
@@ -130,8 +198,6 @@ telegrambot_print_menu_config( 'monitor_page' );
                     </div>
                 </div>
             </div>
-        </form>
-    </div>
 </div>
 
 <?php

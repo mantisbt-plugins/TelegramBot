@@ -38,27 +38,8 @@ $t_confirm_message = auth_get_current_user_id() == $f_user_id
 
 helper_ensure_confirmed( $t_confirm_message, plugin_lang_get( 'user_unlink_button' ) );
 
-# The same cleanup the /stop command does, only for another user: the chat keeps
-# working as an anonymous one and asks for a binding on the next message
-$t_telegram_user_id = telegram_user_get_id_by_user_id( $f_user_id );
-
-if( $t_telegram_user_id != 0 ) {
-    telegram_message_realatationship_delete( $t_telegram_user_id );
-    telegram_bot_user_mapping_delete( $f_user_id );
-    telegram_registration_complete( $t_telegram_user_id );
-
-    # the draft of an unfinished issue belongs to the user, not to the chat
-    plugin_config_delete( 'bug_data_draft', $f_user_id );
-    plugin_config_delete( 'bug_data_draft_chat_id', $f_user_id );
-    plugin_config_delete( 'bug_data_draft_message_id', $f_user_id );
-    plugin_config_delete( 'bug_data_draft_text_msg', $f_user_id );
-    plugin_config_delete( 'bug_data_draft_current_field_to_save', $f_user_id );
-
-    plugin_log_event( 'Telegram user id#' . $t_telegram_user_id . ' is unlinked from mantisbt user '
-            . user_get_username( $f_user_id ) . ' by ' . user_get_username( auth_get_current_user_id() ) );
-
-    telegram_session_send_message( $t_telegram_user_id, array( 'text' => plugin_lang_get( 'end_message' ) ) );
-}
+# The chat keeps working as an anonymous one and asks for a binding on the next message
+telegram_bot_user_unlink( $f_user_id );
 
 form_security_purge( 'telegram_user_unlink' );
 

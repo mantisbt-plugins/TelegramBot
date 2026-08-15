@@ -142,6 +142,73 @@ function user_is_associated_with_telegram( $p_mantis_user_id ) {
 }
 
 /**
+ * Release the binding between a MantisBT user and his telegram account, the way the
+ * /stop command does it - but without access to the chat, so that it also works for a
+ * lost telegram account, for an administrator and for a user being deleted.
+ *
+ * Notification preferences are kept: they are of use again once the user comes back.
+ *
+ * @param integer $p_user_id A valid user identifier.
+ * @param boolean $p_notify  Whether to tell the chat that it is unsubscribed.
+ * @return integer Telegram user id the account was linked to, 0 if there was no binding.
+ */
+function telegram_bot_user_unlink( $p_user_id, $p_notify = true ) {
+
+    $t_telegram_user_id = telegram_user_get_id_by_user_id( $p_user_id );
+
+    if( $t_telegram_user_id == 0 ) {
+        return 0;
+    }
+
+    telegram_message_realatationship_delete( $t_telegram_user_id );
+    telegram_bot_user_mapping_delete( $p_user_id );
+    telegram_registration_complete( $t_telegram_user_id );
+
+    # the draft of an unfinished issue belongs to the user, not to the chat
+    plugin_config_delete( 'bug_data_draft', $p_user_id );
+    plugin_config_delete( 'bug_data_draft_chat_id', $p_user_id );
+    plugin_config_delete( 'bug_data_draft_message_id', $p_user_id );
+    plugin_config_delete( 'bug_data_draft_text_msg', $p_user_id );
+    plugin_config_delete( 'bug_data_draft_current_field_to_save', $p_user_id );
+
+    plugin_log_event( 'Telegram user id#' . $t_telegram_user_id . ' is unlinked from mantisbt user ' . user_get_username( $p_user_id ) );
+
+    if( $p_notify ) {
+        telegram_session_send_message( $t_telegram_user_id, array( 'text' => plugin_lang_get( 'end_message' ) ) );
+    }
+
+    return $t_telegram_user_id;
+}
+
+/**
+ * Delete every plugin configuration option belonging to a user, called when the user
+ * account itself goes away: the core removes profiles, preferences and access levels,
+ * but plugin options in the config table are left behind.
+ *
+ * @param integer $p_user_id A valid user identifier.
+ * @return void
+ */
+function telegram_user_config_delete_all( $p_user_id ) {
+
+    $t_basename = plugin_get_current();
+
+    # An empty basename would turn the pattern into "plugin_%", deleting the options
+    # of every plugin - the caller is out of the plugin context and has nothing to do here
+    if( is_blank( $t_basename ) ) {
+        return;
+    }
+
+    $t_config_table = db_get_table( 'config' );
+
+    db_param_push();
+
+    $t_query = "DELETE FROM $t_config_table
+			WHERE user_id=" . db_param() . '
+			AND config_id LIKE ' . db_param();
+    db_query( $t_query, array( (int) $p_user_id, 'plugin_' . $t_basename . '_%' ) );
+}
+
+/**
  * Return the state of the registration a telegram user has started: the PIN code
  * issued to him and the id of the invitation the bot has sent.
  *

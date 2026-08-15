@@ -340,6 +340,7 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'EVENT_UPDATE_BUG_DATA' => 'telegram_message_skip_sending',
                                   'EVENT_UPDATE_BUG'      => 'telegram_message_update_bug',
                                   'EVENT_MENU_ACCOUNT'    => 'telegram_account_page_menu',
+                                  'EVENT_MANAGE_USER_DELETE' => 'telegram_user_deleted',
                                   'EVENT_MENU_MAIN_FRONT' => 'menu_main_front',
                                   //TODO: Delete realatationship
                                   //'EVENT_BUG_DELETED' => 'delete_realatationship_tgmessage',
@@ -441,6 +442,20 @@ class TelegramBotPlugin extends MantisPlugin {
             plugin_log_event( sprintf( 'Issue #%d updated', $p_existing_bug->id ) );
             telegram_message_generic( $p_existing_bug->id, 'updated', 'telegram_message_notification_title_for_action_bug_updated' );
         }
+    }
+
+    /**
+     * The core removes profiles, preferences and access levels of a deleted user, but
+     * neither the binding of this plugin nor its per user configuration options - the
+     * chat would stay in the list of connected users with no account behind it.
+     *
+     * @param string  $p_type_event Event name.
+     * @param integer $p_user_id    Id of the user being deleted.
+     * @return void
+     */
+    function telegram_user_deleted( $p_type_event, $p_user_id ) {
+        telegram_bot_user_unlink( $p_user_id );
+        telegram_user_config_delete_all( $p_user_id );
     }
 
     function telegram_account_page_menu( $p_type_event ) {

@@ -37,7 +37,7 @@ if( $f_is_confirmed ) {
                               'text'    => sprintf( plugin_lang_get( 'first_message' ), config_get( 'window_title' ) . ' ( ' . config_get( 'path' ) . ' )', ' ( ' . config_get( 'path' ) . plugin_page( 'account_telegram_prefs_page', TRUE ) . ' )'
                               ),
     ];
-    $t_result = RequestMantis::sendMessage( $data );
+    $t_result = \Longman\TelegramBot\Request::sendMessage( $data );
 
     $t_redirect_url = plugin_config_get( 'telegram_url' ) . plugin_config_get( 'bot_name' );
     echo '<div class="col-md-12 col-xs-12">';

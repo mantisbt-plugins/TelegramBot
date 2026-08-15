@@ -1,5 +1,5 @@
 <?php
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2024 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -25,14 +25,65 @@ telegrambot_print_menu_config( 'config_page' );
 
 <div class="col-md-12 col-xs-12">
     <div class="space-10"></div>
+    
+    <div class="well">
+        <p><i class="fa fa-info-circle"></i>
+            <?php echo plugin_lang_get( 'help_registration_bot_header' ) ?>
+        </p>
+        <p><?php echo sprintf(plugin_lang_get('help_registration_bot_message'), '<a href=' . plugin_config_get('bot_father_url') . ' target="_blank">' . plugin_config_get('bot_father_url') . '</a>') ?></p>
+    </div>
+    
     <div class="form-container">
         <form action="<?php echo plugin_page( 'config' ) ?>" method="post" enctype="multipart/form-data"> 
             <?php echo form_security_field( 'config' ) ?>
+            
             <div class="widget-box widget-color-blue2">
                 <div class="widget-header widget-header-small">
                     <h4 class="widget-title lighter">
                         <i class="ace-icon fa fa-cubes"></i>
-                        <?php echo plugin_lang_get( 'name_plugin_description_page' ) . ': ' . plugin_lang_get( 'config_title' ) ?>
+                        <?php echo plugin_lang_get( 'credential_config_title' ) ?>
+                    </h4>
+                </div>
+                
+                <div class="widget-body">
+                    <div class="widget-main no-padding">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-condensed table-hover">
+                                <colgroup>
+                                    <col style="width:25%" />
+                                </colgroup>
+
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <span class="required">*</span><?php echo ' ' . plugin_lang_get( 'config_bot_username' ) ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'config_bot_username_notice' ) ?></span>
+                                    </th>
+                                    <td class="center" colspan="1">
+                                        <textarea name="bot_username" id="bot_username" class="form-control" rows="1" required><?php echo plugin_config_get( 'bot_name' ) ?></textarea>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <span class="required">*</span><?php echo ' ' . plugin_lang_get( 'config_api_key' ) ?>
+                                    </th>
+                                    <td class="center" colspan="1"> 
+                                        <textarea name="api_key" id="api_key" class="form-control" rows="1" required><?php echo plugin_config_get( 'api_key' ) ?></textarea>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-10"></div>
+
+            <div class="widget-box widget-color-blue2">
+                <div class="widget-header widget-header-small">
+                    <h4 class="widget-title lighter">
+                        <i class="ace-icon fa fa-cubes"></i>
+                        <?php echo plugin_lang_get( 'connection_config_title' ) ?>
                     </h4>
                 </div>
 
@@ -44,63 +95,31 @@ telegrambot_print_menu_config( 'config_page' );
                                     <col style="width:25%" />
                                 </colgroup>
 
-                                <tr <?php echo helper_alternate_class() ?>>
-                                    <th class="category" width="5%">
-                                        <?php echo plugin_lang_get( 'help_registration_bot_header' ) ?>
-                                    </th>
-                                    <td class="left" colspan="1"> 
-
-                                        <p>
-                                            <?php echo sprintf( plugin_lang_get( 'help_registration_bot_message' ), '<a href=' . plugin_config_get( 'bot_father_url' ) . ' target="_blank">' . plugin_config_get( 'bot_father_url' ) . '</a>' ) ?>
-                                        </p>                                        
-
-                                    </td>
-                                </tr>
-
-                                <tr <?php echo helper_alternate_class() ?>>
-                                    <th class="category" width="5%">
-                                        <span class="required">*</span>
-                                        <?php echo plugin_lang_get( 'bot_name' ) ?>
-                                    </th>
-                                    <td class="center" colspan="1"> 
-                                        <textarea name="bot_name" id="bot_name" class="form-control" rows="1" required><?php echo plugin_config_get( 'bot_name' ) == NULL ? '' : plugin_config_get( 'bot_name' ) ?></textarea>
-                                    </td>
-                                </tr>
-
-                                <tr <?php echo helper_alternate_class() ?>>
-                                    <th class="category" width="5%">
-                                        <span class="required">*</span>
-                                        <?php echo plugin_lang_get( 'api_key' ) ?>
-                                    </th>
-                                    <td class="center" colspan="1"> 
-                                        <textarea name="api_key" id="api_key" class="form-control" rows="1" required><?php echo plugin_config_get( 'api_key' ) == NULL ? '' : plugin_config_get( 'api_key' ) ?></textarea>
-                                    </td>
-                                </tr>
-				
-				<tr <?php echo helper_alternate_class() ?>>
+                                <tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'time_out_server_response_header' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <input type="number" name="time_out_server_response" id="proxy_address" class="form-control" min="0" value="<?php echo plugin_config_get( 'time_out_server_response' ) == NULL ? '' : plugin_config_get( 'time_out_server_response' ) ?>">
+                                        <input type="number" name="time_out_server_response" id="proxy_address" class="form-control" min="0" value="<?php echo plugin_config_get( 'time_out_server_response' ) ?>">
                                     </td>
                                 </tr>
 				
 				<?php
-				$t_curl_version = curl_version();
+//				$t_curl_version = curl_version();
 //				$t_curl_version = '7.19.7';
-				if( $t_curl_version['version'] >= '7.21.7' ) { ?>
-					<tr <?php echo helper_alternate_class() ?>>
+				if( function_exists("curl_version") && curl_version()['version'] >= '7.21.7' ) { ?>
+					<tr>
 	                                    <th class="category" width="5%">
 						<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
+                                                <br><span class="small"><?php echo 'Current curl version='. curl_version()['version']  ?></span>
 	                                    </th>
 	                                    <td class="center" colspan="1"> 
-	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo plugin_config_get( 'proxy_address' ) == NULL ? '' : plugin_config_get( 'proxy_address' ) ?></textarea>
+	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo plugin_config_get( 'proxy_address' ) ?></textarea>
 	                                    </td>
 	                                </tr>
 				<?php				
 				} else { ?>
-						<tr <?php echo helper_alternate_class() ?>>
+						<tr>
 						    <th class="category" width="5%">
 							<?php echo plugin_lang_get( 'proxy_address_header' ) ?>
 						    </th>
@@ -111,7 +130,7 @@ telegrambot_print_menu_config( 'config_page' );
 					<?php
 				} ?>
 				
-				<tr <?php echo helper_alternate_class() ?>>
+				<tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'debug_connection_log_path_title' ) ?>
                                     </th>
@@ -120,7 +139,7 @@ telegrambot_print_menu_config( 'config_page' );
                                     </td>
                                 </tr>
 								
-				<tr <?php echo helper_alternate_class() ?>>
+				<tr>
                                     <th class="category" width="5%">
 					<?php echo plugin_lang_get( 'debug_connection_enabled' ) ?>
                                     </th>
@@ -131,22 +150,142 @@ telegrambot_print_menu_config( 'config_page' );
 					</label>
                                     </td>
                                 </tr>
-
-                                <tr>
-                                    <td class="center" colspan="2">
-                                        <input type="submit" class="button" value="<?php echo lang_get( 'change_configuration' ) ?>" />
-                                    </td>
-                                </tr>
-
                             </table>
-                            </form>
                         </div>
                     </div>
                 </div>
             </div>
-        </form>
+
+            <div class="space-10"></div>
+            
+            <div class="widget-box widget-color-blue2">
+                <div class="widget-header widget-header-small">
+                    <h4 class="widget-title lighter">
+                        <i class="ace-icon fa fa-cubes"></i>
+                        <?php echo plugin_lang_get( 'config_get_update_title' ) ?>
+                    </h4>
+                </div>
+                
+                <div class="widget-body">
+                    <div class="widget-main no-padding">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-condensed table-hover">
+                                <colgroup>
+                                    <col style="width:25%" />
+                                </colgroup>
+                                
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <?php echo plugin_lang_get('reinstall_webhook') ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'reinstall_webhook_notice' ) ?></span>
+                                    </th>
+                                    <td class="left" colspan="1">
+                                        <label><input type="radio" class="ace" name="reinstall_webhook" value="1" <?php echo( ON == (int)plugin_config_get('reinstall_webhook') ) ? 'checked="checked" ' : '' ?>/>
+                                            <span class="lbl padding-6"><?php echo 'Webhook' ?></span></label>
+                                        <label><input type="radio" class="ace" name="reinstall_webhook" value="0" <?php echo( OFF == (int)plugin_config_get('reinstall_webhook') ) ? 'checked="checked" ' : '' ?>/>
+                                            <span class="lbl padding-6"><?php echo 'Script' ?></span></label>
+                                    </td>
+                                </tr>
+                                
+                                <?php if( (int)plugin_config_get( 'reinstall_webhook' ) == ON ) { ?>
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <?php echo plugin_lang_get('use_bot_cert_is') ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'cert_help' ) ?></span>
+                                    </th>
+                                    <td class="left" colspan="1">
+                                        <label><input type="radio" class="ace" name="use_cert" value="1" <?php echo( ON == (int)plugin_config_get('use_cert') ) ? 'checked="checked" ' : '' ?>/>
+                                            <span class="lbl padding-6"><?php echo lang_get('yes') ?></span></label>
+                                        <label><input type="radio" class="ace" name="use_cert" value="0" <?php echo( OFF == (int)plugin_config_get('use_cert') ) ? 'checked="checked" ' : '' ?>/>
+                                            <span class="lbl padding-6"><?php echo lang_get('no') ?></span></label>
+                                    </td>
+                                </tr>
+                                
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <?php echo plugin_lang_get( 'bot_cert' ) ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'bot_cert_help' ) ?></span>
+                                        <br><span class="small"><a href=https://core.telegram.org/bots/self-signed target="_blank">https://core.telegram.org/bots/self-signed</a></span>
+                                    </th>
+                                    <td class="left" colspan="1"> 
+
+                                        <?php
+                                        if( plugin_config_get( 'bot_cert' ) != '' ) {
+                                            echo '<pre><code>' . plugin_config_get('bot_cert') . '</code></pre>';
+                                        }
+                                        ?>
+                                        
+                                        <input type= "file" name="bot_cert_file" id="bot_cert_file" accept=".pem,.crt,.cer">
+                                    </td>
+                                </tr>
+                                <?php  } else { ?>
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <?php echo ' ' . plugin_lang_get( 'cli_g_path' ) ?>
+                                        <?php
+                                        # $g_defaulted_path is FALSE when $g_path is set in config_inc.php, TRUE when the
+                                        # core derived it from the request headers - in CLI that guess becomes localhost,
+                                        # so it must not be shown as the address the script is going to use.
+                                        global $g_defaulted_path;
+
+                                        if( $g_defaulted_path ) {
+                                                $t_path_notice      = plugin_lang_get( 'cli_g_path_notice' );
+                                                $t_path_placeholder = '';
+                                        } else {
+                                                $t_path_notice      = plugin_lang_get( 'cli_g_path_global_notice' );
+                                                $t_path_placeholder = config_get_global( 'path' );
+                                        }
+                                        ?>
+                                        <br><span class="small"><?php echo $t_path_notice ?></span>
+                                    </th>
+                                    <td class="center" colspan="1">
+                                        <textarea name="cli_g_path" id="cli_g_path" class="form-control" rows="1" placeholder="<?php echo string_attribute( $t_path_placeholder ) ?>"><?php echo plugin_config_get( 'cli_g_path' ) ?></textarea>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="category" width="5%">
+					<?php echo plugin_lang_get( 'path_to_crontab_script' ) ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'path_to_crontab_script_notice' ) ?></span>
+                                    </th>
+                                    <td class="left" colspan="1"><?php echo dirname( __FILE__, 2 ) . '/scripts/telegram_get_updates.php' ?></td>
+                                </tr>
+
+                                <tr>
+                                    <th class="category" width="5%">
+					<?php echo plugin_lang_get( 'get_updates_timeout_header' ) ?>
+                                    </th>
+                                    <td class="center" colspan="1">
+                                        <input type="number" name="get_updates_timeout" id="get_updates_timeout" class="form-control" min="0" value="<?php echo plugin_config_get( 'get_updates_timeout' ) ?>">
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th class="category" width="5%">
+					<?php echo plugin_lang_get( 'get_updates_run_time_header' ) ?>
+                                    </th>
+                                    <td class="center" colspan="1">
+                                        <input type="number" name="get_updates_run_time" id="get_updates_run_time" class="form-control" min="0" value="<?php echo plugin_config_get( 'get_updates_run_time' ) ?>">
+                                    </td>
+                                </tr>
+
+                                <?php  } ?>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-10"></div>
+
+            <div class="widget-box widget-color-blue2">
+                    <div class="widget-toolbox center clearfix">
+                        <input type="submit" class="btn btn-primary btn-white btn-round" value="<?php echo lang_get('change_configuration') ?>" />
+                    </div>
+
+            </div>
+            </form>
+        </div>
     </div>
-</div>
 
 <?php
 layout_page_end();

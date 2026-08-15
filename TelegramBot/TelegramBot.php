@@ -1,6 +1,6 @@
 <?php
 
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2024 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
@@ -22,9 +22,9 @@ class TelegramBotPlugin extends MantisPlugin {
         $this->name        = 'TelegramBot';
         $this->description = plugin_lang_get( 'description' );
 
-        $this->version  = '1.5.0';
+        $this->version  = '2.0.0-dev';
         $this->requires = array(
-                                  'MantisCore' => '2.14.0',
+                                  'MantisCore' => '2.26.0',
         );
 
         $this->author  = 'Grigoriy Ermolaev';
@@ -56,13 +56,13 @@ class TelegramBotPlugin extends MantisPlugin {
         }
 
         return array(
-                                  // version 0.0.1
+                                  // version 0.0.1 (schema 0)
                                   array( 'CreateTableSQL', array( plugin_table( 'user_relationship' ), "
                                       mantis_user_id    I   $t_notnull  PRIMARY,
                                       telegram_user_id  I   $t_notnull",
                                                                                       $t_table_options
                                                             ) ),
-                                  // version 1.3.0
+                                  // version 1.3.0 (schema 1)
                                   array( 'CreateTableSQL', array( plugin_table( 'message_relationship' ), "
                                       id                I   $t_notnull  AUTOINCREMENT   PRIMARY,                                     
                                       bug_id            I   UNSIGNED    $t_notnull,
@@ -70,13 +70,35 @@ class TelegramBotPlugin extends MantisPlugin {
                                       msg_id            I   UNSIGNED    $t_notnull",
                                                                                       $t_table_options
                                                             ) ),
+                                  // version 1.3.0 (schema 2)                          
                                   array( 'CreateIndexSQL', array( 'idx_msgid_chatid', plugin_table( 'message_relationship' ), array( 'msg_id', 'chat_id' ) ) ),
+                                  // version 1.3.0 (schema 3)
                                   array( 'CreateIndexSQL', array( 'idx_chatid', plugin_table( 'message_relationship' ), 'chat_id' ) ),
+                                  // version 1.5.1 (schema 4)
+                                  // AlterColumnSQL, not ChangeTableSQL: since ADOdb 5.22.8 (MantisBT 2.27.3)
+                                  // ChangeTableSQL returns an empty array for a string field definition, which
+                                  // MantisBT reports as ERROR_PLUGIN_UPGRADE_FAILED. Up to ADOdb 5.22.7 the
+                                  // string definition was passed to alterColumnSql() anyway, so the resulting
+                                  // schema is the same as on the installations upgraded before.
+                                  array( 'AlterColumnSQL', array( plugin_table( "user_relationship" ), "
+                                        telegram_user_id  N   $t_notnull
+                                " ) ),
+//                                  // version 2.0.0 (schema 5)
+//                                  array( 'CreateTableSQL', array( plugin_table( 'pin_codes' ), "
+//                                      telegram_user_id  N   UNSIGNED    $t_notnull  PRIMARY,
+//                                      pin_code          I(4)    UNSIGNED    $t_notnull,
+//                                      timestamp         I   UNSIGNED    $t_notnull DEFAULT '1'",
+//                                                                                      $t_table_options
+//                                                            ) ),
+//                                  // version 2.0.0 (schema 6)
+//                                  array( 'CreateIndexSQL', array( 'idx_t_uid_pin', plugin_table( 'pin_codes' ), array( 'telegram_user_id', 'pin_code' ) ) ),
+//                                  // version 2.0.0 (schema 7)
+//                                  array( 'CreateIndexSQL', array( 'idx_timestamp', plugin_table( 'pin_codes' ), 'timestamp' ) ),
         );
     }
 
     function init() {
-        require_once __DIR__ . '/api/vendor/autoload.php';
+        require_once 'api/vendor/autoload.php';
         require_once 'core/TelegramBot_bug_api.php';
         require_once 'core/TelegramBot_authentication_api.php';
         require_once 'core/TelegramBot_user_api.php';
@@ -86,23 +108,58 @@ class TelegramBotPlugin extends MantisPlugin {
         require_once 'core/TelegramBot_message_api.php';
         require_once 'core/TelegramBot_message_format_api.php';
 	require_once 'core/TelegramBot_menu_api.php';
-
-        global $g_skip_sending_bugnote, $g_account_telegram_menu_active;
+        require_once 'core/TelegramBot_InlineKeyboardCalendar_api.php';
+//        require_once 'core/cfdefs/TelegramBot_cfdef_standard.php';
+        require_once 'core/classes/TelegrambotActions.class.php';
+        require_once 'core/TelegramBot_custom_field_api.php';
+        require_once 'core/TelegramBot_broadcast_api.php';
+        
+        global $g_skip_sending_bugnote, $g_account_telegram_menu_active, $g_telegram_callback_alert;
         $g_skip_sending_bugnote         = FALSE;
         $g_account_telegram_menu_active = FALSE;
+        $g_telegram_callback_alert      = array();
+        
+        #The session is built on every page load, a broken connection setting
+        #(api_url, proxy_address) must not take down the whole MantisBT UI
+        try {
+            telegram_session_start();
+        } catch( Exception $t_error ) {
+            plugin_log_event( 'ERROR! Telegram session start failed: ' . $t_error->getMessage() );
+        }
     }
 
     function config() {
         return array(
-                                  'api_token'                                 => NULL,
-                                  'bot_name'                                  => NULL,
-                                  'bot_father_url'                            => 'https://t.me/BotFather',
-                                  'telegram_url'                              => 'tg://resolve?domain=',
-                                  'download_path'                             => '/tmp/',
-				  'proxy_address'				=> '',
+                                  'api_key'                                     => '',
+                                  'bot_name'                                    => '',
+                                  'use_cert'                                    => OFF,
+                                  'bot_cert'                                    => '',
+                                  'reinstall_webhook'                           => ON,
+                                  'bot_father_url'                              => 'https://t.me/BotFather',
+                                  'telegram_url'                                => 'tg://resolve?domain=',
+                                  'download_path'                               => '/tmp/',
+				  'proxy_address'                               => '',
 				  'time_out_server_response'			=> 30,
 				  'debug_connection_log_path'			=> '/tmp/TelegramBot_debug.log',
 				  'debug_connection_enabled'			=> OFF,
+				  # long polling: seconds Telegram holds the connection while there are no updates
+				  'get_updates_timeout'				=> 25,
+				  # long polling: seconds a single run of telegram_get_updates.php works (0 - poll once and exit)
+				  'get_updates_run_time'			=> 55,
+				  # long polling: timestamp of the last telegram_get_updates.php start, set by the script itself
+				  'get_updates_last_run'			=> 0,
+				  # long polling: id of the next expected update, kept by the script between runs
+				  'get_updates_offset'				=> 0,
+                                  'bug_data_draft'                              => '',
+                                  'bug_data_draft_chat_id'                      => '',
+                                  'bug_data_draft_message_id'                   => '',
+                                  'bug_data_draft_current_field_to_save'        => '',
+                                  'cli_g_path'                                  => '',
+                                  'broadcast_enabled'                           => OFF,
+                                  'broadcast_send_threshold'                    => ADMINISTRATOR,
+                                  # per-user broadcast permissions: array( user_id => array( project_id, ... ) )
+                                  'broadcast_grants'                            => array(),
+                                  'api_url'                                     => 'https://api.telegram.org',
                                   /**
                                    * The following two config options allow you to control who should get email
                                    * notifications on different actions/statuses.  The first option
@@ -244,22 +301,28 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'EVENT_BUGNOTE_ADD'     => 'telegram_message_bugnote_add',
                                   'EVENT_UPDATE_BUG_DATA' => 'telegram_message_skip_sending',
                                   'EVENT_UPDATE_BUG'      => 'telegram_message_update_bug',
-                                  'EVENT_MENU_ACCOUNT'    => 'telegram_account_page_menu'
+                                  'EVENT_MENU_ACCOUNT'    => 'telegram_account_page_menu',
+                                  'EVENT_MENU_MAIN_FRONT' => 'menu_main_front',
+                                  //TODO: Delete realatationship
+                                  //'EVENT_BUG_DELETED' => 'delete_realatationship_tgmessage',
         );
     }
     
     public function errors() {
         return array(
-                                  'BAD_REQUEST' => plugin_lang_get( 'BAD_REQUEST' ),
+                                  'BAD_REQUEST'                 => plugin_lang_get( 'BAD_REQUEST' ),
+                                  'ERROR_CERT_FILE_NOT_FOUND'   => plugin_lang_get( 'ERROR_CERT_FILE_NOT_FOUND' ),
+                                  'ERROR_TG_SESSION_NOT_INITIALIZED'    => plugin_lang_get('ERROR_TG_SESSION_NOT_INITIALIZED'),
+                                  'ERROR_TG_GET_UPDATE'                 => plugin_lang_get('ERROR_TG_GET_UPDATE'),
         );
     }
 
     function telegram_message_bug_added( $p_type_event, $p_issue, $p_issue_id ) {
-        plugin_log_event( sprintf( 'Issue #%d reported', $p_bug_id ) );
+        plugin_log_event( sprintf( 'Issue #%d reported', $p_issue_id ) );
         telegram_message_generic( $p_issue_id, 'new', 'telegram_message_notification_title_for_action_bug_submitted' );
     }
 
-    function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id ) {
+    function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id, $files ) {
         global $g_skip_sending_bugnote;
 
         if( $g_skip_sending_bugnote == TRUE ) {
@@ -348,5 +411,20 @@ class TelegramBotPlugin extends MantisPlugin {
             return '<a href=' . plugin_page( 'account_telegram_prefs_page' ) . '>' . plugin_lang_get( 'account_telegram_prefs_page_header' ) . '</a>';
         }
     }
+    
+    function menu_main_front() {
+        if( !auth_is_user_authenticated() || !telegram_broadcast_can_send( auth_get_current_user_id() ) ) {
+            return array();
+        }
 
+        return array(
+                                  array(
+                                                            'url'          => plugin_page( 'broadcast_message_page' ),
+                                                            'title'        => plugin_lang_get( 'menu_main_broadcast_message_page' ),
+                                                            # visibility is already decided by telegram_broadcast_can_send()
+                                                            'access_level' => ANYBODY,
+                                                            'icon'         => 'fa-brands fa-telegram'
+                                  ),
+        );
+    }
 }

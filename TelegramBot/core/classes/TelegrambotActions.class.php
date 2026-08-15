@@ -1,0 +1,108 @@
+<?php
+
+# Copyright (c) 2023 Grigoriy Ermolaev (igflocal@gmail.com)
+# TelegramBot for MantisBT is free software: 
+# you can redistribute it and/or modify it under the terms of the GNU
+# General Public License as published by the Free Software Foundation, 
+# either version 2 of the License, or (at your option) any later version.
+#
+# TelegramBot plugin for for MantisBT is distributed in the hope 
+# that it will be useful, but WITHOUT ANY WARRANTY; without even the 
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Customer management plugin for MantisBT.  
+# If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Description of TelegramBot_menu
+ *
+ * @author g.ermolaev
+ */
+class TelegrambotActions {
+
+        const ACTION_SELECT_TAG         = 'action_select';
+        const STOP_REPORT_ISSUE_TAG     = 'stop_report_issue';
+        const ADD_COMMENT_TAG           = 'add_comment';
+        const REPORT_BUG_TAG            = 'rb';
+        const GET_PROJECT               = 'gp';
+        const SET_PROJECT               = 'sp';
+        const SET_CATEGORY              = 'sc';
+        const SET_REPRODUCIBILITY       = 'sreproducibility';
+        const SET_ETA                   = 'seta';
+        const SET_SEVERITY              = 'sseverity';
+        const SET_PRIORITY              = 'spriority';
+        const SET_STATUS                = 'sstatus';
+        const SET_RESOLUTION            = 'sresolution';
+        # Leaf through the calendar of the due date, the value is the date shown
+        const GET_DUE_DATE              = 'gduedate';
+        const SET_DUE_DATE              = 'sduedate';
+        const SET_PROFILE               = 'splatform';
+        const SET_PRODUCT_VERSION       = 'spversion';
+        const SET_TARGET_VERSION        = 'stargetv';
+        const SET_HANDLER               = 'shandler';
+        # Skip an optional standard field of the draft, the value is the field name
+        const SKIP_FIELD                = 'skipf';
+        # Marker used instead of a value to skip a field answered with a keyboard of its own
+        const SKIP_VALUE                = 'skip';
+        # Go back to the question answered last, the answer is asked for again
+        const BACK_FIELD                = 'back';
+        # Create the issue out of the draft as it is
+        const CREATE_ISSUE              = 'crt';
+        # Go on with the optional fields of the draft instead of creating the issue
+        const FILL_OPTIONAL             = 'opt';
+        const GET_CUSTOM_FIELD          = 'gcf';
+        const SET_CUSTOM_FIELD          = 'scf';
+        const SKIP_CUSTOM_FIELD         = 'skipcf';
+        const TOGGLE_CUSTOM_FIELD       = 'tcf';
+        const END_CUSTOM_FIELD          = 'endcf';
+        # Marker used instead of a value index to request the default value of a custom field
+        const CUSTOM_FIELD_DEFAULT_MARK = 'd';
+
+        private $text = array();
+        private $buttons;
+
+        public function __construct() {
+                $this->buttons = array();
+        }
+
+        public function setText($p_text) {
+                $this->text = $p_text;
+        }
+
+        public function getText() {
+                return $this->text;
+        }
+
+        public function addButton(Button $p_buttons) {
+                
+        }
+
+        public function getButtons() {
+                return $this->buttons;
+        }
+
+}
+
+class Button {
+        private $text = '';
+        private $action = '';
+}
+
+
+class TelegramBotChat {
+        private $telegramUserId = '';
+        private $mantisUserId   = '';
+        
+        private $messages       = [];
+        private $buttons        = [];
+        
+        
+
+
+        public function setMessage( TelegramMessage $p_message ) {
+                
+        }
+        
+}

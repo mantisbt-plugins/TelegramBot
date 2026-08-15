@@ -261,11 +261,11 @@ function keyboard_duedate_get() {
     return $keyboard->getKeyboard();
 }
 
-function keyboard_profile_option_list( $p_user_id, $p_select_id = 0, array $p_profiles = null ) {
+function keyboard_profile_option_list( $p_user_id, $p_select_id = 0, array $p_profiles = array() ) {
 	if( 0 == $p_select_id ) {
 		$p_select_id = profile_get_default( $p_user_id );
 	}
-	if( $p_profiles != null ) {
+	if( $p_profiles ) {
 		$t_profiles = $p_profiles;
 	} else {
 		$t_profiles = profile_get_all_for_user( $p_user_id );

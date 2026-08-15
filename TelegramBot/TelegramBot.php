@@ -112,13 +112,20 @@ class TelegramBotPlugin extends MantisPlugin {
 //        require_once 'core/cfdefs/TelegramBot_cfdef_standard.php';
         require_once 'core/classes/TelegrambotActions.class.php';
         require_once 'core/TelegramBot_custom_field_api.php';
+        require_once 'core/TelegramBot_broadcast_api.php';
         
         global $g_skip_sending_bugnote, $g_account_telegram_menu_active, $g_telegram_callback_alert;
         $g_skip_sending_bugnote         = FALSE;
         $g_account_telegram_menu_active = FALSE;
         $g_telegram_callback_alert      = array();
         
-        telegram_session_start();
+        #The session is built on every page load, a broken connection setting
+        #(api_url, proxy_address) must not take down the whole MantisBT UI
+        try {
+            telegram_session_start();
+        } catch( Exception $t_error ) {
+            plugin_log_event( 'ERROR! Telegram session start failed: ' . $t_error->getMessage() );
+        }
     }
 
     function config() {
@@ -148,7 +155,10 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'bug_data_draft_message_id'                   => '',
                                   'bug_data_draft_current_field_to_save'        => '',
                                   'cli_g_path'                                  => '',
-                                  'broadcast_send_threshold'                    => 'Administrator',
+                                  'broadcast_enabled'                           => OFF,
+                                  'broadcast_send_threshold'                    => ADMINISTRATOR,
+                                  # per-user broadcast permissions: array( user_id => array( project_id, ... ) )
+                                  'broadcast_grants'                            => array(),
                                   'api_url'                                     => 'https://api.telegram.org',
                                   /**
                                    * The following two config options allow you to control who should get email
@@ -403,11 +413,16 @@ class TelegramBotPlugin extends MantisPlugin {
     }
     
     function menu_main_front() {
+        if( !auth_is_user_authenticated() || !telegram_broadcast_can_send( auth_get_current_user_id() ) ) {
+            return array();
+        }
+
         return array(
                                   array(
                                                             'url'          => plugin_page( 'broadcast_message_page' ),
                                                             'title'        => plugin_lang_get( 'menu_main_broadcast_message_page' ),
-                                                            'access_level' => plugin_config_get( 'broadcast_send_threshold' ),
+                                                            # visibility is already decided by telegram_broadcast_can_send()
+                                                            'access_level' => ANYBODY,
                                                             'icon'         => 'fa-brands fa-telegram'
                                   ),
         );

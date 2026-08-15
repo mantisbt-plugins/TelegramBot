@@ -214,7 +214,11 @@ $s_plugin_TelegramBot_monitor_page_pending_update_count = 'Количество 
 $s_plugin_TelegramBot_monitor_page_last_error_date = 'Дата последней ошибки, которая произошла при попытке доставить обновление через webhook';
 $s_plugin_TelegramBot_monitor_page_last_error_message = 'Сообщение об ошибке для самой последней доставки, которая произошла при попытке доставить обновление через webhook';
 $s_plugin_TelegramBot_monitor_page_is_self_signed_cert = 'Используется самоподписанный сертификат';
-$s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Данные запрашиваются через API Telegram при каждом обновлении страницы.'; 
+$s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Данные запрашиваются через API Telegram при каждом обновлении страницы.';
+$s_plugin_TelegramBot_monitor_page_telegram_user_id = 'Идентификатор пользователя Telegram';
+$s_plugin_TelegramBot_monitor_page_no_associated_users = 'Ни один пользователь ещё не привязал свой аккаунт.';
+$s_plugin_TelegramBot_user_unlink_button = 'Отвязать';
+$s_plugin_TelegramBot_user_unlink_confirm = 'Отвязать аккаунт Telegram у пользователя %1$s? Чтобы продолжить пользоваться ботом, ему придётся привязать аккаунт заново.';
 $s_plugin_TelegramBot_command_not_found = 'Команда не найдена.';
 
 $s_plugin_TelegramBot_menu_main_broadcast_message_page = 'Отправить сообщение';

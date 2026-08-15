@@ -211,7 +211,11 @@ $s_plugin_TelegramBot_monitor_page_pending_update_count = 'Número de mensajes a
 $s_plugin_TelegramBot_monitor_page_last_error_date = 'Fecha del error más reciente que ocurrió al intentar entregar una actualización a través de webhook';
 $s_plugin_TelegramBot_monitor_page_last_error_message = 'Mensaje de error para el error más reciente que ocurrió al intentar entregar una actualización a través de webhook';
 $s_plugin_TelegramBot_monitor_page_is_self_signed_cert = 'Se utiliza un certificado autofirmado';
-$s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Los datos se solicitan a través de la API de Telegram cada vez que se actualiza la página.'; 
+$s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Los datos se solicitan a través de la API de Telegram cada vez que se actualiza la página.';
+$s_plugin_TelegramBot_monitor_page_telegram_user_id = 'Identificador de usuario de Telegram';
+$s_plugin_TelegramBot_monitor_page_no_associated_users = 'Ningún usuario ha enlazado su cuenta todavía.';
+$s_plugin_TelegramBot_user_unlink_button = 'Desenlazar';
+$s_plugin_TelegramBot_user_unlink_confirm = '¿Desenlazar la cuenta de Telegram del usuario %1$s? Para seguir usando el bot tendrá que enlazarla de nuevo.'; 
 $s_plugin_TelegramBot_command_not_found = 'Comando no encontrado.';
 
 $s_plugin_TelegramBot_BAD_REQUEST = 'ERROR EN EL CUERPO DE LA SOLICITUD.';

@@ -177,23 +177,45 @@ telegrambot_print_menu_config( 'monitor_page' );
                                     <th class="category" width="5%">
                                         <?php echo plugin_lang_get( 'account_telegram_prefs_associated_users_head' ) ?>
                                     </th>
-                                    <td class="left" colspan="1"> 
+                                    <td class="left" colspan="1">
 
-                                        <p>
-                                            <?php
-                                            $t_associated_user_ids = telegram_bot_associated_all_users_get();
-                                            foreach( $t_associated_user_ids as $t_user_id ) {
-                                                echo user_get_field( $t_user_id, 'username' ) . '</br>';
-                                            }
+                                        <?php
+                                        $t_associated_user_ids = telegram_bot_associated_all_users_get();
+
+                                        if( empty( $t_associated_user_ids ) ) {
+                                            echo plugin_lang_get( 'monitor_page_no_associated_users' );
+                                        } else {
                                             ?>
-                                        </p>                                        
+                                            <table class="table table-condensed">
+                                                <tr>
+                                                    <th><?php echo lang_get( 'username' ) ?></th>
+                                                    <th><?php echo plugin_lang_get( 'monitor_page_telegram_user_id' ) ?></th>
+                                                    <th></th>
+                                                </tr>
+                                                <?php foreach( $t_associated_user_ids as $t_user_id ) { ?>
+                                                    <tr>
+                                                        <td><?php echo string_display_line( user_get_field( $t_user_id, 'username' ) ) ?></td>
+                                                        <td><?php echo telegram_user_get_id_by_user_id( $t_user_id ) ?></td>
+                                                        <td>
+                                                            <form method="post" action="<?php echo plugin_page( 'user_unlink' ) ?>">
+                                                                <?php echo form_security_field( 'telegram_user_unlink' ) ?>
+                                                                <input type="hidden" name="user_id" value="<?php echo $t_user_id ?>" />
+                                                                <input type="submit" class="btn btn-sm btn-primary btn-white btn-round"
+                                                                       value="<?php echo plugin_lang_get( 'user_unlink_button' ) ?>" />
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                <?php } ?>
+                                            </table>
+                                            <?php
+                                        }
+                                        ?>
 
                                     </td>
                                 </tr>
 
 
                             </table>
-                            </form>
                         </div>
                     </div>
                 </div>

@@ -214,7 +214,11 @@ $s_plugin_TelegramBot_monitor_page_pending_update_count = 'The number of message
 $s_plugin_TelegramBot_monitor_page_last_error_date = 'Date for the most recent error that happened when trying to deliver an update via webhook';
 $s_plugin_TelegramBot_monitor_page_last_error_message = 'Error message for the most recent error that happened when trying to deliver an update via webhook';
 $s_plugin_TelegramBot_monitor_page_is_self_signed_cert = 'A self-signed certificate is used';
-$s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Data is requested via the Telegram API every time the page is refreshed.'; 
+$s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Data is requested via the Telegram API every time the page is refreshed.';
+$s_plugin_TelegramBot_monitor_page_telegram_user_id = 'Telegram user id';
+$s_plugin_TelegramBot_monitor_page_no_associated_users = 'No user has linked his account yet.';
+$s_plugin_TelegramBot_user_unlink_button = 'Unlink';
+$s_plugin_TelegramBot_user_unlink_confirm = 'Unlink the Telegram account of user %1$s? The user will have to link it again to keep using the bot.';
 $s_plugin_TelegramBot_command_not_found = 'Command not found.';
 
 $s_plugin_TelegramBot_menu_main_broadcast_message_page = 'Send message';

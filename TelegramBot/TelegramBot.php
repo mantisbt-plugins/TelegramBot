@@ -12,8 +12,24 @@
 # See the GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Customer management plugin for MantisBT.  
+# along with Customer management plugin for MantisBT.
 # If not, see <http://www.gnu.org/licenses/>.
+
+# Ways to link a Telegram account to a MantisBT one, see the 'registration_method' config option.
+# The link carries the telegram user id to the registred page, the PIN code goes the other way
+# round - the bot shows it in the chat and the user types it in his account preferences, which
+# is the only method that works when MantisBT is not reachable from the user's phone.
+define( 'TELEGRAM_REGISTRATION_LINK', 0 );
+define( 'TELEGRAM_REGISTRATION_PIN', 1 );
+define( 'TELEGRAM_REGISTRATION_BOTH', 2 );
+
+# Seconds a PIN code stays valid
+define( 'TELEGRAM_PIN_CODE_TTL', 15 * 60 );
+
+# Seconds the registration state is kept: the PIN code inside it expires much earlier,
+# but the id of the invitation is still needed to remove that message from the chat when
+# the user follows the link later. Telegram lets a bot delete its own message for 48 hours.
+define( 'TELEGRAM_REGISTRATION_STATE_TTL', 48 * 60 * 60 );
 
 class TelegramBotPlugin extends MantisPlugin {
 
@@ -83,17 +99,37 @@ class TelegramBotPlugin extends MantisPlugin {
                                   array( 'AlterColumnSQL', array( plugin_table( "user_relationship" ), "
                                         telegram_user_id  N   $t_notnull
                                 " ) ),
-//                                  // version 2.0.0 (schema 5)
-//                                  array( 'CreateTableSQL', array( plugin_table( 'pin_codes' ), "
-//                                      telegram_user_id  N   UNSIGNED    $t_notnull  PRIMARY,
-//                                      pin_code          I(4)    UNSIGNED    $t_notnull,
-//                                      timestamp         I   UNSIGNED    $t_notnull DEFAULT '1'",
-//                                                                                      $t_table_options
-//                                                            ) ),
-//                                  // version 2.0.0 (schema 6)
-//                                  array( 'CreateIndexSQL', array( 'idx_t_uid_pin', plugin_table( 'pin_codes' ), array( 'telegram_user_id', 'pin_code' ) ) ),
-//                                  // version 2.0.0 (schema 7)
-//                                  array( 'CreateIndexSQL', array( 'idx_timestamp', plugin_table( 'pin_codes' ), 'timestamp' ) ),
+                                  // version 2.0.0 (schema 5)
+                                  // One PIN code per telegram user (hence the primary key), looked up
+                                  // by code when the user enters it in his account preferences.
+                                  // N without a size is DECIMAL(10,0) - too narrow for a telegram user
+                                  // id, which the API defines as fitting into 52 bits
+                                  array( 'CreateTableSQL', array( plugin_table( 'pin_codes' ), "
+                                      telegram_user_id  N(16)   UNSIGNED    $t_notnull  PRIMARY,
+                                      pin_code          I   UNSIGNED    $t_notnull,
+                                      timestamp         I   UNSIGNED    $t_notnull DEFAULT '1'",
+                                                                                      $t_table_options
+                                                            ) ),
+                                  // version 2.0.0 (schema 6)
+                                  // Unique: a code must identify exactly one telegram user
+                                  array( 'CreateIndexSQL', array( 'idx_pin_code', plugin_table( 'pin_codes' ), 'pin_code', array( 'UNIQUE' ) ) ),
+                                  // version 2.0.0 (schema 7)
+                                  // Schema 4 widened the column from I to N, which stops at DECIMAL(10,0):
+                                  // enough for the ids issued so far, one digit short of the 52 bits the
+                                  // Telegram API allows
+                                  array( 'AlterColumnSQL', array( plugin_table( "user_relationship" ), "
+                                        telegram_user_id  N(16)   $t_notnull
+                                " ) ),
+                                  // version 2.0.0 (schema 8)
+                                  array( 'AlterColumnSQL', array( plugin_table( "message_relationship" ), "
+                                        chat_id  N(16)   UNSIGNED    $t_notnull
+                                " ) ),
+                                  // version 2.0.0 (schema 9)
+                                  // Id of the invitation the bot sent to an unregistred user, so that
+                                  // the message can be removed from the chat once the accounts are linked
+                                  array( 'AddColumnSQL', array( plugin_table( 'pin_codes' ), "
+                                        message_id  I   UNSIGNED    $t_notnull DEFAULT '0'
+                                " ) ),
         );
     }
 
@@ -114,10 +150,9 @@ class TelegramBotPlugin extends MantisPlugin {
         require_once 'core/TelegramBot_custom_field_api.php';
         require_once 'core/TelegramBot_broadcast_api.php';
         
-        global $g_skip_sending_bugnote, $g_account_telegram_menu_active, $g_telegram_callback_alert;
-        $g_skip_sending_bugnote         = FALSE;
-        $g_account_telegram_menu_active = FALSE;
-        $g_telegram_callback_alert      = array();
+        global $g_skip_sending_bugnote, $g_telegram_callback_alert;
+        $g_skip_sending_bugnote    = FALSE;
+        $g_telegram_callback_alert = array();
         
         #The session is built on every page load, a broken connection setting
         #(api_url, proxy_address) must not take down the whole MantisBT UI
@@ -135,6 +170,9 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'use_cert'                                    => OFF,
                                   'bot_cert'                                    => '',
                                   'reinstall_webhook'                           => ON,
+                                  # how a telegram account is linked to a MantisBT one:
+                                  # TELEGRAM_REGISTRATION_LINK / _PIN / _BOTH
+                                  'registration_method'                         => TELEGRAM_REGISTRATION_LINK,
                                   'bot_father_url'                              => 'https://t.me/BotFather',
                                   'telegram_url'                                => 'tg://resolve?domain=',
                                   'download_path'                               => '/tmp/',
@@ -314,6 +352,9 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'ERROR_CERT_FILE_NOT_FOUND'   => plugin_lang_get( 'ERROR_CERT_FILE_NOT_FOUND' ),
                                   'ERROR_TG_SESSION_NOT_INITIALIZED'    => plugin_lang_get('ERROR_TG_SESSION_NOT_INITIALIZED'),
                                   'ERROR_TG_GET_UPDATE'                 => plugin_lang_get('ERROR_TG_GET_UPDATE'),
+                                  'ERROR_TG_PIN_CODE_INVALID'           => plugin_lang_get('ERROR_TG_PIN_CODE_INVALID'),
+                                  'ERROR_TG_PIN_CODE_GENERATE'          => plugin_lang_get('ERROR_TG_PIN_CODE_GENERATE'),
+                                  'ERROR_TG_USER_ALREADY_ASSOCIATED'    => plugin_lang_get('ERROR_TG_USER_ALREADY_ASSOCIATED'),
         );
     }
 
@@ -403,13 +444,19 @@ class TelegramBotPlugin extends MantisPlugin {
 
     function telegram_account_page_menu( $p_type_event ) {
 
+        # One <li> per returned link, the core marks the active one by the page name
+        $t_items = array(
+                                  '<a href=' . plugin_page( 'account_telegram_prefs_page' ) . '>' . plugin_lang_get( 'account_telegram_prefs_page_header' ) . '</a>',
+        );
 
-        global $g_account_telegram_menu_active;
-        if( $g_account_telegram_menu_active == TRUE ) {
-            return '</li><li class="active"><a href=' . plugin_page( 'account_telegram_prefs_page' ) . '>' . plugin_lang_get( 'account_telegram_prefs_page_header' ) . '</a></li><li>';
-        } else {
-            return '<a href=' . plugin_page( 'account_telegram_prefs_page' ) . '>' . plugin_lang_get( 'account_telegram_prefs_page_header' ) . '</a>';
+        # Entering a PIN code only makes sense while the account is not linked yet
+        if( TELEGRAM_REGISTRATION_LINK != (int)plugin_config_get( 'registration_method' )
+                && !user_is_associated_with_telegram( auth_get_current_user_id() )
+        ) {
+            $t_items[] = '<a href=' . plugin_page( 'account_telegram_register_page' ) . '>' . plugin_lang_get( 'account_telegram_register_page_header' ) . '</a>';
         }
+
+        return $t_items;
     }
     
     function menu_main_front() {

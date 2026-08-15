@@ -22,6 +22,7 @@ form_security_validate( 'config' );
 $f_bot_name			= gpc_get_string   ( 'bot_username' );
 $f_api_key			= gpc_get_string   ( 'api_key' );
 $f_reinstall_webhook            = gpc_get_bool     ( 'reinstall_webhook' );
+$f_registration_method          = gpc_get_int      ( 'registration_method', plugin_config_get( 'registration_method' ) );
 $f_use_cert                     = gpc_get_bool     ( 'use_cert' );
 $f_bot_cert_file                = gpc_get_file     ( 'bot_cert_file', null );
 $f_proxy_address		= gpc_get_string   ( 'proxy_address', '' );
@@ -83,6 +84,14 @@ if( plugin_config_get( 'api_key' ) != $f_api_key ) {
 if( plugin_config_get( 'reinstall_webhook' ) != $f_reinstall_webhook ) {
 	# ON/OFF, not a PHP boolean: plugin_config_set() would store false as an empty string
 	plugin_config_set( 'reinstall_webhook', $f_reinstall_webhook ? ON : OFF );
+}
+
+if( !in_array( $f_registration_method, array( TELEGRAM_REGISTRATION_LINK, TELEGRAM_REGISTRATION_PIN, TELEGRAM_REGISTRATION_BOTH ), true ) ) {
+	$f_registration_method = TELEGRAM_REGISTRATION_LINK;
+}
+
+if( plugin_config_get( 'registration_method' ) != $f_registration_method ) {
+	plugin_config_set( 'registration_method', $f_registration_method );
 }
 
 if( $f_use_cert == false ) {

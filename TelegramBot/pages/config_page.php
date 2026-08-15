@@ -83,6 +83,45 @@ telegrambot_print_menu_config( 'config_page' );
                 <div class="widget-header widget-header-small">
                     <h4 class="widget-title lighter">
                         <i class="ace-icon fa fa-cubes"></i>
+                        <?php echo plugin_lang_get( 'registration_config_title' ) ?>
+                    </h4>
+                </div>
+
+                <div class="widget-body">
+                    <div class="widget-main no-padding">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-condensed table-hover">
+                                <colgroup>
+                                    <col style="width:25%" />
+                                </colgroup>
+
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <?php echo plugin_lang_get( 'registration_method' ) ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'registration_method_notice' ) ?></span>
+                                    </th>
+                                    <td class="left" colspan="1">
+                                        <?php $t_registration_method = (int)plugin_config_get( 'registration_method' ); ?>
+                                        <label><input type="radio" class="ace" name="registration_method" value="<?php echo TELEGRAM_REGISTRATION_LINK ?>" <?php echo( TELEGRAM_REGISTRATION_LINK == $t_registration_method ) ? 'checked="checked" ' : '' ?>/>
+                                            <span class="lbl padding-6"><?php echo plugin_lang_get( 'registration_method_link' ) ?></span></label>
+                                        <label><input type="radio" class="ace" name="registration_method" value="<?php echo TELEGRAM_REGISTRATION_PIN ?>" <?php echo( TELEGRAM_REGISTRATION_PIN == $t_registration_method ) ? 'checked="checked" ' : '' ?>/>
+                                            <span class="lbl padding-6"><?php echo plugin_lang_get( 'registration_method_pin' ) ?></span></label>
+                                        <label><input type="radio" class="ace" name="registration_method" value="<?php echo TELEGRAM_REGISTRATION_BOTH ?>" <?php echo( TELEGRAM_REGISTRATION_BOTH == $t_registration_method ) ? 'checked="checked" ' : '' ?>/>
+                                            <span class="lbl padding-6"><?php echo plugin_lang_get( 'registration_method_both' ) ?></span></label>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-10"></div>
+
+            <div class="widget-box widget-color-blue2">
+                <div class="widget-header widget-header-small">
+                    <h4 class="widget-title lighter">
+                        <i class="ace-icon fa fa-cubes"></i>
                         <?php echo plugin_lang_get( 'connection_config_title' ) ?>
                     </h4>
                 </div>

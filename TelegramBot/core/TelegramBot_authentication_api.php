@@ -136,8 +136,8 @@ function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_telegr
     if( $t_mantis_user_id == 0 ) {
         lang_push( telegram_lang_map_auto( $p_telegram_user_lang_code ) );
         $t_response = user_telegram_signup( $p_telegram_user_id );
-        if( !$t_response[0]->getOk() ) {
-            error_parameters( $t_response[0]->getDescription() );
+        if( !$t_response->isOk() ) {
+            error_parameters( $t_response->getDescription() );
             plugin_error( 'ERROR_TG_GET_UPDATE', WARNING );
         }
         plugin_log_event( 'Authorization Error! Telegram user id#' . $p_telegram_user_id . ' is not mapped to any mantisbt user. As a response, an authorization invitation was sent.' );
@@ -145,8 +145,8 @@ function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_telegr
     } else if( !user_is_enabled( $t_mantis_user_id ) || !user_exists( $t_mantis_user_id ) ) {
         lang_push( telegram_lang_map_auto( $p_telegram_user_lang_code ) );
         $t_response = user_telegram_signup( $p_telegram_user_id );
-        if( !$t_response[0]->getOk() ) {
-            error_parameters( $t_response[0]->getDescription() );
+        if( !$t_response->isOk() ) {
+            error_parameters( $t_response->getDescription() );
             plugin_error( 'ERROR_TG_GET_UPDATE', WARNING );
         }
         plugin_log_event( 'Authorization Error! User ' . user_get_username( $t_mantis_user_id ) . ' is disabled or deleted. As a response, an authorization invitation was sent.' );
@@ -163,31 +163,58 @@ function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_telegr
 
 function user_telegram_signup( $p_telegram_user_id ) {
 
-//    $t_pin_code = telegrambot_get_pin_code( $p_telegram_user_id );
-    
     //We correctly form the url, depending on which method of receiving updates from the telegram server is selected.
-    if( php_sapi_name() == 'cli' ) {
-            $t_url = plugin_config_get( 'cli_g_path' ) == '' ? config_get_global( 'path' ) : plugin_config_get( 'cli_g_path' );
-    } else {
-            $t_url = config_get_global( 'path' );
-    }
- 
-    $t_signup_keyboard = new \Longman\TelegramBot\Entities\InlineKeyboard( array() );
-    $t_signup_keyboard->addRow( [
-                              'text' => plugin_lang_get( 'registration_button_text' ),
-                              'url'  => $t_url . plugin_page( 'registred', TRUE ) . '&telegram_user_id=' . $p_telegram_user_id
-    ] );
-    $data_signup       = [
-                              'chat_id'      => $p_telegram_user_id,
-                              'text'         => sprintf( 
-                                                            plugin_lang_get( 'registration_message_text' ), 
-                                                            config_get( 'window_title' ),
-                                                            $t_url,
-//                                                            $t_pin_code
-                                      ),
-                              'reply_markup' => $t_signup_keyboard,
+    $t_url = telegram_mantis_url_get();
+
+    $t_registration_method = (int) plugin_config_get( 'registration_method' );
+
+    # The state row is needed in every method: it holds the id of the invitation
+    $t_pin_code = telegram_pin_code_get( $p_telegram_user_id );
+
+    # Only one invitation stays in the chat, the previous one is of no use anymore
+    telegram_registration_message_remove( $p_telegram_user_id );
+
+    $data_signup = [
+                              'chat_id' => $p_telegram_user_id,
     ];
 
-    return Request::sendMessage( $data_signup );
-    
+    # The link binds the account with one tap, but only works when MantisBT is reachable
+    # from the phone; the PIN code is typed by the user in his account preferences instead
+    if( $t_registration_method != TELEGRAM_REGISTRATION_PIN ) {
+        $t_signup_keyboard = new \Longman\TelegramBot\Entities\InlineKeyboard( array() );
+        $t_signup_keyboard->addRow( [
+                              'text' => plugin_lang_get( 'registration_button_text' ),
+                              'url'  => $t_url . plugin_page( 'registred', TRUE ) . '&telegram_user_id=' . $p_telegram_user_id
+        ] );
+
+        $data_signup['reply_markup'] = $t_signup_keyboard;
+    }
+
+    if( $t_registration_method == TELEGRAM_REGISTRATION_LINK ) {
+        $data_signup['text'] = sprintf(
+                                                            plugin_lang_get( 'registration_message_text' ),
+                                                            config_get( 'window_title' ),
+                                                            $t_url
+                                      );
+    } else {
+        $t_lang_key = $t_registration_method == TELEGRAM_REGISTRATION_PIN
+                              ? 'registration_message_pin_text'
+                              : 'registration_message_both_text';
+
+        $data_signup['text'] = sprintf(
+                                                            plugin_lang_get( $t_lang_key ),
+                                                            config_get( 'window_title' ),
+                                                            $t_url . plugin_page( 'account_telegram_register_page', TRUE ),
+                                                            $t_pin_code
+                                      );
+    }
+
+    $t_response = Request::sendMessage( $data_signup );
+
+    if( $t_response->isOk() ) {
+        telegram_registration_message_id_set( $p_telegram_user_id, $t_response->getResult()->getMessageId() );
+    }
+
+    return $t_response;
+
 }

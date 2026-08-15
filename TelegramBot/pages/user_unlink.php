@@ -32,14 +32,20 @@ if( auth_get_current_user_id() == $f_user_id ) {
     access_ensure_global_level( config_get( 'manage_plugin_threshold' ) );
 }
 
-$t_confirm_message = auth_get_current_user_id() == $f_user_id
+$t_own_binding = auth_get_current_user_id() == $f_user_id;
+
+$t_confirm_message = $t_own_binding
                           ? plugin_lang_get( 'user_unlink_confirm_self' )
                           : sprintf( plugin_lang_get( 'user_unlink_confirm' ), user_get_field( $f_user_id, 'username' ) );
 
 helper_ensure_confirmed( $t_confirm_message, plugin_lang_get( 'user_unlink_button' ) );
 
+# Releasing his own binding, the user gets the confirmation in the chat as he does for
+# /stop; for somebody else's binding the setting decides whether the chat is told at all
+$t_notify = $t_own_binding || ON == plugin_config_get( 'admin_unlink_notify' );
+
 # The chat keeps working as an anonymous one and asks for a binding on the next message
-telegram_bot_user_unlink( $f_user_id );
+telegram_bot_user_unlink( $f_user_id, $t_notify );
 
 form_security_purge( 'telegram_user_unlink' );
 

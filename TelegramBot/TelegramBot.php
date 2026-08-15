@@ -75,7 +75,12 @@ class TelegramBotPlugin extends MantisPlugin {
                                   // version 1.3.0 (schema 3)
                                   array( 'CreateIndexSQL', array( 'idx_chatid', plugin_table( 'message_relationship' ), 'chat_id' ) ),
                                   // version 1.5.1 (schema 4)
-                                  array( 'ChangeTableSQL', array( plugin_table( "user_relationship" ), "
+                                  // AlterColumnSQL, not ChangeTableSQL: since ADOdb 5.22.8 (MantisBT 2.27.3)
+                                  // ChangeTableSQL returns an empty array for a string field definition, which
+                                  // MantisBT reports as ERROR_PLUGIN_UPGRADE_FAILED. Up to ADOdb 5.22.7 the
+                                  // string definition was passed to alterColumnSql() anyway, so the resulting
+                                  // schema is the same as on the installations upgraded before.
+                                  array( 'AlterColumnSQL', array( plugin_table( "user_relationship" ), "
                                         telegram_user_id  N   $t_notnull
                                 " ) ),
 //                                  // version 2.0.0 (schema 5)

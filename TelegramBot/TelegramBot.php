@@ -454,7 +454,9 @@ class TelegramBotPlugin extends MantisPlugin {
      * @return void
      */
     function telegram_user_deleted( $p_type_event, $p_user_id ) {
-        telegram_bot_user_unlink( $p_user_id );
+        # No message to the chat: the account is gone, so an invitation to subscribe
+        # again would lead nowhere, and deleting a user must not wait for Telegram
+        telegram_bot_user_unlink( $p_user_id, /* notify */ FALSE );
         telegram_user_config_delete_all( $p_user_id );
     }
 

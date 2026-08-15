@@ -264,6 +264,7 @@ $s_plugin_TelegramBot_ERROR_CERT_FILE_NOT_FOUND = 'ОТСУТСТВУЕТ ФАЙ
 $s_plugin_TelegramBot_ERROR_TG_SESSION_NOT_INITIALIZED = 'ОШИБКА: TELEGRAM СЕССИЯ НЕ ИНИЦИАЛИЗИРОВАНА';
 $s_plugin_TelegramBot_ERROR_TG_GET_UPDATE = 'ОШИБКА ПОЛУЧЕНИЯ ОБНОВЛЕНИЙ TELEGRAM - %1$s';
 $s_plugin_TelegramBot_ERROR_TG_PIN_CODE_INVALID = 'PIN-КОД НЕВЕРЕН ИЛИ ПРОСРОЧЕН. ОТПРАВЬТЕ БОТУ ЛЮБОЕ СООБЩЕНИЕ, ЧТОБЫ ПОЛУЧИТЬ НОВЫЙ.';
+$s_plugin_TelegramBot_ERROR_TG_PIN_CODE_EXPIRED = 'PIN-КОД ПРОСРОЧЕН. БОТ ОТПРАВИЛ В ЧАТ НОВЫЙ КОД, ВВЕДИТЕ ЕГО ЗДЕСЬ.';
 $s_plugin_TelegramBot_ERROR_TG_PIN_CODE_GENERATE = 'НЕ УДАЛОСЬ СФОРМИРОВАТЬ PIN-КОД, ПОВТОРИТЕ ПОПЫТКУ ПОЗЖЕ';
 $s_plugin_TelegramBot_ERROR_TG_USER_ALREADY_ASSOCIATED = 'ЭТОТ АККАУНТ TELEGRAM УЖЕ ПРИВЯЗАН К ДРУГОМУ ПОЛЬЗОВАТЕЛЮ. СНАЧАЛА ОТПРАВЬТЕ КОМАНДУ /stop ИЗ ЭТОГО ЧАТА, ЧТОБЫ СНЯТЬ ПРИВЯЗКУ.';
 

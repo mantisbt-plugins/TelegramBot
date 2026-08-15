@@ -37,9 +37,23 @@ if( user_is_associated_with_telegram( $t_user_id ) ) {
 # through the browser and the binding is confirmed by the owner of the chat himself
 $t_telegram_user_id = telegram_pin_code_telegram_user_get( $f_pin_code );
 
-# An expired code resolves to nothing, a code of an already linked chat must not be reused
+if( $t_telegram_user_id == 0 ) {
+    # The state row outlives the code, so an expired one still tells which chat asked
+    # for the binding: a fresh code goes there at once, no new message to the bot needed
+    $t_expired_telegram_user_id = telegram_expired_pin_code_telegram_user_get( $f_pin_code );
+
+    if( $t_expired_telegram_user_id != 0 && !telegram_user_is_associated_mantis_user( $t_expired_telegram_user_id ) ) {
+        user_telegram_signup( $t_expired_telegram_user_id );
+
+        plugin_log_event( 'Expired PIN code entered by user ' . user_get_username( $t_user_id )
+                . ', a new one was sent to telegram user id#' . $t_expired_telegram_user_id );
+        plugin_error( 'ERROR_TG_PIN_CODE_EXPIRED', ERROR );
+    }
+}
+
+# A code of an already linked chat must not be reused
 if( $t_telegram_user_id == 0 || telegram_user_is_associated_mantis_user( $t_telegram_user_id ) ) {
-    plugin_log_event( 'Registration Error! Invalid or expired PIN code entered by user ' . user_get_username( $t_user_id ) );
+    plugin_log_event( 'Registration Error! Invalid PIN code entered by user ' . user_get_username( $t_user_id ) );
     plugin_error( 'ERROR_TG_PIN_CODE_INVALID', ERROR );
 }
 

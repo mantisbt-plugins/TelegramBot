@@ -200,6 +200,7 @@ telegrambot_print_menu_config( 'monitor_page' );
                                                             <form method="post" action="<?php echo plugin_page( 'user_unlink' ) ?>">
                                                                 <?php echo form_security_field( 'telegram_user_unlink' ) ?>
                                                                 <input type="hidden" name="user_id" value="<?php echo $t_user_id ?>" />
+                                                                <input type="hidden" name="source" value="<?php echo TELEGRAM_UNLINK_SOURCE_ADMIN ?>" />
                                                                 <input type="submit" class="btn btn-sm btn-primary btn-white btn-round"
                                                                        value="<?php echo plugin_lang_get( 'user_unlink_button' ) ?>" />
                                                             </form>

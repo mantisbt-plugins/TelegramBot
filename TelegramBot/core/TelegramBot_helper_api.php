@@ -27,6 +27,56 @@ define( 'TELEGRAM_DRAFT_NEXT_MENU', 'menu' );
 # Nothing is left to ask, the issue can be created
 define( 'TELEGRAM_DRAFT_NEXT_SUBMIT', 'submit' );
 
+/**
+ * Ask for a confirmation of the unlink and let the administrator decide whether the
+ * chat is told about it. The core helper_ensure_confirmed() carries no fields of its
+ * own, and the decision belongs to the moment of the action rather than to a setting.
+ *
+ * @param string  $p_message        Question to confirm.
+ * @param string  $p_button_label   Label of the confirmation button.
+ * @param boolean $p_notify_default State of the notification checkbox, from the settings.
+ * @param string  $p_return_url     Page to go back to.
+ * @return void
+ */
+function telegram_ensure_unlink_confirmed( $p_message, $p_button_label, $p_notify_default, $p_return_url ) {
+        if( gpc_get_bool( '_confirmed' ) ) {
+                return;
+        }
+
+        layout_page_header();
+        layout_page_begin();
+
+        echo '<div class="col-md-12 col-xs-12">';
+        echo '<div class="space-10"></div>';
+        echo '<div class="alert alert-warning center">';
+        echo '<p class="bigger-110">' . $p_message . '</p>';
+
+        echo '<form method="post" class="center" action="">' . "\n";
+        # CSRF protection not required here - the form of the calling page carries the
+        # token and it is reprinted below along with the rest of its fields
+        print_hidden_inputs( $_POST );
+        print_hidden_inputs( $_GET );
+        echo '<input type="hidden" name="_confirmed" value="1" />' . "\n";
+
+        echo '<label class="inline">';
+        echo '<input type="checkbox" class="ace input-sm" name="notify_user" value="1" ' . ( $p_notify_default ? 'checked="checked" ' : '' ) . '/>';
+        echo '<span class="lbl padding-6">' . plugin_lang_get( 'user_unlink_notify_user' ) . '</span>';
+        echo '</label>';
+
+        echo '<div class="space-10"></div>';
+        echo '<input type="submit" class="btn btn-primary btn-white btn-round" value="' . string_attribute( $p_button_label ) . '" />';
+        echo "\n</form>";
+
+        echo '<div class="space-10"></div>';
+        echo '<a href="' . $p_return_url . '">' . lang_get( 'go_back' ) . '</a>';
+
+        echo '<div class="space-10"></div>';
+        echo '</div></div>';
+
+        layout_page_end();
+        exit;
+}
+
 function helper_ensure_telegram_bot_registred_confirmed( $p_message ) {
     if( true == gpc_get_string( '_confirmed', FALSE ) ) {
         return gpc_get_string( '_confirmed' );

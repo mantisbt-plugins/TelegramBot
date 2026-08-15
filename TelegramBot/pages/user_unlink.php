@@ -44,11 +44,23 @@ $t_confirm_message = auth_get_current_user_id() == $f_user_id
                           ? plugin_lang_get( 'user_unlink_confirm_self' )
                           : sprintf( plugin_lang_get( 'user_unlink_confirm' ), user_get_field( $f_user_id, 'username' ) );
 
-helper_ensure_confirmed( $t_confirm_message, plugin_lang_get( 'user_unlink_button' ) );
-
 # From his own account page the user gets the confirmation in the chat as he does for
-# /stop; an administrative unlink is governed by the setting and can stay silent
-$t_notify = $f_source == TELEGRAM_UNLINK_SOURCE_ACCOUNT || ON == plugin_config_get( 'admin_unlink_notify' );
+# /stop; an administrative unlink asks whether to tell the chat, the setting being the
+# state the checkbox starts in
+if( $f_source == TELEGRAM_UNLINK_SOURCE_ACCOUNT ) {
+    helper_ensure_confirmed( $t_confirm_message, plugin_lang_get( 'user_unlink_button' ) );
+
+    $t_notify = true;
+} else {
+    telegram_ensure_unlink_confirmed(
+            $t_confirm_message,
+            plugin_lang_get( 'user_unlink_button' ),
+            ON == plugin_config_get( 'admin_unlink_notify' ),
+            plugin_page( 'monitor_page', TRUE )
+    );
+
+    $t_notify = gpc_get_bool( 'notify_user' );
+}
 
 # The chat keeps working as an anonymous one and asks for a binding on the next message
 telegram_bot_user_unlink( $f_user_id, $t_notify );

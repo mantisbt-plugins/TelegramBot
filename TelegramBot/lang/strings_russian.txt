@@ -20,6 +20,12 @@ $s_plugin_TelegramBot_description = 'Добавляет в MantisBT функци
 $s_plugin_TelegramBot_config_title = 'Настройка';
 $s_plugin_TelegramBot_credential_config_title = 'Настройки учетных данных';
 $s_plugin_TelegramBot_connection_config_title = 'Параметры исходящих соединений';
+$s_plugin_TelegramBot_registration_config_title = 'Настройки привязки аккаунтов';
+$s_plugin_TelegramBot_registration_method = 'Способ привязки аккаунта';
+$s_plugin_TelegramBot_registration_method_notice = 'Ссылка срабатывает в одно нажатие, но требует, чтобы MantisBT был доступен с устройства, где запущен Telegram. PIN-код бот показывает в чате, а пользователь вводит его на своей странице настроек Telegram — этот способ работает и тогда, когда MantisBT опубликован только в локальной сети.';
+$s_plugin_TelegramBot_registration_method_link = 'Ссылка';
+$s_plugin_TelegramBot_registration_method_pin = 'PIN-код';
+$s_plugin_TelegramBot_registration_method_both = 'Ссылка и PIN-код';
 $s_plugin_TelegramBot_config_get_update_title = 'Способ получения обновлений от Telegram';
 $s_plugin_TelegramBot_manage_config_message_page = 'Настройка уведомлений';
 $s_plugin_TelegramBot_bot_name = 'Имя бота (необходимо для авторизации бота при приёме сообщений)';
@@ -63,6 +69,19 @@ $s_plugin_TelegramBot_registration_message_text = 'Для того чтобы н
 1. Иметь действующий аккаунт в %1$s ( %2$s ).
 2. Привязать Ваш аккаунт нажав на кнопку ниже:';
 $s_plugin_TelegramBot_registration_button_text = 'Подтвердить привязку';
+
+$s_plugin_TelegramBot_registration_message_pin_text = 'Для того чтобы начать использовать бот необходимо:
+1. Иметь действующий аккаунт в %1$s.
+2. Открыть страницу привязки Telegram ( %2$s ) и ввести код: %3$s
+Если ссылка не открывается, войдите в %1$s и перейдите: Мой аккаунт -> Привязка Telegram.
+Код действителен 15 минут, после этого отправьте боту любое сообщение, чтобы получить новый.';
+
+$s_plugin_TelegramBot_registration_message_both_text = 'Для того чтобы начать использовать бот необходимо:
+1. Иметь действующий аккаунт в %1$s.
+2. Привязать Ваш аккаунт нажав на кнопку ниже,
+либо открыть страницу привязки Telegram ( %2$s ) и ввести код: %3$s
+Если ни одна ссылка не открывается, войдите в %1$s и перейдите: Мой аккаунт -> Привязка Telegram.
+Код действителен 15 минут, после этого отправьте боту любое сообщение, чтобы получить новый.';
 
 $s_plugin_TelegramBot_first_message = '
 Вы успешно подписались на чат-бот
@@ -182,6 +201,12 @@ $s_plugin_TelegramBot_telegram_message_included_all_bugnote_is = 'Включат
 $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Настройки Telegram';
 $s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Настройки Telegram бота';
 $s_plugin_TelegramBot_account_telegram_prefs_subscribe_bot = 'Для того чтобы подписать на бота найдите его ( %1$s ) в Telegram или перейдите по ссылке: ';
+$s_plugin_TelegramBot_account_telegram_prefs_pin_code = 'PIN-код';
+$s_plugin_TelegramBot_account_telegram_register_page_header = 'Привязка Telegram';
+$s_plugin_TelegramBot_account_telegram_register_notice = 'Отправьте боту любое сообщение и введите код из его ответа. Код действителен 15 минут.';
+$s_plugin_TelegramBot_account_telegram_register_button = 'Привязать аккаунт';
+$s_plugin_TelegramBot_account_telegram_register_already_done = 'Ваш аккаунт уже привязан к Telegram.';
+$s_plugin_TelegramBot_registration_link_disabled = 'Привязка по ссылке отключена, теперь бот подтверждает её PIN-кодом.';
 $s_plugin_TelegramBot_account_telegram_prefs_associated_users_head = 'Подключенные пользователи:';
 $s_plugin_TelegramBot_user_info = 'Информация по пользователям';
 $s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook не установлен, используйте crontab.';
@@ -234,6 +259,9 @@ $s_plugin_TelegramBot_BAD_REQUEST = 'ОШИБКА В ТЕЛЕ ЗАПРОСА.';
 $s_plugin_TelegramBot_ERROR_CERT_FILE_NOT_FOUND = 'ОТСУТСТВУЕТ ФАЙЛ С СЕРТИФИКАТОМ';
 $s_plugin_TelegramBot_ERROR_TG_SESSION_NOT_INITIALIZED = 'ОШИБКА: TELEGRAM СЕССИЯ НЕ ИНИЦИАЛИЗИРОВАНА';
 $s_plugin_TelegramBot_ERROR_TG_GET_UPDATE = 'ОШИБКА ПОЛУЧЕНИЯ ОБНОВЛЕНИЙ TELEGRAM - %1$s';
+$s_plugin_TelegramBot_ERROR_TG_PIN_CODE_INVALID = 'PIN-КОД НЕВЕРЕН ИЛИ ПРОСРОЧЕН. ОТПРАВЬТЕ БОТУ ЛЮБОЕ СООБЩЕНИЕ, ЧТОБЫ ПОЛУЧИТЬ НОВЫЙ.';
+$s_plugin_TelegramBot_ERROR_TG_PIN_CODE_GENERATE = 'НЕ УДАЛОСЬ СФОРМИРОВАТЬ PIN-КОД, ПОВТОРИТЕ ПОПЫТКУ ПОЗЖЕ';
+$s_plugin_TelegramBot_ERROR_TG_USER_ALREADY_ASSOCIATED = 'ЭТОТ АККАУНТ TELEGRAM УЖЕ ПРИВЯЗАН К ДРУГОМУ ПОЛЬЗОВАТЕЛЮ. СНАЧАЛА ОТПРАВЬТЕ КОМАНДУ /stop ИЗ ЭТОГО ЧАТА, ЧТОБЫ СНЯТЬ ПРИВЯЗКУ.';
 
 $s_plugin_TelegramBot_skip_button = 'Пропустить';
 $s_plugin_TelegramBot_back_button = 'Назад';

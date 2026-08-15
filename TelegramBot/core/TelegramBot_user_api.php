@@ -140,3 +140,210 @@ function user_is_associated_with_telegram( $p_mantis_user_id ) {
         return true;
     }
 }
+
+/**
+ * Return the state of the registration a telegram user has started: the PIN code
+ * issued to him and the id of the invitation the bot has sent.
+ *
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @return array|false Database row, false when no registration is in progress.
+ */
+function telegram_registration_state_get( $p_telegram_user_id ) {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    db_param_push();
+
+    $t_query  = "SELECT pin_code, timestamp, message_id
+			FROM $t_pin_codes_table
+			WHERE telegram_user_id=" . db_param();
+    $t_result = db_query( $t_query, array( $p_telegram_user_id ) );
+
+    return db_fetch_array( $t_result );
+}
+
+/**
+ * Return the PIN code the telegram user has to enter in his MantisBT account
+ * preferences. A code issued earlier and still valid is reused, so that every
+ * message the bot sends to an unregistred user shows the same code.
+ *
+ * The state row is created even when the code is not going to be shown: it also
+ * keeps the id of the invitation, which is needed to remove that message later.
+ *
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @return integer PIN code.
+ */
+function telegram_pin_code_get( $p_telegram_user_id ) {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    telegram_registration_states_clear_expired();
+
+    $t_state = telegram_registration_state_get( $p_telegram_user_id );
+
+    if( $t_state !== false && $t_state['timestamp'] >= db_now() - TELEGRAM_PIN_CODE_TTL ) {
+        return (int) $t_state['pin_code'];
+    }
+
+    $t_pin_code = telegram_pin_code_free_get();
+
+    if( $t_state === false ) {
+        db_param_push();
+
+        $t_query = "INSERT INTO $t_pin_codes_table
+                                                ( telegram_user_id, pin_code, timestamp )
+                                              VALUES
+                                                ( " . db_param() . ',' . db_param() . ',' . db_param() . ')';
+        db_query( $t_query, array( $p_telegram_user_id, $t_pin_code, db_now() ) );
+    } else {
+        # The invitation is still in the chat, only the code has expired
+        db_param_push();
+
+        $t_query = "UPDATE $t_pin_codes_table
+			SET pin_code=" . db_param() . ', timestamp=' . db_param() . '
+			WHERE telegram_user_id=' . db_param();
+        db_query( $t_query, array( $t_pin_code, db_now(), $p_telegram_user_id ) );
+    }
+
+    return $t_pin_code;
+}
+
+/**
+ * Pick a PIN code no other registration is using.
+ *
+ * @return integer PIN code.
+ */
+function telegram_pin_code_free_get() {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    db_param_push();
+
+    $t_query  = "SELECT pin_code FROM $t_pin_codes_table";
+    $t_result = db_query( $t_query );
+
+    $t_codes_in_use = array();
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        $t_codes_in_use[(int) $t_row['pin_code']] = true;
+    }
+
+    # 9000 possible codes against the few registrations running at the same time:
+    # a free code is found on the first attempts, the limit only guards the loop
+    for( $i = 0; $i < 100; $i++ ) {
+        $t_candidate = mt_rand( 1000, 9999 );
+        if( !isset( $t_codes_in_use[$t_candidate] ) ) {
+            return $t_candidate;
+        }
+    }
+
+    plugin_error( 'ERROR_TG_PIN_CODE_GENERATE', ERROR );
+}
+
+/**
+ * Return the telegram user the PIN code was issued to.
+ *
+ * @param integer $p_pin_code PIN code entered by the user.
+ * @return integer Telegram user id, 0 if the code is unknown or expired.
+ */
+function telegram_pin_code_telegram_user_get( $p_pin_code ) {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    telegram_registration_states_clear_expired();
+
+    db_param_push();
+
+    $t_query  = "SELECT telegram_user_id
+			FROM $t_pin_codes_table
+			WHERE pin_code=" . db_param() . ' AND timestamp>=' . db_param();
+    $t_result = db_query( $t_query, array( $p_pin_code, db_now() - TELEGRAM_PIN_CODE_TTL ) );
+
+    $t_row = db_fetch_array( $t_result );
+    if( $t_row === false ) {
+        return 0;
+    }
+
+    return (int) $t_row['telegram_user_id'];
+}
+
+/**
+ * Remember the invitation the bot has just sent, so that it can be removed from the
+ * chat once the accounts are linked.
+ *
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @param integer $p_message_id       Id of the message sent to the chat.
+ * @return void
+ */
+function telegram_registration_message_id_set( $p_telegram_user_id, $p_message_id ) {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    db_param_push();
+
+    $t_query = "UPDATE $t_pin_codes_table
+			SET message_id=" . db_param() . '
+			WHERE telegram_user_id=' . db_param();
+    db_query( $t_query, array( (int) $p_message_id, $p_telegram_user_id ) );
+}
+
+/**
+ * Remove the invitation from the chat, leaving the registration state in place.
+ * Called before a new invitation is sent, so that only one of them is on screen.
+ *
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @return void
+ */
+function telegram_registration_message_remove( $p_telegram_user_id ) {
+
+    $t_state = telegram_registration_state_get( $p_telegram_user_id );
+
+    if( $t_state === false || 0 == (int) $t_state['message_id'] ) {
+        return;
+    }
+
+    # A bot may only delete its own message within 48 hours, an older one just stays
+    \Longman\TelegramBot\Request::deleteMessage( array(
+                              'chat_id'    => $p_telegram_user_id,
+                              'message_id' => (int) $t_state['message_id'],
+    ) );
+
+    telegram_registration_message_id_set( $p_telegram_user_id, 0 );
+}
+
+/**
+ * Finish the registration: the invitation is removed from the chat and the state,
+ * including the PIN code, is dropped. An unused code must not survive the binding -
+ * anybody who saw it would relink the chat to his own MantisBT account.
+ *
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @return void
+ */
+function telegram_registration_complete( $p_telegram_user_id ) {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    telegram_registration_message_remove( $p_telegram_user_id );
+
+    db_param_push();
+
+    $t_query = "DELETE FROM $t_pin_codes_table
+			WHERE telegram_user_id=" . db_param();
+    db_query( $t_query, array( $p_telegram_user_id ) );
+}
+
+/**
+ * Delete the registrations nobody has finished within TELEGRAM_REGISTRATION_STATE_TTL.
+ * The PIN code inside them expires much earlier, this only collects the rows.
+ *
+ * @return void
+ */
+function telegram_registration_states_clear_expired() {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    db_param_push();
+
+    $t_query = "DELETE FROM $t_pin_codes_table
+			WHERE timestamp<" . db_param();
+    db_query( $t_query, array( db_now() - TELEGRAM_REGISTRATION_STATE_TTL ) );
+}

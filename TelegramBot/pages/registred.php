@@ -17,10 +17,42 @@
 
 auth_ensure_user_authenticated();
 
+# Links sent before the method was switched must not keep working: with PIN codes
+# the binding is confirmed from the chat side only. An old invitation stays in the
+# chat forever, so the dead end is explained instead of a bare "access denied"
+if( TELEGRAM_REGISTRATION_PIN == (int) plugin_config_get( 'registration_method' ) ) {
+    layout_page_header( plugin_lang_get( 'account_telegram_register_page_header' ) );
+    layout_page_begin( 'account_page' );
+
+    echo '<div class="col-md-12 col-xs-12">';
+    echo '<div class="space-10"></div>';
+    echo '<div class="alert alert-warning center">';
+    echo '<p class="bigger-110">' . plugin_lang_get( 'registration_link_disabled' ) . '</p>';
+    echo '<p class="bigger-110"><a href="' . plugin_page( 'account_telegram_register_page' ) . '">'
+    . plugin_lang_get( 'account_telegram_register_page_header' ) . '</a></p>';
+    echo '</div></div>';
+
+    layout_page_end();
+
+    return;
+}
+
 $f_telegram_user_id = gpc_get_int( 'telegram_user_id' );
 $f_is_confirmed     = gpc_get_bool( '_confirmed', FALSE );
 
 helper_ensure_telegram_bot_registred_confirmed( plugin_lang_get( 'user_relationship_question' ) );
+
+# The telegram user id travels through the browser, so a chat already bound to somebody
+# else must not be relinked: its owner would end up working in the bot on behalf of the
+# account that opened this page. The chat is released by /stop sent from that chat.
+if( $f_is_confirmed ) {
+    $t_associated_user_id = user_get_id_by_telegram_user_id( $f_telegram_user_id );
+
+    if( $t_associated_user_id != 0 && $t_associated_user_id != auth_get_current_user_id() ) {
+        plugin_log_event( 'Registration Error! Telegram user id#' . $f_telegram_user_id . ' is already mapped to mantisbt user ' . user_get_username( $t_associated_user_id ) );
+        plugin_error( 'ERROR_TG_USER_ALREADY_ASSOCIATED', ERROR );
+    }
+}
 
 layout_page_header_begin();
 layout_page_header_end();
@@ -32,10 +64,12 @@ if( $f_is_confirmed ) {
 
     telegram_bot_user_mapping_add( $t_current_user_id, $f_telegram_user_id );
 
+    # The accounts are linked: the invitation leaves the chat and the PIN code is dropped
+    telegram_registration_complete( $f_telegram_user_id );
+
     $data     = [
                               'chat_id' => $f_telegram_user_id,
-                              'text'    => sprintf( plugin_lang_get( 'first_message' ), config_get( 'window_title' ) . ' ( ' . config_get( 'path' ) . ' )', ' ( ' . config_get( 'path' ) . plugin_page( 'account_telegram_prefs_page', TRUE ) . ' )'
-                              ),
+                              'text'    => telegram_message_first_text(),
     ];
     $t_result = \Longman\TelegramBot\Request::sendMessage( $data );
 

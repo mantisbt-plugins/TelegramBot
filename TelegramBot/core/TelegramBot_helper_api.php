@@ -1682,11 +1682,7 @@ function telegramMsg_run_command( $t_command ) {
                 case 'start':
                         $t_data = [
                             'chat_id' => $t_command->getFrom()->getId(),
-                            'text' => sprintf(
-                                                plugin_lang_get('first_message'), 
-                                                config_get('window_title') . ' ( ' . config_get('path') . ' )', 
-                                                ' ( ' . config_get('path') . plugin_page('account_telegram_prefs_page', TRUE) . ' )'
-                            ),
+                            'text' => telegram_message_first_text(),
                         ];
                         break;
 
@@ -1716,54 +1712,34 @@ function telegramMsg_run_command( $t_command ) {
         return $t_data;
 }
 
-//function telegrambot_get_pin_code( $p_telegram_user_id ) {
-//
-//                telegrembot_clear_old_pins();
-//
-//        //        $t_pin_code = $p_telegram_user_id;
-//
-//                db_param_push();
-//
-//        //        $t_query = 'SELECT pin_code FROM {plugin_TelegramBot_pin_codes} WHERE telegram_user_id=' . db_param();
-//                $t_query = 'SELECT * FROM {plugin_TelegramBot_pin_codes} WHERE 1';
-//        //	$t_result = db_query( $t_query, array( $p_telegram_user_id ) );
-//                $t_result = db_query( $t_query );
-//
-//                $t_rows = array();
-//
-//                while( $c_row = db_fetch_array( $t_result ) ) {
-//                        $t_rows[] = $c_row;
-//                }
-//
-//
-//                foreach( $t_rows as $t_row) {
-//                        if( $t_row['telegram_user_id'] == $p_telegram_user_id ) {
-//                                return $t_row['pin_code'];
-//                        }
-//                }
-//
-//                while( true ) {
-//                        $t_pin_code = mt_rand(1000, 9999);
-//                        foreach( $t_rows as $t_row) {
-//                                if( $t_row['pin_code'] == $t_pin_code ) {
-//                                        continue;
-//                                }
-//
-//                        }
-//
-//                        db_param_push();
-//
-//                        $t_query = 'INSERT INTO {plugin_TelegramBot_pin_codes} (telegram_user_id, pin_code, timestamp) VALUES ( ' . db_param() . ', ' . db_param() . ', ' . db_param() . ')';
-//                        db_query( $t_query, array( $p_telegram_user_id, $t_pin_code, db_now() ) );
-//
-//                        return $t_pin_code;
-//                }
-//        }
+/**
+ * The URL of this MantisBT instance as the users see it: the bot puts it into the links
+ * it sends, and in CLI the global path is a guess made from the request headers, so the
+ * value configured for the script takes precedence there.
+ *
+ * @return string
+ */
+function telegram_mantis_url_get() {
 
-//function telegrembot_clear_old_pins() {
-//
-//                $t_time_cut = db_now() - (15*60);
-//                db_param_push();
-//                $t_query = 'DELETE FROM {plugin_TelegramBot_pin_codes} WHERE timestamp <' . $t_time_cut;
-//                db_query( $t_query );
-//}
+        if( php_sapi_name() == 'cli' && plugin_config_get( 'cli_g_path' ) != '' ) {
+                return plugin_config_get( 'cli_g_path' );
+        }
+
+        return config_get_global( 'path' );
+}
+
+/**
+ * The greeting the bot sends once a telegram account is linked to a MantisBT one.
+ *
+ * @return string
+ */
+function telegram_message_first_text() {
+
+        $t_url = telegram_mantis_url_get();
+
+        return sprintf(
+                                plugin_lang_get( 'first_message' ),
+                                config_get( 'window_title' ) . ' ( ' . $t_url . ' )',
+                                ' ( ' . $t_url . plugin_page( 'account_telegram_prefs_page', TRUE ) . ' )'
+        );
+}

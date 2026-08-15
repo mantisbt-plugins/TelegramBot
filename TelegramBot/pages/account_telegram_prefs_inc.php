@@ -28,7 +28,6 @@ if( !defined( 'ACCOUNT_TELEGRAM_PREFS_INC_ALLOW' ) ) {
  * @return void
  */
 function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected = true, $p_accounts_menu = true, $p_redirect_url = '' ) {
-    global $g_account_telegram_menu_active;
     if( null === $p_user_id ) {
         $p_user_id = auth_get_current_user_id();
     }
@@ -57,7 +56,6 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
 
     <?php
     if( $p_accounts_menu ) {
-        $g_account_telegram_menu_active = TRUE;
         print_account_menu( 'account_telegram_prefs_page' );
     }
     ?>
@@ -109,8 +107,14 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                                     '<a href="' . plugin_config_get( 'telegram_url' ) . plugin_config_get( 'bot_name' ) . '">' . '@' . plugin_config_get( 'bot_name' ) . '</a>';
                                                     ?>
                                                 </th>
-                                                <td class="left" colspan="1"> 
-                                                        <input type="number" name="pin_code" id="pin_code" class="form-control" min="0" value="">
+                                                <td class="left" colspan="1">
+                                                    <?php
+                                                    # The code is entered on a page of its own, this is only a pointer to it
+                                                    if( TELEGRAM_REGISTRATION_LINK != (int) plugin_config_get( 'registration_method' ) ) {
+                                                        echo '<a href="' . plugin_page( 'account_telegram_register_page' ) . '">'
+                                                        . plugin_lang_get( 'account_telegram_register_page_header' ) . '</a>';
+                                                    }
+                                                    ?>
                                                 </td>
                                             </tr>
                                             <?php

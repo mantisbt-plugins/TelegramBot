@@ -20,6 +20,12 @@ $s_plugin_TelegramBot_description = 'Adds the user interaction function to the M
 $s_plugin_TelegramBot_config_title = 'Settings';
 $s_plugin_TelegramBot_credential_config_title = 'Credential settings';
 $s_plugin_TelegramBot_connection_config_title = 'Connection outgoin settings';
+$s_plugin_TelegramBot_registration_config_title = 'Account linking settings';
+$s_plugin_TelegramBot_registration_method = 'How users link their accounts';
+$s_plugin_TelegramBot_registration_method_notice = 'The link works in one tap, but requires MantisBT to be reachable from the device running Telegram. The PIN code is shown by the bot in the chat and entered by the user on his Telegram settings page, so it also works when MantisBT is only published on the local network.';
+$s_plugin_TelegramBot_registration_method_link = 'Link';
+$s_plugin_TelegramBot_registration_method_pin = 'PIN code';
+$s_plugin_TelegramBot_registration_method_both = 'Link and PIN code';
 $s_plugin_TelegramBot_config_get_update_title = 'Get update settings';
 $s_plugin_TelegramBot_manage_config_message_page = 'Configure Notifications';
 $s_plugin_TelegramBot_bot_name = 'Bot name (required for bot authorization when receiving messages)';
@@ -63,6 +69,19 @@ $s_plugin_TelegramBot_registration_message_text = 'In order to start using the b
 1. Have a valid account in %1$s ( %2$s ).
 2. Link your account by clicking on the button below:';
 $s_plugin_TelegramBot_registration_button_text = 'Confirm the binding';
+
+$s_plugin_TelegramBot_registration_message_pin_text = 'In order to start using the bot it is necessary:
+1. Have a valid account in %1$s.
+2. Open the Telegram binding page ( %2$s ) and enter the code: %3$s
+If the link does not open, log in to %1$s and go to My Account -> Telegram binding.
+The code is valid for 15 minutes, after that send any message to the bot to get a new one.';
+
+$s_plugin_TelegramBot_registration_message_both_text = 'In order to start using the bot it is necessary:
+1. Have a valid account in %1$s.
+2. Link your account by clicking on the button below,
+or open the Telegram binding page ( %2$s ) and enter the code: %3$s
+If neither link opens, log in to %1$s and go to My Account -> Telegram binding.
+The code is valid for 15 minutes, after that send any message to the bot to get a new one.';
 
 $s_plugin_TelegramBot_first_message = '
 You have successfully subscribed to the chat-bot
@@ -182,6 +201,12 @@ $s_plugin_TelegramBot_telegram_message_included_all_bugnote_is = 'Include all co
 $s_plugin_TelegramBot_account_telegram_prefs_page_header = 'Telegram settings';
 $s_plugin_TelegramBot_default_account_telegram_preferences_title = 'Settings bot Telegram';
 $s_plugin_TelegramBot_account_telegram_prefs_subscribe_bot = 'To sign on to the bot, find it ( %1$s ) in Telegram or follow the link: ';
+$s_plugin_TelegramBot_account_telegram_prefs_pin_code = 'PIN code';
+$s_plugin_TelegramBot_account_telegram_register_page_header = 'Telegram binding';
+$s_plugin_TelegramBot_account_telegram_register_notice = 'Send any message to the bot and enter the code it replies with. The code is valid for 15 minutes.';
+$s_plugin_TelegramBot_account_telegram_register_button = 'Link the account';
+$s_plugin_TelegramBot_account_telegram_register_already_done = 'Your account is already linked to Telegram.';
+$s_plugin_TelegramBot_registration_link_disabled = 'Binding by link is switched off, the bot confirms it by a PIN code now.';
 $s_plugin_TelegramBot_account_telegram_prefs_associated_users_head = 'Connected users:';
 $s_plugin_TelegramBot_user_info = 'User information';
 $s_plugin_TelegramBot_monitor_page_url_not_set = 'Webhook is not set up, please use crontab.';
@@ -234,6 +259,9 @@ $s_plugin_TelegramBot_BAD_REQUEST = 'ERROR IN THE BODY OF THE REQUEST.';
 $s_plugin_TelegramBot_ERROR_CERT_FILE_NOT_FOUND = 'CERT FILE NOT FOUND';
 $s_plugin_TelegramBot_ERROR_TG_SESSION_NOT_INITIALIZED = 'ERROR: TELEGRAM SESSION NOT INITIALIZED';
 $s_plugin_TelegramBot_ERROR_TG_GET_UPDATE = 'ERROR TELEGRAM GET UPDATES - %1$s';
+$s_plugin_TelegramBot_ERROR_TG_PIN_CODE_INVALID = 'THE PIN CODE IS INVALID OR HAS EXPIRED. SEND ANY MESSAGE TO THE BOT TO GET A NEW ONE.';
+$s_plugin_TelegramBot_ERROR_TG_PIN_CODE_GENERATE = 'FAILED TO GENERATE A PIN CODE, PLEASE TRY AGAIN LATER';
+$s_plugin_TelegramBot_ERROR_TG_USER_ALREADY_ASSOCIATED = 'THIS TELEGRAM ACCOUNT IS ALREADY LINKED TO ANOTHER USER. SEND THE /stop COMMAND FROM THAT CHAT TO UNLINK IT FIRST.';
 
 $s_plugin_TelegramBot_skip_button = 'Skip';
 $s_plugin_TelegramBot_back_button = 'Back';

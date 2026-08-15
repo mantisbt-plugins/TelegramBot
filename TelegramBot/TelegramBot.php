@@ -23,6 +23,11 @@ define( 'TELEGRAM_REGISTRATION_LINK', 0 );
 define( 'TELEGRAM_REGISTRATION_PIN', 1 );
 define( 'TELEGRAM_REGISTRATION_BOTH', 2 );
 
+# Where the unlink button was pressed: the account page of the user himself or the
+# plugin pages, where it is an administrative action even for one's own binding
+define( 'TELEGRAM_UNLINK_SOURCE_ACCOUNT', 'account' );
+define( 'TELEGRAM_UNLINK_SOURCE_ADMIN', 'admin' );
+
 # Seconds a PIN code stays valid
 define( 'TELEGRAM_PIN_CODE_TTL', 15 * 60 );
 

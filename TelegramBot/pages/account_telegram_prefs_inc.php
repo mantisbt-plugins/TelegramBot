@@ -100,6 +100,7 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                                         # nested forms are not allowed
                                                         echo form_security_field( 'telegram_user_unlink' );
                                                         ?>
+                                                        <input type="hidden" name="source" value="<?php echo TELEGRAM_UNLINK_SOURCE_ACCOUNT ?>" />
                                                         <input type="submit" class="btn btn-sm btn-primary btn-white btn-round pull-right"
                                                                formaction="<?php echo plugin_page( 'user_unlink' ) ?>"
                                                                value="<?php echo plugin_lang_get( 'user_unlink_button' ) ?>" />

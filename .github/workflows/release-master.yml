@@ -16,10 +16,14 @@ jobs:
       uses: actions/checkout@v3
 
     # 2. Install PHP and Composer
+    # The PHP version is the minimum required by the oldest supported MantisBT
+    # release (PHP_MIN_VERSION of MantisBT 2.26, the floor declared in
+    # TelegramBot.php::register()), so that composer verifies the dependencies
+    # against the oldest platform the built archive has to run on.
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        php-version: '7.2'
         extensions: mbstring, intl, zip
         tools: composer
 

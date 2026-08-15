@@ -353,6 +353,7 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'ERROR_TG_SESSION_NOT_INITIALIZED'    => plugin_lang_get('ERROR_TG_SESSION_NOT_INITIALIZED'),
                                   'ERROR_TG_GET_UPDATE'                 => plugin_lang_get('ERROR_TG_GET_UPDATE'),
                                   'ERROR_TG_PIN_CODE_INVALID'           => plugin_lang_get('ERROR_TG_PIN_CODE_INVALID'),
+                                  'ERROR_TG_PIN_CODE_EXPIRED'           => plugin_lang_get('ERROR_TG_PIN_CODE_EXPIRED'),
                                   'ERROR_TG_PIN_CODE_GENERATE'          => plugin_lang_get('ERROR_TG_PIN_CODE_GENERATE'),
                                   'ERROR_TG_USER_ALREADY_ASSOCIATED'    => plugin_lang_get('ERROR_TG_USER_ALREADY_ASSOCIATED'),
         );

@@ -267,6 +267,32 @@ function telegram_pin_code_telegram_user_get( $p_pin_code ) {
 }
 
 /**
+ * Return the telegram user an expired PIN code was issued to. The state row outlives
+ * the code itself, so the chat is still known and a fresh code can be sent to it.
+ *
+ * @param integer $p_pin_code PIN code entered by the user.
+ * @return integer Telegram user id, 0 if the code is unknown or still valid.
+ */
+function telegram_expired_pin_code_telegram_user_get( $p_pin_code ) {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    db_param_push();
+
+    $t_query  = "SELECT telegram_user_id
+			FROM $t_pin_codes_table
+			WHERE pin_code=" . db_param() . ' AND timestamp<' . db_param();
+    $t_result = db_query( $t_query, array( $p_pin_code, db_now() - TELEGRAM_PIN_CODE_TTL ) );
+
+    $t_row = db_fetch_array( $t_result );
+    if( $t_row === false ) {
+        return 0;
+    }
+
+    return (int) $t_row['telegram_user_id'];
+}
+
+/**
  * Remember the invitation the bot has just sent, so that it can be removed from the
  * chat once the accounts are linked.
  *

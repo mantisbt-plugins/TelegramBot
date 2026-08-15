@@ -111,7 +111,8 @@ network only.
 **PIN code** - the bot shows a 4-digit code in the chat, and the user enters it on the *Telegram
 binding* page of his MantisBT account (*My Account -> Telegram binding*). Nothing has to be opened
 from the phone, so this is the method for an instance that is not published to the Internet. The
-code is valid for 15 minutes; sending any message to the bot issues a new one.
+code is valid for 15 minutes; sending any message to the bot issues a new one, and entering a code
+that has just expired makes the bot send a fresh one to the chat by itself.
 
 <!-- SCREENSHOT: the invitation with a PIN code as it looks in the chat -->
 <!-- SCREENSHOT: the "Telegram binding" page with the code entered -->

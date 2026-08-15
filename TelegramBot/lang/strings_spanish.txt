@@ -215,7 +215,8 @@ $s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Los datos se s
 $s_plugin_TelegramBot_monitor_page_telegram_user_id = 'Identificador de usuario de Telegram';
 $s_plugin_TelegramBot_monitor_page_no_associated_users = 'Ningún usuario ha enlazado su cuenta todavía.';
 $s_plugin_TelegramBot_user_unlink_button = 'Desenlazar';
-$s_plugin_TelegramBot_user_unlink_confirm = '¿Desenlazar la cuenta de Telegram del usuario %1$s? Para seguir usando el bot tendrá que enlazarla de nuevo.'; 
+$s_plugin_TelegramBot_user_unlink_confirm = '¿Desenlazar la cuenta de Telegram del usuario %1$s? Para seguir usando el bot tendrá que enlazarla de nuevo.';
+$s_plugin_TelegramBot_user_unlink_confirm_self = '¿Desenlazar su cuenta de Telegram? Para seguir usando el bot tendrá que enlazarla de nuevo.'; 
 $s_plugin_TelegramBot_command_not_found = 'Comando no encontrado.';
 
 $s_plugin_TelegramBot_BAD_REQUEST = 'ERROR EN EL CUERPO DE LA SOLICITUD.';

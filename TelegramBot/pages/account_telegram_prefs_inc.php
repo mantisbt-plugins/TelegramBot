@@ -93,6 +93,16 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                                     </td>
                                                     <td>
                                                         <?php echo '@' . string_display_line( $t_telegram_chat->getUsername() ) ?>
+
+                                                        <?php
+                                                        # Releasing the binding from here needs no access to the chat,
+                                                        # unlike the /stop command. A button of the surrounding form,
+                                                        # nested forms are not allowed
+                                                        echo form_security_field( 'telegram_user_unlink' );
+                                                        ?>
+                                                        <input type="submit" class="btn btn-sm btn-primary btn-white btn-round pull-right"
+                                                               formaction="<?php echo plugin_page( 'user_unlink' ) ?>"
+                                                               value="<?php echo plugin_lang_get( 'user_unlink_button' ) ?>" />
                                                     </td>
                                                 </tr>
 

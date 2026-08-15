@@ -219,6 +219,7 @@ $s_plugin_TelegramBot_monitor_page_telegram_user_id = 'Telegram user id';
 $s_plugin_TelegramBot_monitor_page_no_associated_users = 'No user has linked his account yet.';
 $s_plugin_TelegramBot_user_unlink_button = 'Unlink';
 $s_plugin_TelegramBot_user_unlink_confirm = 'Unlink the Telegram account of user %1$s? The user will have to link it again to keep using the bot.';
+$s_plugin_TelegramBot_user_unlink_confirm_self = 'Unlink your Telegram account? To keep using the bot you will have to link it again.';
 $s_plugin_TelegramBot_command_not_found = 'Command not found.';
 
 $s_plugin_TelegramBot_menu_main_broadcast_message_page = 'Send message';

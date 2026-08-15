@@ -1689,13 +1689,8 @@ function telegramMsg_run_command( $t_command ) {
                 case 'stop':
                         $t_user_id = user_get_id_by_telegram_user_id($t_command->getFrom()->getId());
 
-                        telegram_message_realatationship_delete($t_command->getFrom()->getId());
-                        telegram_bot_user_mapping_delete($t_user_id);
-                        plugin_config_delete('bug_data_draft', auth_get_current_user_id());
-                        plugin_config_delete('bug_data_draft_chat_id', auth_get_current_user_id());
-                        plugin_config_delete('bug_data_draft_message_id', auth_get_current_user_id());
-                        plugin_config_delete('bug_data_draft_text_msg', auth_get_current_user_id());
-                        plugin_config_delete('bug_data_draft_current_field_to_save', auth_get_current_user_id());
+                        # the answer below is the notification, no second message needed
+                        telegram_bot_user_unlink($t_user_id, /* notify */ FALSE);
 
                         $t_data = [
                             'chat_id' => $t_command->getFrom()->getId(),

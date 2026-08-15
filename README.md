@@ -29,6 +29,7 @@ Features
 - Respond to chat alerts about events using the built-in function "Reply to message". The answer will be added as a comment to the bug (v. >= 1.3);
 - Support SOCKS5 proxy server ( Requires curl >= 7.21.7 );
 - Two ways of getting updates from Telegram: webhook and long polling (v. >= 2.0);
+- Two ways of linking a Telegram account to a MantisBT one: a confirmation link, or a PIN code shown in the chat and entered in MantisBT (v. >= 2.0);
 - Guided issue creation covering every field of the report form (v. >= 2.0):
     - custom fields of all MantisBT types, including the ones defined by third party cfdef files;
     - the required fields are asked first, then the issue can be created right away or the optional fields filled in;
@@ -92,6 +93,36 @@ For the Script mode the URL of your MantisBT instance must be known: in CLI it c
 from the request, and the bot puts it into the links it sends. Set `$g_path` in `config_inc.php`,
 or fill the URL field on the settings page if MantisBT is published under a different name for
 external users.
+
+Linking accounts: Link or PIN code
+----------------------------------
+
+Before a Telegram user can report anything, his chat has to be linked to a MantisBT account. How
+that binding is confirmed is chosen in the plugin settings (*Manage -> Manage Plugins -> TelegramBot
+-> Settings*, section **Account linking settings**, option **How users link their accounts**).
+
+<!-- SCREENSHOT: plugin settings page, the "Account linking settings" section -->
+
+**Link** - the bot sends a button leading to a MantisBT page, where the user, already logged in,
+confirms the binding in one tap. This requires MantisBT to be reachable from the device Telegram
+runs on, usually a phone - which rules the method out for an instance published on the local
+network only.
+
+**PIN code** - the bot shows a 4-digit code in the chat, and the user enters it on the *Telegram
+binding* page of his MantisBT account (*My Account -> Telegram binding*). Nothing has to be opened
+from the phone, so this is the method for an instance that is not published to the Internet. The
+code is valid for 15 minutes; sending any message to the bot issues a new one.
+
+<!-- SCREENSHOT: the invitation with a PIN code as it looks in the chat -->
+<!-- SCREENSHOT: the "Telegram binding" page with the code entered -->
+
+**Link and PIN code** - the invitation carries both, and the user takes whichever works for him.
+
+Whichever method is chosen, a chat already linked to another MantisBT account is never relinked
+silently: the owner of that chat releases it himself with the `/stop` command. The invitation is
+deleted from the chat as soon as the accounts are linked, so an unused code does not stay on
+screen; when the PIN code method is active, an invitation link sent earlier leads to a page saying
+so instead of binding anything.
 
 Supported Versions
 ------------------

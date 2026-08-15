@@ -699,6 +699,14 @@ function telegram_draft_step_display( $p_step, array $p_bug_data_draft ) {
             return date( config_get( 'normal_date_format' ), $t_value );
 
         case 'profile':
+            # profile_get_name() is deprecated since 2.28.0 in favour of the class
+            # introduced by the same version
+            if( class_exists( 'ProfileData' ) ) {
+                $t_profile = new ProfileData( (int)$t_value );
+
+                return $t_profile -> get_name();
+            }
+
             return profile_get_name( $t_value );
 
         case 'handler':

@@ -1662,6 +1662,16 @@ function telegram_custom_field_hint( array $p_field_def ) {
 	$t_length_min = (int)$p_field_def['length_min'];
 	$t_length_max = (int)$p_field_def['length_max'];
 
+	# Since 2.28.0 the core validates a textarea against the global limit as well,
+	# an unlimited field is in fact limited by it
+	if( $p_field_def['type'] == CUSTOM_FIELD_TYPE_TEXTAREA ) {
+		$t_textarea_max = (int)config_get_global( 'max_textarea_length', 0 );
+
+		if( $t_textarea_max > 0 && ( $t_length_max == 0 || $t_length_max > $t_textarea_max ) ) {
+			$t_length_max = $t_textarea_max;
+		}
+	}
+
 	if( $t_length_min > 0 && $t_length_max > 0 ) {
 		$t_hints[] = sprintf( plugin_lang_get( 'custom_field_hint_length_range' ), $t_length_min, $t_length_max );
 	} else if( $t_length_min > 0 ) {

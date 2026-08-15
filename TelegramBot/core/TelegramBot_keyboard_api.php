@@ -197,7 +197,9 @@ function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1,
 function keyboard_category_get( $p_project_id ) {
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
-    $t_category_rows = category_get_all_rows( $p_project_id, null, true );
+    # Enabled categories only, the way the web report form does it since 2.28.0;
+    # the parameter is simply ignored by the earlier versions
+    $t_category_rows = category_get_all_rows( $p_project_id, null, true, true );
 
     # The core allows an issue without a category only with this option on,
     # the button plays the role of the skip one then

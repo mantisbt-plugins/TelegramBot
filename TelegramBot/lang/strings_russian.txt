@@ -219,6 +219,7 @@ $s_plugin_TelegramBot_monitor_page_telegram_user_id = 'Идентификато�
 $s_plugin_TelegramBot_monitor_page_no_associated_users = 'Ни один пользователь ещё не привязал свой аккаунт.';
 $s_plugin_TelegramBot_user_unlink_button = 'Отвязать';
 $s_plugin_TelegramBot_user_unlink_confirm = 'Отвязать аккаунт Telegram у пользователя %1$s? Чтобы продолжить пользоваться ботом, ему придётся привязать аккаунт заново.';
+$s_plugin_TelegramBot_user_unlink_confirm_self = 'Отвязать ваш аккаунт Telegram? Чтобы продолжить пользоваться ботом, потребуется привязать его заново.';
 $s_plugin_TelegramBot_command_not_found = 'Команда не найдена.';
 
 $s_plugin_TelegramBot_menu_main_broadcast_message_page = 'Отправить сообщение';

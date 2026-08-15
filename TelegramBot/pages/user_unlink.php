@@ -17,17 +17,26 @@
 
 form_security_validate( 'telegram_user_unlink' );
 
-auth_reauthenticate();
-access_ensure_global_level( config_get( 'manage_plugin_threshold' ) );
+auth_ensure_user_authenticated();
 
 $f_user_id = gpc_get_int( 'user_id' );
 
 user_ensure_exists( $f_user_id );
 
-helper_ensure_confirmed(
-        sprintf( plugin_lang_get( 'user_unlink_confirm' ), user_get_field( $f_user_id, 'username' ) ),
-        plugin_lang_get( 'user_unlink_button' )
-);
+# Everybody may release his own binding - the /stop command needs access to the chat,
+# which is exactly what a user who lost the telegram account does not have anymore
+if( auth_get_current_user_id() == $f_user_id ) {
+    current_user_ensure_unprotected();
+} else {
+    auth_reauthenticate();
+    access_ensure_global_level( config_get( 'manage_plugin_threshold' ) );
+}
+
+$t_confirm_message = auth_get_current_user_id() == $f_user_id
+                          ? plugin_lang_get( 'user_unlink_confirm_self' )
+                          : sprintf( plugin_lang_get( 'user_unlink_confirm' ), user_get_field( $f_user_id, 'username' ) );
+
+helper_ensure_confirmed( $t_confirm_message, plugin_lang_get( 'user_unlink_button' ) );
 
 # The same cleanup the /stop command does, only for another user: the chat keeps
 # working as an anonymous one and asks for a binding on the next message
@@ -53,7 +62,10 @@ if( $t_telegram_user_id != 0 ) {
 
 form_security_purge( 'telegram_user_unlink' );
 
-$t_redirect_url = plugin_page( 'monitor_page', TRUE );
+# Back where the button was pressed, no url is taken from the request for that
+$t_redirect_url = auth_get_current_user_id() == $f_user_id
+                          ? plugin_page( 'account_telegram_prefs_page', TRUE )
+                          : plugin_page( 'monitor_page', TRUE );
 
 layout_page_header( null, $t_redirect_url );
 

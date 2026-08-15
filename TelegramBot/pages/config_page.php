@@ -110,6 +110,19 @@ telegrambot_print_menu_config( 'config_page' );
                                             <span class="lbl padding-6"><?php echo plugin_lang_get( 'registration_method_both' ) ?></span></label>
                                     </td>
                                 </tr>
+
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <?php echo plugin_lang_get( 'admin_unlink_notify' ) ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'admin_unlink_notify_notice' ) ?></span>
+                                    </th>
+                                    <td class="left" colspan="1">
+                                        <label><input type="radio" class="ace" name="admin_unlink_notify" value="1" <?php echo( ON == (int)plugin_config_get( 'admin_unlink_notify' ) ) ? 'checked="checked" ' : '' ?>/>
+                                            <span class="lbl padding-6"><?php echo lang_get( 'yes' ) ?></span></label>
+                                        <label><input type="radio" class="ace" name="admin_unlink_notify" value="0" <?php echo( OFF == (int)plugin_config_get( 'admin_unlink_notify' ) ) ? 'checked="checked" ' : '' ?>/>
+                                            <span class="lbl padding-6"><?php echo lang_get( 'no' ) ?></span></label>
+                                    </td>
+                                </tr>
                             </table>
                         </div>
                     </div>

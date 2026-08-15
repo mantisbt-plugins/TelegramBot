@@ -23,6 +23,7 @@ $f_bot_name			= gpc_get_string   ( 'bot_username' );
 $f_api_key			= gpc_get_string   ( 'api_key' );
 $f_reinstall_webhook            = gpc_get_bool     ( 'reinstall_webhook' );
 $f_registration_method          = gpc_get_int      ( 'registration_method', plugin_config_get( 'registration_method' ) );
+$f_admin_unlink_notify          = gpc_get_bool     ( 'admin_unlink_notify' );
 $f_use_cert                     = gpc_get_bool     ( 'use_cert' );
 $f_bot_cert_file                = gpc_get_file     ( 'bot_cert_file', null );
 $f_proxy_address		= gpc_get_string   ( 'proxy_address', '' );
@@ -92,6 +93,11 @@ if( !in_array( $f_registration_method, array( TELEGRAM_REGISTRATION_LINK, TELEGR
 
 if( plugin_config_get( 'registration_method' ) != $f_registration_method ) {
 	plugin_config_set( 'registration_method', $f_registration_method );
+}
+
+if( plugin_config_get( 'admin_unlink_notify' ) != $f_admin_unlink_notify ) {
+	# ON/OFF, not a PHP boolean: plugin_config_set() would store false as an empty string
+	plugin_config_set( 'admin_unlink_notify', $f_admin_unlink_notify ? ON : OFF );
 }
 
 if( $f_use_cert == false ) {

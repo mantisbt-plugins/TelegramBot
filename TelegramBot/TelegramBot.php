@@ -173,6 +173,8 @@ class TelegramBotPlugin extends MantisPlugin {
                                   # how a telegram account is linked to a MantisBT one:
                                   # TELEGRAM_REGISTRATION_LINK / _PIN / _BOTH
                                   'registration_method'                         => TELEGRAM_REGISTRATION_LINK,
+                                  # whether the chat is told about an unlink done by an administrator
+                                  'admin_unlink_notify'                         => ON,
                                   'bot_father_url'                              => 'https://t.me/BotFather',
                                   'telegram_url'                                => 'tg://resolve?domain=',
                                   'download_path'                               => '/tmp/',

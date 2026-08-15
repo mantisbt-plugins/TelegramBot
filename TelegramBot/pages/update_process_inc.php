@@ -53,23 +53,38 @@ foreach ( $t_results as $t_result ) {
                             $t_result   = Request::sendMessage( $t_data );
                         break;
 
+                    case 'video':
+                    case 'photo':
                     case 'document':
                         if( $t_file == NULL ) {
-                            $t_file = $t_update_content->getDocument();
+                            switch( $t_update_content->getType() ) {
+                                case 'video':
+                                    $t_file = $t_update_content->getVideo();
+                                    break;
+                                case 'photo':
+                                    $t_content_photo = $t_update_content->getPhoto();
+                                    $t_file          = $t_content_photo[count( $t_content_photo ) - 1];
+                                    break;
+                                case 'document':
+                                    $t_file = $t_update_content->getDocument();
+                                    break;
+                            }
                         }
 
-                        if( $t_file->getFileSize() > 20971520 ) {
+                        #A photo has no name at this point, its name checks run on the
+                        #file path when the draft or the note picks the file up
+                        $t_error_text = telegram_file_check( (string)$t_file->getFileName(), (int)$t_file->getFileSize() );
+
+                        if( $t_error_text != '' ) {
                             $t_data = [
                                                       'chat_id'             => $t_update_content->getChat()->getId(),
-                                                      'text'                => plugin_lang_get( 'error_file_size' ),
+                                                      'text'                => $t_error_text,
                                                       'reply_to_message_id' => $t_update_content->getMessageId()
                             ];
                             $t_result = Request::sendMessage( $t_data );
                             break;
                         }
 
-                    case 'video':
-                    case 'photo':
                     case 'text':
                         $t_user_id            = auth_get_current_user_id();
                         $t_bug_data_draft_raw = plugin_config_get( 'bug_data_draft', '', FALSE, $t_user_id );

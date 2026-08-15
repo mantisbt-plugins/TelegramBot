@@ -276,12 +276,12 @@ telegrambot_print_menu_config( 'config_page' );
             </div>
             
             <div class="space-10"></div>
-            
+
             <div class="widget-box widget-color-blue2">
                     <div class="widget-toolbox center clearfix">
                         <input type="submit" class="btn btn-primary btn-white btn-round" value="<?php echo lang_get('change_configuration') ?>" />
                     </div>
-                    
+
             </div>
             </form>
         </div>

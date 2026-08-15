@@ -102,7 +102,7 @@ $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'Lista de secciones';
 $s_plugin_TelegramBot_keyboard_button_back = 'A la lista de acciones';
 $s_plugin_TelegramBot_keyboard_button_delete_draft = 'Eliminar borrador';
 
-$s_plugin_TelegramBot_error_file_size = 'El archivo no debe superar los 20 MB';
+$s_plugin_TelegramBot_error_file_size = 'El archivo es demasiado grande. %1$s';
 $s_plugin_TelegramBot_error_content_type = 'La solicitud no es compatible con este bot';
 
 $s_plugin_TelegramBot_get_description = 'INTRODUZCA EL TEXTO DE LA DESCRIPCIÓN:';
@@ -193,6 +193,18 @@ $s_plugin_TelegramBot_BAD_REQUEST = 'ERROR EN EL CUERPO DE LA SOLICITUD.';
 $s_plugin_TelegramBot_ERROR_CERT_FILE_NOT_FOUND = 'FALTA EL ARCHIVO DEL CERTIFICADO';
 
 $s_plugin_TelegramBot_menu_main_broadcast_message_page = 'Enviar mensaje';
+$s_plugin_TelegramBot_broadcast_projects = 'Proyectos';
+$s_plugin_TelegramBot_broadcast_message = 'Mensaje';
+$s_plugin_TelegramBot_broadcast_send_button = 'Enviar';
+$s_plugin_TelegramBot_broadcast_sent = 'El mensaje se ha enviado a %1$d de %2$d usuarios vinculados (sin cuenta de Telegram vinculada: %3$d).';
+$s_plugin_TelegramBot_broadcast_header = '📢 Mensaje de difusión de %1$s';
+$s_plugin_TelegramBot_broadcast_config_page = 'Difusión';
+$s_plugin_TelegramBot_broadcast_enabled_header = 'Habilitar mensajes de difusión';
+$s_plugin_TelegramBot_broadcast_grants_title = 'Permisos de difusión por proyecto';
+$s_plugin_TelegramBot_broadcast_grants_notice = 'Los usuarios con un nivel de acceso igual o superior al configurado arriba pueden difundir a todos los proyectos. Los usuarios de la lista siguiente solo pueden difundir a los proyectos que se les hayan concedido. Para editar un permiso, haga clic en el nombre de usuario; para revocarlo, guarde el usuario sin proyectos marcados.';
+$s_plugin_TelegramBot_broadcast_grants_empty = 'No hay permisos concedidos.';
+$s_plugin_TelegramBot_broadcast_config_title = 'Mensajes de difusión';
+$s_plugin_TelegramBot_broadcast_send_threshold_header = 'Nivel de acceso mínimo para enviar mensajes de difusión';
 
 $s_plugin_TelegramBot_month_january = 'Enero';
 $s_plugin_TelegramBot_month_february = 'Febrero';

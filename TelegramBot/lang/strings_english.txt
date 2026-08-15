@@ -105,7 +105,7 @@ $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'List of sections';
 $s_plugin_TelegramBot_keyboard_button_back = 'To the list of actions';
 $s_plugin_TelegramBot_keyboard_button_delete_draft = 'Delete Draft';
 
-$s_plugin_TelegramBot_error_file_size = 'The file should not exceed 20 MB';
+$s_plugin_TelegramBot_error_file_size = 'The file is too big. %1$s';
 $s_plugin_TelegramBot_error_content_type = 'The request is not supported by this bot';
 
 $s_plugin_TelegramBot_get_description = 'ENTER DESCRIPTION TEXT:';
@@ -193,6 +193,18 @@ $s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Data is reques
 $s_plugin_TelegramBot_command_not_found = 'Command not found.';
 
 $s_plugin_TelegramBot_menu_main_broadcast_message_page = 'Send message';
+$s_plugin_TelegramBot_broadcast_projects = 'Projects';
+$s_plugin_TelegramBot_broadcast_message = 'Message';
+$s_plugin_TelegramBot_broadcast_send_button = 'Send';
+$s_plugin_TelegramBot_broadcast_sent = 'The message has been sent to %1$d of %2$d linked users (without a linked Telegram account: %3$d).';
+$s_plugin_TelegramBot_broadcast_header = '📢 Broadcast message from %1$s';
+$s_plugin_TelegramBot_broadcast_config_page = 'Broadcast';
+$s_plugin_TelegramBot_broadcast_enabled_header = 'Enable broadcast messages';
+$s_plugin_TelegramBot_broadcast_grants_title = 'Per-project broadcast permissions';
+$s_plugin_TelegramBot_broadcast_grants_notice = 'Users at or above the access level configured above can broadcast to all projects. Users listed below can broadcast only to the projects granted to them. To edit a permission, click the user name; to revoke it, save the user with no projects checked.';
+$s_plugin_TelegramBot_broadcast_grants_empty = 'No per-user permissions granted.';
+$s_plugin_TelegramBot_broadcast_config_title = 'Broadcast messages';
+$s_plugin_TelegramBot_broadcast_send_threshold_header = 'Minimum access level to send broadcast messages';
 
 $s_plugin_TelegramBot_month_january = 'January';
 $s_plugin_TelegramBot_month_february = 'February';

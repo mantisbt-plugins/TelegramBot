@@ -42,11 +42,6 @@ class RequestMantis extends Longman\TelegramBot\Request {
         return $response;
     }
 
-//    public static function __callStatic( $action, array $data ) {
-//        telegram_session_start();
-//        return parent::__callStatic( $action, $data );
-//    }
-
 }
 
 function telegram_set_webhook() {

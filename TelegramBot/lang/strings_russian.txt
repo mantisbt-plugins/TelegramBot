@@ -105,7 +105,7 @@ $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'К списку раз
 $s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
 $s_plugin_TelegramBot_keyboard_button_delete_draft = 'Удалить черновик';
 
-$s_plugin_TelegramBot_error_file_size = 'Файл не должен превышать 20 Мб';
+$s_plugin_TelegramBot_error_file_size = 'Файл слишком большой. %1$s';
 $s_plugin_TelegramBot_error_content_type = 'Запрос не поддерживается ботом';
 
 $s_plugin_TelegramBot_get_description = 'ВВЕДИТЕ ТЕКСТ ОПИСАНИЯ:';
@@ -193,6 +193,18 @@ $s_plugin_TelegramBot_monitor_page_info_receiving_updates_text = 'Данные �
 $s_plugin_TelegramBot_command_not_found = 'Команда не найдена.';
 
 $s_plugin_TelegramBot_menu_main_broadcast_message_page = 'Отправить сообщение';
+$s_plugin_TelegramBot_broadcast_projects = 'Проекты';
+$s_plugin_TelegramBot_broadcast_message = 'Сообщение';
+$s_plugin_TelegramBot_broadcast_send_button = 'Отправить';
+$s_plugin_TelegramBot_broadcast_sent = 'Сообщение отправлено %1$d из %2$d привязанных пользователей (без привязки к Telegram: %3$d).';
+$s_plugin_TelegramBot_broadcast_header = '📢 Рассылка от %1$s';
+$s_plugin_TelegramBot_broadcast_config_page = 'Рассылка';
+$s_plugin_TelegramBot_broadcast_enabled_header = 'Включить рассылку сообщений';
+$s_plugin_TelegramBot_broadcast_grants_title = 'Права рассылки по проектам';
+$s_plugin_TelegramBot_broadcast_grants_notice = 'Пользователи с уровнем доступа не ниже заданного выше могут рассылать по всем проектам. Пользователи из списка ниже — только по выданным им проектам. Для изменения права нажмите на имя пользователя; для отзыва сохраните пользователя без отмеченных проектов.';
+$s_plugin_TelegramBot_broadcast_grants_empty = 'Права никому не выданы.';
+$s_plugin_TelegramBot_broadcast_config_title = 'Широковещательные сообщения';
+$s_plugin_TelegramBot_broadcast_send_threshold_header = 'Минимальный уровень доступа для отправки рассылки';
 
 $s_plugin_TelegramBot_month_january = 'Январь';
 $s_plugin_TelegramBot_month_february = 'Февраль';

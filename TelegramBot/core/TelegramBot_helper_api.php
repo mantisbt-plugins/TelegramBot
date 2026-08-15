@@ -1005,16 +1005,38 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                         break;
                 }
 
-                $t_download = Longman\TelegramBot\Request::getFile( [ 'file_id' => $t_file_orgl->getFileId() ] );
+                #The upload rules are checked before the download on the size known
+                #from the update; a photo carries no name of its own, its name is
+                #taken from the file path and checked after getFile
+                $t_file_name       = $t_file_orgl->getFileName() == NULL ? '' : $t_file_orgl->getFileName();
+                $t_upload_is_error = FALSE;
+                $t_error_text      = telegram_file_check( $t_file_name, $t_file_orgl->getFileSize() );
 
-                $t_file = $t_download->getResult();
+                if( $t_error_text == '' ) {
+                    $t_download = Longman\TelegramBot\Request::getFile( [ 'file_id' => $t_file_orgl->getFileId() ] );
+                    $t_file     = $t_download->getResult();
+
+                    if( $t_file_name == '' ) {
+                        $t_file_name  = $t_file->getFilePath();
+                        $t_error_text = telegram_file_check( $t_file_name, 0 );
+                    }
+                }
+
+                if( $t_error_text != '' ) {
+                    $t_data_send       = [
+                                              'chat_id'    => $t_orgl_chat_id,
+                                              'message_id' => $t_callback_msg_id,
+                                              'text'       => $t_error_text
+                    ];
+                    $t_upload_is_error = TRUE;
+                    break;
+                }
 
                 $t_data_send_action = [
                                           'chat_id' => $t_orgl_chat_id,
                                           'action'  => 'upload_document'
                 ];
                 $t_rttt             = Longman\TelegramBot\Request::sendChatAction( $t_data_send_action );
-                $t_upload_is_error  = FALSE;
                 try {
                     Longman\TelegramBot\Request::downloadFile( $t_file );
                 } catch( Longman\TelegramBot\Exception\TelegramException $e ) {
@@ -1031,7 +1053,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                 $t_bug_data_draft['attachments'] = [
                                           'browser_upload' => [ 0 => FALSE ],
                                           'tmp_name'       => [ 0 => $t_file_path ],
-                                          'name'           => $t_file_orgl->getFileName() == NULL ? [ 0 => $t_file->getFilePath() ] : [ 0 => $t_file_orgl->getFileName() ]
+                                          'name'           => [ 0 => $t_file_name ]
                 ];
             }
 
@@ -1364,6 +1386,45 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
     return $t_data_send;
 }
 
+#The size of an attachment the bot is able to take: the Bot API refuses to
+#serve files bigger than 20 MB to bots, the limit of MantisBT applies when
+#it is the stricter one.
+function telegram_file_max_size() {
+    return (int)min( 20971520, file_get_max_file_size() );
+}
+
+#Check a file received from Telegram against the upload rules of MantisBT
+#and the Bot API download limit. Returns the localized error text or an
+#empty string when the file is accepted. An empty name skips the name
+#checks: a photo gets its name from the file path only after getFile.
+function telegram_file_check( $p_file_name, $p_file_size ) {
+
+    $t_max_file_size = telegram_file_max_size();
+
+    #Both limits mean the same thing to the user - the file will not go through -
+    #so the message names the effective one instead of its origin. The size is
+    #worded the way the report page of MantisBT words it.
+    if( $p_file_size > $t_max_file_size ) {
+        return sprintf(
+                                  plugin_lang_get( 'error_file_size' ),
+                                  get_filesize_info( $t_max_file_size / 1024, lang_get( 'kib' ) )
+        );
+    }
+
+    if( !is_blank( $p_file_name ) ) {
+        if( strlen( $p_file_name ) > DB_FIELD_SIZE_FILENAME ) {
+            error_parameters( $p_file_name );
+            return error_string( ERROR_FILE_NAME_TOO_LONG );
+        }
+
+        if( !file_type_check( $p_file_name ) ) {
+            return error_string( ERROR_FILE_NOT_ALLOWED );
+        }
+    }
+
+    return '';
+}
+
 function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_message ) {
 
     $t_command = array_keys( $p_current_action );
@@ -1430,16 +1491,36 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
                             break;
                     }
 
-                    $t_download = Longman\TelegramBot\Request::getFile( [ 'file_id' => $t_file_orgl->getFileId() ] );
+                    #The upload rules are checked before the download on the size known
+                    #from the update; a photo carries no name of its own, its name is
+                    #taken from the file path and checked after getFile
+                    $t_file_name  = $t_file_orgl->getFileName() == NULL ? '' : $t_file_orgl->getFileName();
+                    $t_error_text = telegram_file_check( $t_file_name, $t_file_orgl->getFileSize() );
 
-                    $t_file = $t_download->getResult();
+                    if( $t_error_text == '' ) {
+                        $t_download = Longman\TelegramBot\Request::getFile( [ 'file_id' => $t_file_orgl->getFileId() ] );
+                        $t_file     = $t_download->getResult();
+
+                        if( $t_file_name == '' ) {
+                            $t_file_name  = $t_file->getFilePath();
+                            $t_error_text = telegram_file_check( $t_file_name, 0 );
+                        }
+                    }
+
+                    if( $t_error_text != '' ) {
+                        $t_data_send       = [
+                                                  'text' => $t_error_text
+                        ];
+                        $t_upload_is_error = TRUE;
+                        break;
+                    }
 
 //                    $t_data_send_action = [
 //                                              'chat_id' => $t_orgl_chat_id,
 //                                              'action'  => 'upload_document'
 //                    ];
 //                    $t_rttt             = Longman\TelegramBot\Request::sendChatAction( $t_data_send_action );
-                    
+
                     try {
                         Longman\TelegramBot\Request::downloadFile( $t_file );
                     } catch( Longman\TelegramBot\Exception\TelegramException $e ) {
@@ -1454,7 +1535,7 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
                     $t_file_for_attach = [
                                               'browser_upload' => [ 0 => FALSE ],
                                               'tmp_name'       => [ 0 => $t_file_path ],
-                                              'name'           => $t_file_orgl->getFileName() == NULL ? [ 0 => $t_file->getFilePath() ] : [ 0 => $t_file_orgl->getFileName() ]
+                                              'name'           => [ 0 => $t_file_name ]
                     ];
                     $t_text            = $t_orgl_message->getCaption();
                     break;

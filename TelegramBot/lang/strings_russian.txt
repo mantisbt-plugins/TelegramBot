@@ -315,3 +315,7 @@ $s_plugin_TelegramBot_custom_field_hint_email = 'адрес электронно
 $s_plugin_TelegramBot_custom_field_hint_length_min = 'от %1$d символов';
 $s_plugin_TelegramBot_custom_field_hint_length_max = 'до %1$d символов';
 $s_plugin_TelegramBot_custom_field_hint_length_range = 'от %1$d до %2$d символов';
+$s_plugin_TelegramBot_upgrade_backup_warning = 'Перед обновлением обязательно сделайте резервную копию базы данных!';
+$s_plugin_TelegramBot_upgrade_backup_explanation = 'Обновление изменяет схему базы данных плагина. Возврат прежней версии файлов плагина эти изменения не отменяет — откатиться можно только восстановлением резервной копии базы.';
+$s_plugin_TelegramBot_upgrade_backup_checkbox = 'Резервная копия базы данных сделана';
+$s_plugin_TelegramBot_upgrade_confirm_button = 'Обновить';

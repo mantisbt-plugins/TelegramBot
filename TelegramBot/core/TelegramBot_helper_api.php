@@ -1462,6 +1462,36 @@ function telegram_file_max_size() {
     return (int)min( 20971520, file_get_max_file_size() );
 }
 
+#The file types the upload rules of MantisBT leave for the user. The core
+#checks the extension against a white list, and against a black list when
+#the white one is empty, so the answer takes the form of the list in force.
+#An empty string means every type is allowed.
+function telegram_file_types_info() {
+
+    $t_allowed_files = trim( config_get( 'allowed_files' ) );
+
+    if( !is_blank( $t_allowed_files ) ) {
+        return sprintf( plugin_lang_get( 'file_types_allowed' ), telegram_file_types_format( $t_allowed_files ) );
+    }
+
+    $t_disallowed_files = trim( config_get( 'disallowed_files' ) );
+
+    if( !is_blank( $t_disallowed_files ) ) {
+        return sprintf( plugin_lang_get( 'file_types_disallowed' ), telegram_file_types_format( $t_disallowed_files ) );
+    }
+
+    return '';
+}
+
+#The lists of the core are comma separated extensions typed by hand,
+#so the spacing of the source is not to be trusted
+function telegram_file_types_format( $p_file_types ) {
+
+    $t_types = array_filter( array_map( 'trim', explode( ',', $p_file_types ) ), 'strlen' );
+
+    return implode( ', ', $t_types );
+}
+
 #Check a file received from Telegram against the upload rules of MantisBT
 #and the Bot API download limit. Returns the localized error text or an
 #empty string when the file is accepted. An empty name skips the name
@@ -1487,7 +1517,10 @@ function telegram_file_check( $p_file_name, $p_file_size ) {
         }
 
         if( !file_type_check( $p_file_name ) ) {
-            return error_string( ERROR_FILE_NOT_ALLOWED );
+            $t_types_info = telegram_file_types_info();
+
+            return error_string( ERROR_FILE_NOT_ALLOWED )
+                    . ( $t_types_info == '' ? '' : ' ' . $t_types_info );
         }
     }
 

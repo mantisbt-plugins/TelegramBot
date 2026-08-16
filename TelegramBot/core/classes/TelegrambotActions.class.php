@@ -25,6 +25,18 @@ class TelegrambotActions {
         const ACTION_SELECT_TAG         = 'action_select';
         const STOP_REPORT_ISSUE_TAG     = 'stop_report_issue';
         const ADD_COMMENT_TAG           = 'add_comment';
+        # Submenu of the operations updating an existing issue
+        const UPDATE_BUG_TAG            = 'update_bug';
+        # Change the status of an existing issue picked from the chat
+        const CHANGE_STATUS_TAG         = 'chs';
+        # Status the picked issue is moved to
+        const SET_BUG_STATUS            = 'ss';
+        # Cancel the status change dialog and go back to the action list
+        const STOP_CHANGE_STATUS_TAG    = 'stop_chs';
+        # Steps of the status change dialog
+        const SET_STATUS_RESOLUTION     = 'sres';
+        const SET_STATUS_HANDLER        = 'sh';
+        const SET_STATUS_FIXED_VERSION  = 'sfv';
         const REPORT_BUG_TAG            = 'rb';
         const GET_PROJECT               = 'gp';
         const SET_PROJECT               = 'sp';

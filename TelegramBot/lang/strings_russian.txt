@@ -126,8 +126,14 @@ $s_plugin_TelegramBot_action_select = 'Выберите действие:';
 $s_plugin_TelegramBot_bug_section_select = 'Выберите раздел с задачами:';
 $s_plugin_TelegramBot_bug_select = 'Выберите задачу';
 $s_plugin_TelegramBot_content_upload_complete = 'Контент прикреплён к задаче: ';
+$s_plugin_TelegramBot_status_change_complete = 'Состояние задачи %1$s: %2$s → %3$s';
+$s_plugin_TelegramBot_menu_update_bug = 'Изменить задачу';
+$s_plugin_TelegramBot_action_label = 'Действие';
+$s_plugin_TelegramBot_filter_label = 'Фильтр';
+$s_plugin_TelegramBot_default_mark = '(по умолчанию)';
 $s_plugin_TelegramBot_comment_add_complete = 'Комментарий добавлен к задаче: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'К списку разделов';
+$s_plugin_TelegramBot_keyboard_button_list_of_projects = 'К списку проектов';
 $s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
 $s_plugin_TelegramBot_keyboard_button_delete_draft = 'Удалить черновик';
 

@@ -123,8 +123,14 @@ $s_plugin_TelegramBot_action_select = 'Seleccione una acción:';
 $s_plugin_TelegramBot_bug_section_select = 'Seleccione una sección con incidencias:';
 $s_plugin_TelegramBot_bug_select = 'Seleccione una incidencia';
 $s_plugin_TelegramBot_content_upload_complete = 'El contenido se ha adjuntado a la incidencia: ';
+$s_plugin_TelegramBot_status_change_complete = 'El estado de la incidencia %1$s: %2$s → %3$s';
+$s_plugin_TelegramBot_menu_update_bug = 'Actualizar incidencia';
+$s_plugin_TelegramBot_action_label = 'Acción';
+$s_plugin_TelegramBot_filter_label = 'Filtro';
+$s_plugin_TelegramBot_default_mark = '(predeterminado)';
 $s_plugin_TelegramBot_comment_add_complete = 'Comentario añadido a la incidencia: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'Lista de secciones';
+$s_plugin_TelegramBot_keyboard_button_list_of_projects = 'A la lista de proyectos';
 $s_plugin_TelegramBot_keyboard_button_back = 'A la lista de acciones';
 $s_plugin_TelegramBot_keyboard_button_delete_draft = 'Eliminar borrador';
 

@@ -138,7 +138,9 @@ function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(),
         $t_command = new IssueFileAddCommand( $t_data );
         $t_command->execute();
 
-        plugin_history_log( $p_bug_id, lang_get("download_attachments"), "", lang_get("file_added") );
+        # The key of the entry is localized by the core when the history is shown,
+        # so the values may carry language neutral data only
+        plugin_history_log( $p_bug_id, 'history_file_added', '' );
 
     } else {
         $t_payload = array(
@@ -160,8 +162,11 @@ function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(),
         $t_command = new IssueNoteAddCommand( $t_data );
         $t_noteId = $t_command->execute();
         
-        plugin_history_log( $p_bug_id, lang_get( "add_notes" ), "", lang_get( "bugnote_added" ) . ": " . $t_noteId['id']);
-       
+        plugin_history_log( $p_bug_id, 'history_note_added', '', (string)$t_noteId['id'] );
+
+        if( count( $p_files ) > 0 ) {
+            plugin_history_log( $p_bug_id, 'history_file_added', '' );
+        }
     }
 }
 

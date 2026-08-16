@@ -138,6 +138,10 @@ $s_plugin_TelegramBot_get_description = 'ENTER DESCRIPTION TEXT:';
 $s_plugin_TelegramBot_get_summary = 'ENTER SUMMARY TEXT:';
 $s_plugin_TelegramBot_bug_creation_complete = 'Created %1$s: ';
 
+$s_plugin_TelegramBot_history_issue_created = 'Issue reported via Telegram';
+$s_plugin_TelegramBot_history_note_added = 'Note added via Telegram';
+$s_plugin_TelegramBot_history_file_added = 'Attachment uploaded via Telegram';
+
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_new = 'The following issue is now in status NEW (again)';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_feedback = 'The following issue requires your FEEDBACK.';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_acknowledged = 'The following issue has been ACKNOWLEDGED.';

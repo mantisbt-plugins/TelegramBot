@@ -138,6 +138,10 @@ $s_plugin_TelegramBot_get_description = 'ВВЕДИТЕ ТЕКСТ ОПИСАН�
 $s_plugin_TelegramBot_get_summary = 'ВВЕДИТЕ ТЕМУ:';
 $s_plugin_TelegramBot_bug_creation_complete = 'Создана %1$s: ';
 
+$s_plugin_TelegramBot_history_issue_created = 'Задача создана через Telegram';
+$s_plugin_TelegramBot_history_note_added = 'Комментарий добавлен через Telegram';
+$s_plugin_TelegramBot_history_file_added = 'Вложение загружено через Telegram';
+
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_new = 'Следующей задаче присвоено состояние НОВАЯ (повторно):';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_feedback = 'По следующей задаче от вас НУЖНА ОБРАТНАЯ СВЯЗЬ:';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_acknowledged = 'Следующая задача РАССМАТРИВАЕТСЯ:';

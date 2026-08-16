@@ -135,6 +135,10 @@ $s_plugin_TelegramBot_get_description = 'INTRODUZCA EL TEXTO DE LA DESCRIPCIÓN:
 $s_plugin_TelegramBot_get_summary = 'INTRODUZCA EL TEXTO DEL RESUMEN:';
 $s_plugin_TelegramBot_bug_creation_complete = 'Creado %1$s: ';
 
+$s_plugin_TelegramBot_history_issue_created = 'Incidencia creada vía Telegram';
+$s_plugin_TelegramBot_history_note_added = 'Nota añadida vía Telegram';
+$s_plugin_TelegramBot_history_file_added = 'Adjunto subido vía Telegram';
+
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_new = 'La siguiente incidencia está ahora en estado NUEVA (de nuevo)';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_feedback = 'La siguiente incidencia requiere su RESPUESTA.';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_acknowledged = 'La siguiente incidencia ha sido RECONOCIDA.';

@@ -126,8 +126,14 @@ $s_plugin_TelegramBot_action_select = 'Select an action from:';
 $s_plugin_TelegramBot_bug_section_select = 'Select a section with bugs:';
 $s_plugin_TelegramBot_bug_select = 'Select a bug';
 $s_plugin_TelegramBot_content_upload_complete = 'The content is attached to the bug: ';
+$s_plugin_TelegramBot_status_change_complete = 'The state of the issue %1$s: %2$s → %3$s';
+$s_plugin_TelegramBot_menu_update_bug = 'Update Issue';
+$s_plugin_TelegramBot_action_label = 'Action';
+$s_plugin_TelegramBot_filter_label = 'Filter';
+$s_plugin_TelegramBot_default_mark = '(Default)';
 $s_plugin_TelegramBot_comment_add_complete = 'Comment added to bug: ';
 $s_plugin_TelegramBot_keyboard_button_list_of_sections = 'List of sections';
+$s_plugin_TelegramBot_keyboard_button_list_of_projects = 'To the list of projects';
 $s_plugin_TelegramBot_keyboard_button_back = 'To the list of actions';
 $s_plugin_TelegramBot_keyboard_button_delete_draft = 'Delete Draft';
 

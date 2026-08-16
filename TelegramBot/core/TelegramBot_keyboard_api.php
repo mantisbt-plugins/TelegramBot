@@ -15,23 +15,82 @@
 # along with Customer management plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
-function telegram_bot_keyboard_rows_default_filter() {
+function telegram_bot_keyboard_rows_default_filter( $p_action_tag = TelegrambotActions::ADD_COMMENT_TAG ) {
 
     $t_keyboard_rows   = array();
-    $t_keyboard_rows[] = [ 'text' => lang_get( 'my_view_title_assigned' ), 'callback_data' => json_encode( array( 'add_comment' => array( 'get_bugs' => array( 'assigned' => array( 'page' => 1 ) ) ) ) ) ];
-    $t_keyboard_rows[] = [ 'text' => lang_get( 'my_view_title_monitored' ), 'callback_data' => json_encode( array( 'add_comment' => array( 'get_bugs' => array( 'monitored' => array( 'page' => 1 ) ) ) ) ) ];
-    $t_keyboard_rows[] = [ 'text' => lang_get( 'my_view_title_reported' ), 'callback_data' => json_encode( array( 'add_comment' => array( 'get_bugs' => array( 'reported' => array( 'page' => 1 ) ) ) ) ) ];
-    $t_keyboard_rows[] = [ 'text' => lang_get( 'use_query' ), 'callback_data' => json_encode( array( 'add_comment' => array( 'get_bugs' => array( 'use_query' => array( 'page' => 1 ) ) ) ) ) ];
+    $t_keyboard_rows[] = [ 'text' => lang_get( 'my_view_title_assigned' ), 'callback_data' => json_encode( array( $p_action_tag => array( 'get_bugs' => array( 'assigned' => array( 'page' => 1 ) ) ) ) ) ];
+    $t_keyboard_rows[] = [ 'text' => lang_get( 'my_view_title_monitored' ), 'callback_data' => json_encode( array( $p_action_tag => array( 'get_bugs' => array( 'monitored' => array( 'page' => 1 ) ) ) ) ) ];
+    $t_keyboard_rows[] = [ 'text' => lang_get( 'my_view_title_reported' ), 'callback_data' => json_encode( array( $p_action_tag => array( 'get_bugs' => array( 'reported' => array( 'page' => 1 ) ) ) ) ) ];
+    $t_keyboard_rows[] = [ 'text' => lang_get( 'use_query' ), 'callback_data' => json_encode( array( $p_action_tag => array( 'get_bugs' => array( 'use_query' => array( 'page' => 1 ) ) ) ) ) ];
 
     return $t_keyboard_rows;
 }
 
-function telegram_bot_get_keyboard_default_filter() {
+function telegram_bot_get_keyboard_default_filter( $p_action_tag = TelegrambotActions::ADD_COMMENT_TAG ) {
 
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
-    foreach( telegram_bot_keyboard_rows_default_filter() as $t_row ) {
+    foreach( telegram_bot_keyboard_rows_default_filter( $p_action_tag ) as $t_row ) {
         $t_inline_keyboard->addRow( $t_row );
+    }
+
+    $t_inline_keyboard->addRow( [
+                              'text'          => '>> ' . plugin_lang_get( 'keyboard_button_list_of_projects' ) . ' <<',
+                              'callback_data' => json_encode( array( $p_action_tag => array( 'get_projects' => array( 'page' => 1 ) ) ) )
+    ] );
+
+    $t_inline_keyboard->addRow( [
+                              'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
+                              'callback_data' => json_encode( array( 'action_select' => '' ) )
+    ] );
+
+    return $t_inline_keyboard;
+}
+
+/**
+ * Build the page of the projects narrowing the issue lists of the flows picking
+ * an issue first, ten projects a page. The buttons carry the action tag of the
+ * flow the step belongs to.
+ *
+ * @param string  $p_action_tag TelegrambotActions tag of the flow.
+ * @param integer $p_page       Page of the list.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function keyboard_bug_select_projects_get( $p_action_tag, $p_page = 1 ) {
+
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    $t_project_ids = user_get_all_accessible_projects( auth_get_current_user_id() );
+    $t_project_ids = array_values( $t_project_ids );
+
+    project_cache_array_rows( $t_project_ids );
+
+    if( $p_page == 1 ) {
+        $t_inline_keyboard->addRow( [
+                                  'text'          => lang_get( 'all_projects' ),
+                                  'callback_data' => json_encode( array( $p_action_tag => array( 'sprj' => array( 'id' => ALL_PROJECTS ) ) ) )
+        ] );
+    }
+
+    for( $i = ($p_page * 10) - 10; $i < ($p_page * 10) && $i < count( $t_project_ids ); $i++ ) {
+        $t_inline_keyboard->addRow( [
+                                  'text'          => project_get_field( $t_project_ids[$i], 'name' ),
+                                  'callback_data' => json_encode( array( $p_action_tag => array( 'sprj' => array( 'id' => (int)$t_project_ids[$i] ) ) ) )
+        ] );
+    }
+
+    if( $p_page > 1 ) {
+        $t_inline_keyboard->addRow( [
+                                  'text'          => '<<',
+                                  'callback_data' => json_encode( array( $p_action_tag => array( 'get_projects' => array( 'page' => $p_page - 1 ) ) ) )
+        ] );
+    }
+
+    if( count( $t_project_ids ) > $p_page * 10 ) {
+        $t_inline_keyboard->addRow( [
+                                  'text'          => '>>',
+                                  'callback_data' => json_encode( array( $p_action_tag => array( 'get_projects' => array( 'page' => $p_page + 1 ) ) ) )
+        ] );
     }
 
     $t_inline_keyboard->addRow( [
@@ -42,7 +101,7 @@ function telegram_bot_get_keyboard_default_filter() {
     return $t_inline_keyboard;
 }
 
-function keyboard_bugs_get( $p_mantis_custom_filter, $p_page ) {
+function keyboard_bugs_get( $p_mantis_custom_filter, $p_page, $p_action_tag = TelegrambotActions::ADD_COMMENT_TAG, $p_section = 'use_query' ) {
     $t_per_page   = null;
     $t_bug_count  = null;
     $t_page_count = null;
@@ -54,36 +113,29 @@ function keyboard_bugs_get( $p_mantis_custom_filter, $p_page ) {
 
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
-    if( $t_current_page > 1 && $t_current_page <= $t_page_count ) {
-        $t_inline_keyboard->addRow( [
-                                  'text'          => '<<',
-                                  'callback_data' => json_encode( array( 'add_comment' => array( 'get_bugs' => array( 'use_query' => array( 'page' => $t_current_page - 1 ) ) ) ) )
-        ] );
-    }
-
     foreach( $t_bugs as $t_bug ) {
         $t_inline_keyboard->addRow( [
                                   'text'          => $t_bug->id . ': ' . $t_bug->summary,
-                                  'callback_data' => json_encode( array( 'add_comment' => array( 'set_bug' => $t_bug->id ) ) )
+                                  'callback_data' => json_encode( array( $p_action_tag => array( 'set_bug' => $t_bug->id ) ) )
         ] );
     }
 
     if( $t_current_page > 1 && $t_current_page <= $t_page_count ) {
         $t_inline_keyboard->addRow( [ 'text'          => '<<',
-                                  'callback_data' => json_encode( array( 'add_comment' => array( 'get_bugs' => array( 'use_query' => array( 'page' => $t_current_page - 1 ) ) ) ) )
+                                  'callback_data' => json_encode( array( $p_action_tag => array( 'get_bugs' => array( $p_section => array( 'page' => $t_current_page - 1 ) ) ) ) )
         ] );
     }
 
     if( $t_current_page >= 1 && $t_current_page < $t_page_count ) {
         $t_inline_keyboard->addRow( [
                                   'text'          => '>>',
-                                  'callback_data' => json_encode( array( 'add_comment' => array( 'get_bugs' => array( 'use_query' => array( 'page' => $t_current_page + 1 ) ) ) ) )
+                                  'callback_data' => json_encode( array( $p_action_tag => array( 'get_bugs' => array( $p_section => array( 'page' => $t_current_page + 1 ) ) ) ) )
         ] );
     }
 
     $t_inline_keyboard->addRow( [
                               'text'          => '>>' . plugin_lang_get( 'keyboard_button_list_of_sections' ) . '<<',
-                              'callback_data' => json_encode( array( 'add_comment' => array( 'get_default_category' => '' ) ) )
+                              'callback_data' => json_encode( array( $p_action_tag => array( 'get_default_category' => '' ) ) )
     ] );
 
 
@@ -112,9 +164,43 @@ function keyboard_get_menu_operations() {
 
     $t_inline_keyboard->addRow( [
                               'text'          => lang_get( 'add_bugnote_title' ),
-                              'callback_data' => json_encode( array( TelegrambotActions::ADD_COMMENT_TAG => array( 'get_default_category' => '' ) ) )
+                              'callback_data' => json_encode( array( TelegrambotActions::ADD_COMMENT_TAG => array( 'start' => '' ) ) )
     ] );
-    
+
+    if( access_has_any_project_level( 'update_bug_status_threshold' ) ) {
+
+        $t_inline_keyboard->addRow( [
+                                  'text'          => plugin_lang_get( 'menu_update_bug' ),
+                                  'callback_data' => json_encode( array( TelegrambotActions::UPDATE_BUG_TAG => array( 'start' => '' ) ) )
+        ] );
+    }
+
+    return $t_inline_keyboard;
+}
+
+/**
+ * Build the keyboard of the operations available for the picked issue,
+ * for now the only operation is moving the issue to another status.
+ *
+ * @param BugData $p_bug A valid bug object.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function keyboard_bug_actions_get( BugData $p_bug ) {
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    if( access_has_bug_level( config_get( 'update_bug_status_threshold' ), $p_bug->id ) || telegram_bug_reporter_can_close( $p_bug ) ) {
+
+        $t_inline_keyboard->addRow( [
+                                  'text'          => lang_get( 'bug_status_to_button' ),
+                                  'callback_data' => json_encode( array( TelegrambotActions::CHANGE_STATUS_TAG => array( 'set_bug' => $p_bug->id ) ) )
+        ] );
+    }
+
+    $t_inline_keyboard->addRow( [
+                              'text'          => '>>' . plugin_lang_get( 'keyboard_button_list_of_sections' ) . '<<',
+                              'callback_data' => json_encode( array( TelegrambotActions::UPDATE_BUG_TAG => array( 'get_default_category' => '' ) ) )
+    ] );
+
     return $t_inline_keyboard;
 }
 
@@ -227,11 +313,13 @@ function keyboard_category_get( $p_project_id ) {
     return $t_inline_keyboard;
 }
 
-function keyboard_enum_string_get( $p_enum_string, $p_default_val = 0 ) {
+function keyboard_enum_string_get( $p_enum_string, $p_default_val = 0, $p_action_tag = TelegrambotActions::REPORT_BUG_TAG, $p_action = NULL ) {
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
     $t_config_reproducibility_name = $p_enum_string . '_enum_string';
     $t_config_var_value            = config_get( $t_config_reproducibility_name );
+
+    $t_action = $p_action === NULL ? 's' . $p_enum_string : $p_action;
 
     if( is_array( $p_default_val ) ) {
             $t_val = $p_default_val;
@@ -247,11 +335,11 @@ function keyboard_enum_string_get( $p_enum_string, $p_default_val = 0 ) {
         $t_inline_keyboard->addRow( [
                                   'text'          => $t_elem2 . ( telegrambot_check_default( $t_val, $t_key ) ? ' (Default)' : '' ),
                                   'callback_data' => json_encode( array(
-                                                            'rb' => array( 's' . $p_enum_string => array( 'id' => $t_key ) )
+                                                            $p_action_tag => array( $t_action => array( 'id' => $t_key ) )
                                   ) )
         ] );
     }
-    
+
     return $t_inline_keyboard;
 }
 
@@ -304,7 +392,7 @@ function keyboard_profile_option_list_from_profiles( array $p_profiles, $p_selec
         return $t_inline_keyboard;
 }
 
-function keyboard_version_option_list( $p_version, $p_project_ids, $p_released, $p_action ) {
+function keyboard_version_option_list( $p_version, $p_project_ids, $p_released, $p_action, $p_action_tag = TelegrambotActions::REPORT_BUG_TAG ) {
         $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
         
 	if( null === $p_project_ids ) {
@@ -352,7 +440,7 @@ function keyboard_version_option_list( $p_version, $p_project_ids, $p_released, 
                         $t_inline_keyboard->addRow( [
                                           'text'          => string_shorten( $t_version_string, $t_max_length ),
                                           'callback_data' => json_encode( array(
-                                                                    'rb' => array( $p_action => array( 'version' => $t_version_version ) )
+                                                                    $p_action_tag => array( $p_action => array( 'version' => $t_version_version ) )
                                           ) )
                         ] );
 		}
@@ -360,7 +448,7 @@ function keyboard_version_option_list( $p_version, $p_project_ids, $p_released, 
         return $t_inline_keyboard;
 }
 
-function keyboard_handler_get( $p_project_id ) {
+function keyboard_handler_get( $p_project_id, $p_action_tag = TelegrambotActions::REPORT_BUG_TAG, $p_action = TelegrambotActions::SET_HANDLER ) {
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
     $p_user_id      = 0;
@@ -429,7 +517,7 @@ function keyboard_handler_get( $p_project_id ) {
         $t_inline_keyboard->addRow( [
                                   'text'          => $t_display[$i],
                                   'callback_data' => json_encode( array(
-                                                            'rb' => array( 'shandler' => array( 'id' => $t_row['id'] ) )
+                                                            $p_action_tag => array( $p_action => array( 'id' => $t_row['id'] ) )
                                   ) )
         ] );
     }
@@ -463,67 +551,60 @@ function keyboard_summary_get() {
     return $t_inline_keyboard;
 }
 
-function keyboard_bug_status_change_is( $p_bug_id ) {
-    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+/**
+ * Add the button cancelling the status change dialog to the keyboard of one
+ * of its questions.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the button to.
+ * @return void
+ */
+function keyboard_status_change_cancel_button_add( $p_inline_keyboard ) {
 
-    # User must have rights to change status to use this button
-    if( !access_has_bug_level( config_get( 'update_bug_status_threshold' ), $p_bug_id ) ) {
-        return $t_inline_keyboard;
-    }
-
-    $t_inline_keyboard->addRow( [
-                              'text'          => lang_get( 'status_group_bugs_button' ),
-                              'callback_data' => json_encode( array(
-                                                        'get_status' => array( 'bug_id' => $p_bug_id )
-                              ) )
+    $p_inline_keyboard->addRow( [
+                              'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
+                              'callback_data' => json_encode( array( TelegrambotActions::STOP_CHANGE_STATUS_TAG => '' ) )
     ] );
-
-    return $t_inline_keyboard;
 }
 
 /**
- * Print Change Status to: button
+ * Build the keyboard of the statuses an issue can be moved to.
  * This code is similar to print_status_option_list except
  * there is no masking, except for the current state
  *
  * @param BugData $p_bug A valid bug object.
- * @return void
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
  */
 function keyboard_buttons_bug_change_status( BugData $p_bug ) {
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
     $t_current_access  = access_get_project_level( $p_bug->project_id );
 
-    # User must have rights to change status to use this button
-    if( !access_has_bug_level( config_get( 'update_bug_status_threshold' ), $p_bug->id ) ) {
-        return;
-    }
+    $t_allow_close = telegram_bug_reporter_can_close( $p_bug );
 
-    $t_enum_list = get_status_option_list(
-            $t_current_access, $p_bug->status, false,
-            # Add close if user is bug's reporter, still has rights to report issues
-            # (to prevent users downgraded to viewers from updating issues) and
-            # reporters are allowed to close their own issues
-            ( bug_is_user_reporter( $p_bug->id, auth_get_current_user_id() ) && access_has_bug_level( config_get( 'report_bug_threshold' ), $p_bug->id ) && ON == config_get( 'allow_reporter_close' )
-            ), $p_bug->project_id );
+    # User must have rights to change status to use these buttons
+    if( access_has_bug_level( config_get( 'update_bug_status_threshold' ), $p_bug->id ) || $t_allow_close ) {
 
-    if( count( $t_enum_list ) > 0 ) {
+        $t_enum_list = get_status_option_list( $t_current_access, $p_bug->status, false, $t_allow_close, $p_bug->project_id );
+
         # resort the list into ascending order after noting the key from the first element (the default)
-
         ksort( $t_enum_list );
 
-        # space at beginning of line is important
         foreach( $t_enum_list as $t_key => $t_val ) {
             $t_inline_keyboard->addRow( [
                                       'text'          => $t_val,
                                       'callback_data' => json_encode( array(
-                                                                'set_status' => array(
-                                                                                          'bug_id' => $p_bug->id,
-                                                                                          'new_s'  => $t_key
-                                                                )
+                                                                TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SET_BUG_STATUS => array(
+                                                                                          'id' => $p_bug->id,
+                                                                                          's'  => $t_key
+                                                                ) )
                                       ) )
             ] );
         }
     }
+
+    $t_inline_keyboard->addRow( [
+                              'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
+                              'callback_data' => json_encode( array( TelegrambotActions::UPDATE_BUG_TAG => array( 'set_bug' => $p_bug->id ) ) )
+    ] );
 
     return $t_inline_keyboard;
 }
@@ -611,6 +692,37 @@ function keyboard_draft_buttons_add( $p_inline_keyboard, array $p_bug_data_draft
 
         if( telegram_draft_optional_phase_is_on( $p_bug_data_draft ) ) {
                 keyboard_create_button_add( $p_inline_keyboard );
+        }
+
+        # The entry steps of the wizard carry the same navigation buttons as the
+        # project lists of the other flows; deeper in the wizard they turn into
+        # the step back and the draft removal, there are answers to lose then
+        $t_answered = telegram_draft_answered_steps( $p_bug_data_draft );
+
+        if( empty( $t_answered ) ) {
+                # The project list: nothing is answered yet, the only way back
+                # is the action list
+                $p_inline_keyboard->addRow( [
+                                      'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
+                                      'callback_data' => json_encode( array( TelegrambotActions::STOP_REPORT_ISSUE_TAG => 1 ) )
+                ] );
+
+                return;
+        }
+
+        if( $t_answered == array( 'project' ) ) {
+                # The first question: going back means picking the project anew
+                $p_inline_keyboard->addRow( [
+                                      'text'          => '>> ' . plugin_lang_get( 'keyboard_button_list_of_projects' ) . ' <<',
+                                      'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::BACK_FIELD => 1 ) ) )
+                ] );
+
+                $p_inline_keyboard->addRow( [
+                                      'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
+                                      'callback_data' => json_encode( array( TelegrambotActions::STOP_REPORT_ISSUE_TAG => 1 ) )
+                ] );
+
+                return;
         }
 
         keyboard_back_button_add( $p_inline_keyboard );

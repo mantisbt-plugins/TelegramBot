@@ -86,7 +86,29 @@ foreach ( $t_results as $t_result ) {
                         }
 
                     case 'text':
-                        $t_user_id            = auth_get_current_user_id();
+                        $t_user_id = auth_get_current_user_id();
+
+                        # A pending text question of the status change dialog takes the
+                        # message first; the card ids are read before the answer is
+                        # processed, the submit step drops them along with the draft
+                        $t_status_card_chat_id    = plugin_config_get( 'status_change_draft_chat_id', NULL, FALSE, $t_user_id );
+                        $t_status_card_message_id = plugin_config_get( 'status_change_draft_message_id', NULL, FALSE, $t_user_id );
+
+                        $t_status_answer = telegram_status_change_text_answer( $t_update_content->getText() );
+
+                        if( $t_status_answer !== NULL ) {
+                            $t_data_del = [
+                                'chat_id'    => $t_update_content->getChat()->getId(),
+                                'message_id' => $t_update_content->getMessageId(),
+                            ];
+                            Longman\TelegramBot\Request::deleteMessage( $t_data_del );
+
+                            $t_status_answer['chat_id']    = $t_status_card_chat_id;
+                            $t_status_answer['message_id'] = $t_status_card_message_id;
+                            $t_result = Longman\TelegramBot\Request::editMessageText( $t_status_answer );
+                            break;
+                        }
+
                         $t_bug_data_draft_raw = plugin_config_get( 'bug_data_draft', '', FALSE, $t_user_id );
 
                         //Create a new draft of the issue
@@ -227,6 +249,25 @@ foreach ( $t_results as $t_result ) {
                     $t_result = Request::editMessageText( $t_data );
                     break;
 
+                case TelegrambotActions::UPDATE_BUG_TAG:
+                    $t_data = telegram_update_bug( $t_data[TelegrambotActions::UPDATE_BUG_TAG] );
+
+                    $t_data['chat_id']    = $t_update_content->getMessage()->getChat()->getId();
+                    $t_data['message_id'] = $t_update_content->getMessage()->getMessageId();
+                    $t_result = Request::editMessageText( $t_data );
+                    break;
+
+                case TelegrambotActions::CHANGE_STATUS_TAG:
+                    $t_data = telegram_change_status( $t_data[TelegrambotActions::CHANGE_STATUS_TAG], $t_update_content );
+
+                    $t_data['chat_id']    = $t_update_content->getMessage()->getChat()->getId();
+                    $t_data['message_id'] = $t_update_content->getMessage()->getMessageId();
+                    $t_result = Request::editMessageText( $t_data );
+                    break;
+
+                case TelegrambotActions::STOP_CHANGE_STATUS_TAG:
+                    telegram_status_change_draft_clear();
+                    //And next, change the action selection keyboard
                 case TelegrambotActions::STOP_REPORT_ISSUE_TAG:
                     plugin_config_delete( 'bug_data_draft', auth_get_current_user_id() );
                     plugin_config_delete( 'bug_data_draft_chat_id', auth_get_current_user_id() );

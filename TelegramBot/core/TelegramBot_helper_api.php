@@ -752,10 +752,33 @@ function telegram_draft_card_text_rebuild( array $p_bug_data_draft ) {
             $t_display = plugin_lang_get( 'skipped_mark' );
         }
 
+        # The project taken from the profile is marked as the default one
+        if( $t_step == 'project' && !empty( $p_bug_data_draft['project_is_default'] ) ) {
+            $t_display .= ' ' . plugin_lang_get( 'default_mark' );
+        }
+
         $t_lines[] = telegram_draft_step_label( $t_step ) . ': ' . $t_display;
     }
 
     return implode( PHP_EOL, $t_lines );
+}
+
+/**
+ * The steps of the draft already answered, in the canonical order.
+ *
+ * @param array $p_bug_data_draft Issue draft.
+ * @return array Step names.
+ */
+function telegram_draft_answered_steps( array $p_bug_data_draft ) {
+    $t_answered = array();
+
+    foreach( telegram_draft_steps_get( $p_bug_data_draft ) as $t_step ) {
+        if( telegram_draft_step_is_answered( $t_step, $p_bug_data_draft ) ) {
+            $t_answered[] = $t_step;
+        }
+    }
+
+    return $t_answered;
 }
 
 /**
@@ -772,8 +795,9 @@ function telegram_draft_card_text_rebuild( array $p_bug_data_draft ) {
  */
 function telegram_draft_card_compose( array $p_bug_data_draft, $p_suffix = '', $p_error = '' ) {
 
-    $t_answers = telegram_draft_card_text_rebuild( $p_bug_data_draft );
-    $t_prompt  = array();
+    $t_action_line = telegram_action_line( TelegrambotActions::REPORT_BUG_TAG );
+    $t_answers     = telegram_draft_card_text_rebuild( $p_bug_data_draft );
+    $t_prompt      = array();
 
     if( !is_blank( $p_suffix ) ) {
         $t_prompt[] = plugin_lang_get( 'card_question_prefix' ) . $p_suffix;
@@ -783,16 +807,13 @@ function telegram_draft_card_compose( array $p_bug_data_draft, $p_suffix = '', $
         $t_prompt[] = plugin_lang_get( 'card_error_prefix' ) . $p_error;
     }
 
+    $t_context = is_blank( $t_answers ) ? $t_action_line : $t_action_line . PHP_EOL . $t_answers;
+
     if( empty( $t_prompt ) ) {
-        return $t_answers;
+        return $t_context;
     }
 
-    # Nothing is answered yet, so there is nothing to separate the question from
-    if( is_blank( $t_answers ) ) {
-        return implode( PHP_EOL, $t_prompt );
-    }
-
-    return $t_answers . PHP_EOL . plugin_lang_get( 'card_separator' ) . PHP_EOL . implode( PHP_EOL, $t_prompt );
+    return telegram_card_prompt_append( $t_context, implode( PHP_EOL, $t_prompt ) );
 }
 
 /**
@@ -1148,6 +1169,8 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                     if( $t_draft_is_new && ALL_PROJECTS == $t_project_id && ALL_PROJECTS != $t_default_project ) {
                         $p_current_action = array();
                         $p_current_action[TelegrambotActions::SET_PROJECT]['id'] = $t_default_project;
+                        # The card labels the project of the profile as the default one
+                        $p_current_action[TelegrambotActions::SET_PROJECT]['default'] = 1;
                     } else {
                         $t_inline_keyboard = keyboard_projects_get(
                                                         $p_current_action[TelegrambotActions::GET_PROJECT]['id'],
@@ -1160,7 +1183,8 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                     }
 
                 case TelegrambotActions::SET_PROJECT:
-                    $t_bug_data_draft['project'] = $p_current_action[TelegrambotActions::SET_PROJECT]['id'];
+                    $t_bug_data_draft['project']            = $p_current_action[TelegrambotActions::SET_PROJECT]['id'];
+                    $t_bug_data_draft['project_is_default'] = !empty( $p_current_action[TelegrambotActions::SET_PROJECT]['default'] );
                     plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
 
                     $t_ask_next = TRUE;
@@ -1527,45 +1551,798 @@ function telegram_file_check( $p_file_name, $p_file_size ) {
     return '';
 }
 
+/**
+ * The first line of every card of a dialog: the action the dialog belongs to.
+ *
+ * @param string $p_action_tag TelegrambotActions tag of the flow.
+ * @return string
+ */
+function telegram_action_line( $p_action_tag ) {
+    switch( $p_action_tag ) {
+        case TelegrambotActions::REPORT_BUG_TAG:
+            $t_action = lang_get( 'report_bug_link' );
+            break;
+
+        case TelegrambotActions::ADD_COMMENT_TAG:
+            $t_action = lang_get( 'add_bugnote_title' );
+            break;
+
+        case TelegrambotActions::UPDATE_BUG_TAG:
+            $t_action = plugin_lang_get( 'menu_update_bug' );
+            break;
+
+        # The status change dialog is a part of the update issue flow, the line
+        # chains the operation picked within it
+        case TelegrambotActions::CHANGE_STATUS_TAG:
+            $t_action = plugin_lang_get( 'menu_update_bug' ) . ' → ' . lang_get( 'bug_status_to_button' );
+            break;
+
+        default:
+            return '';
+    }
+
+    return plugin_lang_get( 'action_label' ) . ': ' . $t_action;
+}
+
+/**
+ * Put the prompt telling the user what to do now under the context lines of a
+ * dialog card, separated the way the draft card separates its question.
+ *
+ * @param string $p_context Context lines of the card.
+ * @param string $p_prompt  Prompt of the current step.
+ * @return string
+ */
+function telegram_card_prompt_append( $p_context, $p_prompt ) {
+    return $p_context . PHP_EOL . plugin_lang_get( 'card_separator' ) . PHP_EOL . $p_prompt;
+}
+
+/**
+ * The line naming the issue on the cards of a dialog, labeled the way the
+ * issue view page of the core is titled.
+ *
+ * @param BugData $p_bug A valid bug object.
+ * @return string
+ */
+function telegram_bug_line( BugData $p_bug ) {
+    return lang_get( 'issue_id' ) . $p_bug->id . ': ' . $p_bug->summary;
+}
+
+/**
+ * The line naming the filter picked on the issue list step, empty until one is
+ * picked.
+ *
+ * @return string
+ */
+function telegram_bug_select_filter_line() {
+    switch( plugin_config_get( 'bug_select_filter', '', FALSE, auth_get_current_user_id() ) ) {
+        case 'assigned':
+            $t_name = lang_get( 'my_view_title_assigned' );
+            break;
+
+        case 'monitored':
+            $t_name = lang_get( 'my_view_title_monitored' );
+            break;
+
+        case 'reported':
+            $t_name = lang_get( 'my_view_title_reported' );
+            break;
+
+        case 'use_query':
+            $t_name = lang_get( 'use_query' );
+            break;
+
+        default:
+            return '';
+    }
+
+    return plugin_lang_get( 'filter_label' ) . ': ' . $t_name;
+}
+
+/**
+ * The context lines every card of an issue picking flow starts with: the
+ * action, the picked project (named as the default one when it came from the
+ * profile) and, once picked, the filter.
+ *
+ * @param string  $p_action_tag  TelegrambotActions tag of the flow.
+ * @param boolean $p_with_filter False on the steps before the filter is picked.
+ * @return string
+ */
+function telegram_bug_select_context( $p_action_tag, $p_with_filter = TRUE ) {
+    $t_user_id = auth_get_current_user_id();
+
+    $t_lines   = array();
+    $t_lines[] = telegram_action_line( $p_action_tag );
+
+    $t_project_id   = (int)plugin_config_get( 'bug_select_project', ALL_PROJECTS, FALSE, $t_user_id );
+    $t_project_name = $t_project_id == ALL_PROJECTS ? lang_get( 'all_projects' ) : project_get_name( $t_project_id, /* trigger_errors */ false );
+
+    if( plugin_config_get( 'bug_select_project_is_default', 0, FALSE, $t_user_id ) ) {
+        $t_project_name .= ' ' . plugin_lang_get( 'default_mark' );
+    }
+
+    $t_lines[] = lang_get( 'email_project' ) . ': ' . $t_project_name;
+
+    if( $p_with_filter ) {
+        $t_filter_line = telegram_bug_select_filter_line();
+
+        if( $t_filter_line != '' ) {
+            $t_lines[] = $t_filter_line;
+        }
+    }
+
+    return implode( PHP_EOL, $t_lines );
+}
+
+/**
+ * Whether the current user, being the reporter of the issue, may close it: the
+ * user still has the rights to report issues (to prevent users downgraded to
+ * viewers from updating issues) and reporters are allowed to close their own
+ * issues.
+ *
+ * @param BugData $p_bug A valid bug object.
+ * @return boolean
+ */
+function telegram_bug_reporter_can_close( BugData $p_bug ) {
+    return bug_is_user_reporter( $p_bug->id, auth_get_current_user_id() )
+            && access_has_bug_level( config_get( 'report_bug_threshold' ), $p_bug->id )
+            && ON == config_get( 'allow_reporter_close' );
+}
+
+/**
+ * Build the message of a step picking the issue to act on: the list of the
+ * projects, the sections narrowing the issues down within the picked project or
+ * a page of the issues of a section. The buttons carry the action tag of the
+ * flow the step belongs to, the picked project is kept per user.
+ *
+ * @param array  $p_current_action Decoded callback data of the step.
+ * @param string $p_action_tag     TelegrambotActions tag of the flow.
+ * @return array Data of the message to send.
+ */
+function telegram_bug_select_step( $p_current_action, $p_action_tag ) {
+
+    $t_command = array_keys( $p_current_action );
+    $t_user_id = auth_get_current_user_id();
+
+    if( $t_command[0] == 'start' ) {
+        # On the flow entry the default project of the profile is taken without
+        # asking, the way the report wizard does; the section list carries the
+        # button going back to the project list
+        $t_default_project = user_pref_get_pref( $t_user_id, 'default_project' );
+
+        if( ALL_PROJECTS == $t_default_project ) {
+            $p_current_action = array( 'get_projects' => array( 'page' => 1 ) );
+        } else {
+            plugin_config_set( 'bug_select_project', (int)$t_default_project, $t_user_id );
+            plugin_config_set( 'bug_select_project_is_default', 1, $t_user_id );
+
+            $p_current_action = array( 'get_default_category' => '' );
+        }
+
+        $t_command = array_keys( $p_current_action );
+    }
+
+    if( $t_command[0] == 'get_projects' ) {
+        return [
+                                  'text'         => telegram_card_prompt_append( telegram_action_line( $p_action_tag ), lang_get( 'select_project_button' ) ),
+                                  'reply_markup' => keyboard_bug_select_projects_get( $p_action_tag, (int)$p_current_action['get_projects']['page'] ),
+        ];
+    }
+
+    if( $t_command[0] == 'sprj' ) {
+        plugin_config_set( 'bug_select_project', (int)$p_current_action['sprj']['id'], $t_user_id );
+        plugin_config_set( 'bug_select_project_is_default', 0, $t_user_id );
+
+        $t_command[0] = 'get_default_category';
+    }
+
+    if( $t_command[0] == 'get_default_category' ) {
+        # The filter is being picked anew, the one of the previous walk is gone
+        plugin_config_delete( 'bug_select_filter', $t_user_id );
+
+        return [
+                                  'text'         => telegram_card_prompt_append(
+                                          telegram_bug_select_context( $p_action_tag, FALSE ),
+                                          plugin_lang_get( 'bug_section_select' ) ),
+                                  'reply_markup' => telegram_bot_get_keyboard_default_filter( $p_action_tag ),
+        ];
+    }
+
+    # The list below is narrowed down to the project picked above, the picked
+    # filter is kept for the cards of the later steps
+    $t_project_id = (int)plugin_config_get( 'bug_select_project', ALL_PROJECTS, FALSE, $t_user_id );
+
+    $t_command_get_bugs = array_keys( $p_current_action['get_bugs'] );
+
+    plugin_config_set( 'bug_select_filter', $t_command_get_bugs[0], $t_user_id );
+
+    switch( $t_command_get_bugs[0] ) {
+        case 'assigned':
+            $t_custom_filter = filter_create_assigned_to_unresolved( $t_project_id, $t_user_id );
+            break;
+
+        case 'monitored':
+            $t_custom_filter = filter_create_monitored_by( $t_project_id, $t_user_id );
+            break;
+
+        case 'reported':
+            $t_custom_filter = filter_create_reported_by( $t_project_id, $t_user_id );
+            break;
+
+        case 'use_query':
+            $t_custom_filter = filter_get_default();
+
+            if( $t_project_id != ALL_PROJECTS ) {
+                $t_custom_filter[FILTER_PROPERTY_PROJECT_ID] = array( '0' => $t_project_id );
+                $t_custom_filter = filter_ensure_valid_filter( $t_custom_filter );
+            }
+            break;
+    }
+
+    $t_inline_keyboard = keyboard_bugs_get( $t_custom_filter, $p_current_action['get_bugs'][$t_command_get_bugs[0]]['page'], $p_action_tag, $t_command_get_bugs[0] );
+
+    return [
+                              'text'         => telegram_card_prompt_append(
+                                      telegram_bug_select_context( $p_action_tag ),
+                                      plugin_lang_get( 'bug_select' ) ),
+                              'reply_markup' => $t_inline_keyboard,
+    ];
+}
+
+/**
+ * Process a step of the flow updating an existing issue: pick the project, the
+ * filter, the issue, then the operation to run on it, for now the only
+ * operation is the status change.
+ *
+ * @param array $p_current_action Decoded callback data of the step.
+ * @return array Data of the message to send.
+ */
+function telegram_update_bug( $p_current_action ) {
+
+    # Walking the lists drops a stale status change dialog
+    telegram_status_change_draft_clear();
+
+    $t_command = array_keys( $p_current_action );
+
+    switch( $t_command[0] ) {
+        case 'start':
+        case 'get_projects':
+        case 'sprj':
+        case 'get_default_category':
+        case 'get_bugs':
+            $t_data_send = telegram_bug_select_step( $p_current_action, TelegrambotActions::UPDATE_BUG_TAG );
+            break;
+
+        case 'set_bug':
+            $t_bug_id = (int)$p_current_action['set_bug'];
+            $t_bug    = bug_get( $t_bug_id );
+
+            $t_data_send = [
+                                      'text'         => telegram_card_prompt_append(
+                                              telegram_bug_select_context( TelegrambotActions::UPDATE_BUG_TAG ) . PHP_EOL . telegram_bug_line( $t_bug ),
+                                              plugin_lang_get( 'action_select' ) ),
+                                      'reply_markup' => keyboard_bug_actions_get( $t_bug ),
+            ];
+            break;
+
+        default:
+            $t_data_send = telegram_bug_select_step( array( 'start' => '' ), TelegrambotActions::UPDATE_BUG_TAG );
+            break;
+    }
+
+    return $t_data_send;
+}
+
+/**
+ * Load the state of the status change dialog of the current user.
+ *
+ * @return array|null Draft array or null when no dialog is in progress.
+ */
+function telegram_status_change_draft_get() {
+    $t_raw = plugin_config_get( 'status_change_draft', '', FALSE, auth_get_current_user_id() );
+
+    if( is_blank( $t_raw ) ) {
+        return NULL;
+    }
+
+    return json_decode( $t_raw, TRUE );
+}
+
+/**
+ * Store the state of the status change dialog of the current user.
+ *
+ * @param array $p_draft Draft array.
+ * @return void
+ */
+function telegram_status_change_draft_set( $p_draft ) {
+    plugin_config_set( 'status_change_draft', json_encode( $p_draft ), auth_get_current_user_id() );
+}
+
+/**
+ * Drop the whole state of the status change dialog of the current user.
+ *
+ * @return void
+ */
+function telegram_status_change_draft_clear() {
+    $t_user_id = auth_get_current_user_id();
+
+    plugin_config_delete( 'status_change_draft', $t_user_id );
+    plugin_config_delete( 'status_change_draft_chat_id', $t_user_id );
+    plugin_config_delete( 'status_change_draft_message_id', $t_user_id );
+    plugin_config_delete( 'status_change_draft_await', $t_user_id );
+}
+
+/**
+ * Distill the note content out of the message the dialog was started from: the
+ * text and, for the media messages, the id of the file picked up at the submit
+ * step. The change status page of the core carries a bugnote the same way.
+ *
+ * @param Longman\TelegramBot\Entities\Message|null $p_message Message the action menu replied to.
+ * @return array Content descriptor stored in the draft.
+ */
+function telegram_status_change_content_descriptor( $p_message ) {
+    $t_content = array( 'text' => '', 'file_id' => '', 'file_name' => '', 'file_size' => 0 );
+
+    if( $p_message === NULL ) {
+        return $t_content;
+    }
+
+    switch( $p_message->getType() ) {
+        case 'video':
+            $t_file = $p_message->getVideo();
+            break;
+        case 'photo':
+            $t_content_photo = $p_message->getPhoto();
+            $t_file          = $t_content_photo[count( $t_content_photo ) - 1];
+            break;
+        case 'document':
+            $t_file = $p_message->getDocument();
+            break;
+        default:
+            $t_file = NULL;
+    }
+
+    if( $t_file !== NULL ) {
+        $t_content['file_id']   = $t_file->getFileId();
+        $t_content['file_name'] = (string)$t_file->getFileName();
+        $t_content['file_size'] = (int)$t_file->getFileSize();
+        $t_content['text']      = (string)$p_message->getCaption();
+    } else {
+        $t_content['text'] = (string)$p_message->getText();
+    }
+
+    return $t_content;
+}
+
+/**
+ * The access checks bug_change_status_page.php of the core does before drawing
+ * the form.
+ *
+ * @param BugData $p_bug        A valid bug object.
+ * @param integer $p_new_status Status the issue is moved to.
+ * @param string  $p_warning    Out: warning shown on the card when the transition may go on.
+ * @return string Error text, empty when the transition may go on.
+ */
+function telegram_status_change_entry_check( BugData $p_bug, $p_new_status, &$p_warning ) {
+    $t_project_id = $p_bug->project_id;
+    $t_reopen     = config_get( 'bug_reopen_status', null, null, $t_project_id );
+    $t_resolved   = config_get( 'bug_resolved_status_threshold', null, null, $t_project_id );
+    $t_closed     = config_get( 'bug_closed_status_threshold', null, null, $t_project_id );
+    $t_user_id    = auth_get_current_user_id();
+
+    if( $p_bug->status >= $t_resolved && $p_new_status <= $t_reopen ) {
+        if( !access_can_reopen_bug( $p_bug, $t_user_id ) ) {
+            return error_string( ERROR_ACCESS_DENIED );
+        }
+    } else if( $p_new_status == $t_closed ) {
+        if( !access_can_close_bug( $p_bug, $t_user_id ) ) {
+            return error_string( ERROR_ACCESS_DENIED );
+        }
+    } else if( bug_is_readonly( $p_bug->id )
+            || !access_has_bug_level( access_get_status_threshold( $p_new_status, $t_project_id ), $p_bug->id, $t_user_id ) ) {
+        return error_string( ERROR_ACCESS_DENIED );
+    }
+
+    if( $p_new_status >= $t_resolved && !relationship_can_resolve_bug( $p_bug->id ) ) {
+        if( OFF == config_get( 'allow_parent_of_unresolved_to_close' ) ) {
+            return error_string( ERROR_BUG_RESOLVE_DEPENDANTS_BLOCKING );
+        }
+
+        $p_warning = lang_get( 'relationship_warning_blocking_bugs_not_resolved_2' );
+    }
+
+    return '';
+}
+
+/**
+ * Whether the step of the status change dialog applies to the transition, the
+ * conditions mirror the fields of bug_change_status_page.php.
+ *
+ * @param string  $p_step  Step name.
+ * @param array   $p_draft Draft of the dialog.
+ * @param BugData $p_bug   A valid bug object.
+ * @return boolean
+ */
+function telegram_status_change_step_is_applicable( $p_step, $p_draft, BugData $p_bug ) {
+    $t_project_id = $p_bug->project_id;
+    $t_resolved   = config_get( 'bug_resolved_status_threshold', null, null, $t_project_id );
+    $t_closed     = config_get( 'bug_closed_status_threshold', null, null, $t_project_id );
+    $t_new_status = (int)$p_draft['new_status'];
+
+    switch( $p_step ) {
+        case 'resolution':
+            return $t_new_status >= $t_resolved
+                    && ( $t_new_status < $t_closed
+                            || $p_bug->resolution < config_get( 'bug_resolution_fixed_threshold', null, null, $t_project_id ) );
+
+        case 'duplicate_id':
+            # The page shows the field along with the resolution one, the dialog
+            # only asks for the id when the issue is resolved as a duplicate
+            return $p_draft['resolution'] !== '' && $p_draft['resolution'] !== null
+                    && (int)$p_draft['resolution'] == config_get( 'bug_duplicate_resolution', null, null, $t_project_id );
+
+        case 'handler':
+            return access_has_bug_level( config_get( 'update_bug_assign_threshold', config_get( 'update_bug_threshold' ) ), $p_bug->id );
+
+        case 'fixed_in_version':
+            return $t_new_status >= $t_resolved
+                    && version_should_show_product_version( $t_project_id )
+                    && !bug_is_readonly( $p_bug->id )
+                    && access_has_bug_level( config_get( 'update_bug_threshold' ), $p_bug->id );
+    }
+
+    return FALSE;
+}
+
+/**
+ * The name of the process the transition stands for, the title
+ * bug_change_status_page.php of the core shows on its form.
+ *
+ * @param integer $p_new_status Status the issue is moved to.
+ * @return string
+ */
+function telegram_status_change_process_title( $p_new_status ) {
+    $t_status_label = str_replace( ' ', '_', MantisEnum::getLabel( config_get( 'status_enum_string' ), (int)$p_new_status ) );
+
+    return lang_get( $t_status_label . '_bug_title' );
+}
+
+/**
+ * Compose the card of the status change dialog: the issue, the transition, the
+ * answers given so far and the pending question or error.
+ *
+ * @param array  $p_draft    Draft of the dialog.
+ * @param string $p_question Question the card ends with.
+ * @param string $p_error    Error shown before the question.
+ * @return string
+ */
+function telegram_status_change_card_compose( $p_draft, $p_question = '', $p_error = '' ) {
+    $t_bug = bug_get( (int)$p_draft['bug_id'] );
+
+    $t_lines   = array();
+    $t_lines[] = telegram_bug_select_context( TelegrambotActions::CHANGE_STATUS_TAG );
+    $t_lines[] = telegram_bug_line( $t_bug );
+    $t_lines[] = telegram_status_change_process_title( (int)$p_draft['new_status'] );
+
+    if( $p_draft['resolution'] !== '' && $p_draft['resolution'] !== null ) {
+        $t_lines[] = lang_get( 'resolution' ) . ': ' . get_enum_element( 'resolution', (int)$p_draft['resolution'] );
+    }
+
+    if( $p_draft['duplicate_id'] !== '' && $p_draft['duplicate_id'] !== null ) {
+        $t_lines[] = lang_get( 'duplicate_id' ) . ': ' . $p_draft['duplicate_id'];
+    }
+
+    if( $p_draft['handler'] !== '' && $p_draft['handler'] !== null ) {
+        $t_lines[] = lang_get( 'assigned_to' ) . ': ' . user_get_name( (int)$p_draft['handler'] );
+    }
+
+    if( $p_draft['fixed_in_version'] !== '' && $p_draft['fixed_in_version'] !== null ) {
+        $t_lines[] = lang_get( 'fixed_in_version' ) . ': ' . $p_draft['fixed_in_version'];
+    }
+
+    if( isset( $p_draft['warning'] ) && $p_draft['warning'] != '' ) {
+        $t_lines[] = '⚠ ' . $p_draft['warning'];
+    }
+
+    $t_prompt = array();
+
+    if( $p_error != '' ) {
+        $t_prompt[] = '⚠ ' . $p_error;
+    }
+
+    if( $p_question != '' ) {
+        $t_prompt[] = '❓ ' . $p_question;
+    }
+
+    if( empty( $t_prompt ) ) {
+        return implode( PHP_EOL, $t_lines );
+    }
+
+    return telegram_card_prompt_append( implode( PHP_EOL, $t_lines ), implode( PHP_EOL, $t_prompt ) );
+}
+
+/**
+ * Build the question of the given step of the status change dialog.
+ *
+ * @param string  $p_step  Step name.
+ * @param array   $p_draft Draft of the dialog.
+ * @param BugData $p_bug   A valid bug object.
+ * @param string  $p_error Error shown on the card when the previous answer was rejected.
+ * @return array Data of the message to send.
+ */
+function telegram_status_change_step_ask( $p_step, $p_draft, BugData $p_bug, $p_error = '' ) {
+    $t_user_id = auth_get_current_user_id();
+
+    switch( $p_step ) {
+        case 'resolution':
+            # The page preselects the duplicate resolution when a duplicate
+            # relationship exists, the fixed one otherwise
+            $t_fixed_threshold = config_get( 'bug_resolution_fixed_threshold', null, null, $p_bug->project_id );
+            $t_default         = $p_bug->resolution >= $t_fixed_threshold ? $p_bug->resolution : $t_fixed_threshold;
+
+            foreach( relationship_get_all_src( $p_bug->id ) as $t_relationship ) {
+                if( $t_relationship->type == BUG_DUPLICATE ) {
+                    $t_default = config_get( 'bug_duplicate_resolution', null, null, $p_bug->project_id );
+                    break;
+                }
+            }
+
+            $t_inline_keyboard = keyboard_enum_string_get( 'resolution', $t_default, TelegrambotActions::CHANGE_STATUS_TAG, TelegrambotActions::SET_STATUS_RESOLUTION );
+            $t_question        = lang_get( 'resolution' );
+            break;
+
+        case 'duplicate_id':
+            plugin_config_set( 'status_change_draft_await', 'duplicate_id', $t_user_id );
+
+            $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+            $t_question        = lang_get( 'duplicate_id' );
+            break;
+
+        case 'handler':
+            $t_inline_keyboard = keyboard_handler_get( $p_bug->project_id, TelegrambotActions::CHANGE_STATUS_TAG, TelegrambotActions::SET_STATUS_HANDLER );
+
+            keyboard_skip_button_add( $t_inline_keyboard, array( TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SKIP_FIELD => 'handler' ) ) );
+            $t_question = lang_get( 'assigned_to' );
+            break;
+
+        case 'fixed_in_version':
+            $t_inline_keyboard = keyboard_version_option_list( $p_bug->fixed_in_version, $p_bug->project_id, VERSION_ALL, TelegrambotActions::SET_STATUS_FIXED_VERSION, TelegrambotActions::CHANGE_STATUS_TAG );
+
+            keyboard_skip_button_add( $t_inline_keyboard, array( TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SKIP_FIELD => 'fixed_in_version' ) ) );
+            $t_question = lang_get( 'fixed_in_version' );
+            break;
+    }
+
+    keyboard_status_change_cancel_button_add( $t_inline_keyboard );
+
+    return array(
+                              'text'         => telegram_status_change_card_compose( $p_draft, $t_question, $p_error ),
+                              'reply_markup' => $t_inline_keyboard,
+    );
+}
+
+/**
+ * Ask the question of the first unanswered applicable step of the status change
+ * dialog or submit the change when nothing is left to ask.
+ *
+ * @param array $p_draft Draft of the dialog.
+ * @return array Data of the message to send.
+ */
+function telegram_status_change_ask_next_step( $p_draft ) {
+    $t_user_id = auth_get_current_user_id();
+    plugin_config_delete( 'status_change_draft_await', $t_user_id );
+
+    $t_bug = bug_get( (int)$p_draft['bug_id'] );
+
+    foreach( array( 'resolution', 'duplicate_id', 'handler', 'fixed_in_version' ) as $t_step ) {
+        # An empty string is a step not asked yet, null is a skipped one
+        if( $p_draft[$t_step] !== '' ) {
+            continue;
+        }
+
+        if( !telegram_status_change_step_is_applicable( $t_step, $p_draft, $t_bug ) ) {
+            continue;
+        }
+
+        return telegram_status_change_step_ask( $t_step, $p_draft, $t_bug );
+    }
+
+    $t_result = telegram_bug_status_change( $p_draft );
+    telegram_status_change_draft_clear();
+
+    if( !$t_result['ok'] ) {
+        return array( 'text' => $t_result['error'] );
+    }
+
+    $t_text = sprintf(
+                              plugin_lang_get( 'status_change_complete' ),
+                              $p_draft['bug_id'],
+                              get_enum_element( 'status', (int)$t_result['old_status'] ),
+                              get_enum_element( 'status', (int)$t_result['new_status'] )
+    );
+
+    if( $t_result['warning'] != '' ) {
+        $t_text .= PHP_EOL . '⚠ ' . $t_result['warning'];
+    }
+
+    $t_text .= PHP_EOL . string_get_bug_view_url_with_fqdn( (int)$p_draft['bug_id'] );
+
+    return array( 'text' => $t_text );
+}
+
+/**
+ * Take an answer of a keyboard step of the status change dialog and go on with
+ * the next question.
+ *
+ * @param string $p_step  Step name.
+ * @param mixed  $p_value Answer, null for a skipped step.
+ * @return array Data of the message to send.
+ */
+function telegram_status_change_answer( $p_step, $p_value ) {
+    $t_draft = telegram_status_change_draft_get();
+
+    # The step name comes back inside callback_data, only the known ones are taken
+    if( $t_draft === NULL || !in_array( $p_step, array( 'resolution', 'duplicate_id', 'handler', 'fixed_in_version' ), TRUE ) ) {
+        # The dialog is gone, the button went stale: the flow starts over
+        return telegram_bug_select_step( array( 'start' => '' ), TelegrambotActions::UPDATE_BUG_TAG );
+    }
+
+    $t_draft[$p_step] = $p_value;
+    telegram_status_change_draft_set( $t_draft );
+
+    return telegram_status_change_ask_next_step( $t_draft );
+}
+
+/**
+ * Take the message text as the answer to the text question of the status change
+ * dialog, for now the only such question is the duplicate issue id.
+ *
+ * @param string $p_text Text of the message.
+ * @return array|null Data of the card message to edit or null when no text question is pending.
+ */
+function telegram_status_change_text_answer( $p_text ) {
+    $t_user_id = auth_get_current_user_id();
+    $t_await   = plugin_config_get( 'status_change_draft_await', '', FALSE, $t_user_id );
+
+    if( is_blank( $t_await ) ) {
+        return NULL;
+    }
+
+    $t_draft = telegram_status_change_draft_get();
+
+    if( $t_draft === NULL ) {
+        plugin_config_delete( 'status_change_draft_await', $t_user_id );
+        return NULL;
+    }
+
+    # The checks bug_update.php of the core runs on the duplicate id
+    $t_duplicate_id = (int)trim( (string)$p_text );
+    $t_error        = '';
+
+    if( $t_duplicate_id == (int)$t_draft['bug_id'] ) {
+        $t_error = error_string( ERROR_BUG_DUPLICATE_SELF );
+    } else if( $t_duplicate_id <= 0 || !bug_exists( $t_duplicate_id ) ) {
+        error_parameters( $t_duplicate_id );
+        $t_error = error_string( ERROR_BUG_NOT_FOUND );
+    } else if( !access_has_bug_level( config_get( 'update_bug_threshold' ), $t_duplicate_id ) ) {
+        $t_error = error_string( ERROR_RELATIONSHIP_ACCESS_LEVEL_TO_DEST_BUG_TOO_LOW );
+    }
+
+    if( $t_error != '' ) {
+        # A rejected value leaves the state untouched, the question is asked again
+        return telegram_status_change_step_ask( 'duplicate_id', $t_draft, bug_get( (int)$t_draft['bug_id'] ), $t_error );
+    }
+
+    plugin_config_delete( 'status_change_draft_await', $t_user_id );
+
+    $t_draft['duplicate_id'] = $t_duplicate_id;
+    telegram_status_change_draft_set( $t_draft );
+
+    return telegram_status_change_ask_next_step( $t_draft );
+}
+
+/**
+ * Process a step of the flow changing the status of an issue from the chat:
+ * pick the issue, pick the status, answer the questions of the transition the
+ * way bug_change_status_page.php of the core asks them, apply the change.
+ *
+ * @param array                                          $p_current_action Decoded callback data of the step.
+ * @param Longman\TelegramBot\Entities\CallbackQuery|null $p_callback_query Callback query being processed.
+ * @return array Data of the message to send.
+ */
+function telegram_change_status( $p_current_action, $p_callback_query = NULL ) {
+
+    $t_command = array_keys( $p_current_action );
+
+    switch( $t_command[0] ) {
+        case 'set_bug':
+            # Entering the status list drops a stale dialog
+            telegram_status_change_draft_clear();
+
+            $t_bug_id = (int)$p_current_action['set_bug'];
+            $t_bug    = bug_get( $t_bug_id );
+
+            $t_data_send = [
+                                      'text'         => telegram_card_prompt_append(
+                                              telegram_bug_select_context( TelegrambotActions::CHANGE_STATUS_TAG ) . PHP_EOL . telegram_bug_line( $t_bug ),
+                                              '❓ ' . lang_get( 'status' ) ),
+                                      'reply_markup' => keyboard_buttons_bug_change_status( $t_bug ),
+            ];
+            break;
+
+        case TelegrambotActions::SET_BUG_STATUS:
+            $t_bug_id     = (int)$p_current_action[TelegrambotActions::SET_BUG_STATUS]['id'];
+            $t_new_status = (int)$p_current_action[TelegrambotActions::SET_BUG_STATUS]['s'];
+
+            $t_bug     = bug_get( $t_bug_id, true );
+            $t_warning = '';
+            $t_error   = telegram_status_change_entry_check( $t_bug, $t_new_status, $t_warning );
+
+            if( $t_error != '' ) {
+                $t_data_send = [ 'text' => $t_error ];
+                break;
+            }
+
+            # The message the action menu replied to carries the note content
+            $t_reply_to_message = NULL;
+            if( $p_callback_query !== NULL && $p_callback_query->getMessage() !== NULL ) {
+                $t_reply_to_message = $p_callback_query->getMessage()->getReplyToMessage();
+
+                $t_user_id = auth_get_current_user_id();
+                plugin_config_set( 'status_change_draft_chat_id', $p_callback_query->getMessage()->getChat()->getId(), $t_user_id );
+                plugin_config_set( 'status_change_draft_message_id', $p_callback_query->getMessage()->getMessageId(), $t_user_id );
+            }
+
+            $t_draft = array(
+                                      'bug_id'           => $t_bug_id,
+                                      'new_status'       => $t_new_status,
+                                      'resolution'       => '',
+                                      'duplicate_id'     => '',
+                                      'handler'          => '',
+                                      'fixed_in_version' => '',
+                                      'content'          => telegram_status_change_content_descriptor( $t_reply_to_message ),
+                                      'warning'          => $t_warning,
+            );
+            telegram_status_change_draft_set( $t_draft );
+
+            $t_data_send = telegram_status_change_ask_next_step( $t_draft );
+            break;
+
+        case TelegrambotActions::SET_STATUS_RESOLUTION:
+            $t_data_send = telegram_status_change_answer( 'resolution', (int)$p_current_action[TelegrambotActions::SET_STATUS_RESOLUTION]['id'] );
+            break;
+
+        case TelegrambotActions::SET_STATUS_HANDLER:
+            $t_data_send = telegram_status_change_answer( 'handler', (int)$p_current_action[TelegrambotActions::SET_STATUS_HANDLER]['id'] );
+            break;
+
+        case TelegrambotActions::SET_STATUS_FIXED_VERSION:
+            $t_data_send = telegram_status_change_answer( 'fixed_in_version', $p_current_action[TelegrambotActions::SET_STATUS_FIXED_VERSION]['version'] );
+            break;
+
+        case TelegrambotActions::SKIP_FIELD:
+            $t_data_send = telegram_status_change_answer( $p_current_action[TelegrambotActions::SKIP_FIELD], null );
+            break;
+
+        default:
+            # A button of the flow layout before the project step went stale
+            $t_data_send = telegram_bug_select_step( array( 'start' => '' ), TelegrambotActions::UPDATE_BUG_TAG );
+            break;
+    }
+
+    return $t_data_send;
+}
+
 function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_message ) {
 
     $t_command = array_keys( $p_current_action );
 
     switch( $t_command[0] ) {
+        case 'start':
+        case 'get_projects':
+        case 'sprj':
         case 'get_default_category':
-            $t_inline_keyboard = telegram_bot_get_keyboard_default_filter();
-            $t_data_send       = [
-                                      'text'         => plugin_lang_get( 'bug_section_select' ),
-                                      'reply_markup' => $t_inline_keyboard,
-            ];
-            break;
-
         case 'get_bugs':
-            $t_command_get_bugs = array_keys( $p_current_action['get_bugs'] );
-
-            switch( $t_command_get_bugs[0] ) {
-                case 'assigned':
-                    $t_custom_filter = filter_create_assigned_to_unresolved( 0, auth_get_current_user_id() );
-                    break;
-
-                case 'monitored':
-                    $t_custom_filter = filter_create_monitored_by( 0, auth_get_current_user_id() );
-                    break;
-
-                case 'reported':
-                    $t_custom_filter = filter_create_reported_by( 0, auth_get_current_user_id() );
-                    break;
-
-                case 'use_query':
-                    $t_custom_filter = filter_get_default();
-                    break;
-            }
-
-            $t_inline_keyboard = keyboard_bugs_get( $t_custom_filter, $p_current_action['get_bugs'][$t_command_get_bugs[0]]['page'] );
-            $t_data_send       = [
-                                      'text'         => plugin_lang_get( 'bug_select' ),
-                                      'reply_markup' => $t_inline_keyboard,
-            ];
+            $t_data_send = telegram_bug_select_step( $p_current_action, TelegrambotActions::ADD_COMMENT_TAG );
             break;
 
         case 'set_bug':
@@ -1667,7 +2444,6 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
 
                 $t_data_send = [
                                           'text'         => plugin_lang_get( 'content_upload_complete' ) . $p_current_action['set_bug'] . PHP_EOL . $t_content_url,
-//                                          'reply_markup' => keyboard_bug_status_change_is( $t_bug_id )
                 ];
             } catch( Mantis\Exceptions\MantisException $t_error ) {
                 if( isset( $t_file_path ) ) {

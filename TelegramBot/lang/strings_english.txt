@@ -315,3 +315,7 @@ $s_plugin_TelegramBot_custom_field_hint_email = 'e-mail address';
 $s_plugin_TelegramBot_custom_field_hint_length_min = 'from %1$d characters';
 $s_plugin_TelegramBot_custom_field_hint_length_max = 'up to %1$d characters';
 $s_plugin_TelegramBot_custom_field_hint_length_range = 'from %1$d to %2$d characters';
+$s_plugin_TelegramBot_upgrade_backup_warning = 'Back up the database before upgrading!';
+$s_plugin_TelegramBot_upgrade_backup_explanation = 'The upgrade changes the database schema of the plugin. Restoring the previous version of the plugin files does not undo these changes - the only way back is a database backup.';
+$s_plugin_TelegramBot_upgrade_backup_checkbox = 'I have backed up the database';
+$s_plugin_TelegramBot_upgrade_confirm_button = 'Upgrade';

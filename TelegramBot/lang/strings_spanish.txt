@@ -317,3 +317,7 @@ $s_plugin_TelegramBot_custom_field_hint_email = 'dirección de correo electróni
 $s_plugin_TelegramBot_custom_field_hint_length_min = 'desde %1$d caracteres';
 $s_plugin_TelegramBot_custom_field_hint_length_max = 'hasta %1$d caracteres';
 $s_plugin_TelegramBot_custom_field_hint_length_range = 'de %1$d a %2$d caracteres';
+$s_plugin_TelegramBot_upgrade_backup_warning = '¡Haga una copia de seguridad de la base de datos antes de actualizar!';
+$s_plugin_TelegramBot_upgrade_backup_explanation = 'La actualización modifica el esquema de la base de datos del plugin. Restaurar la versión anterior de los archivos del plugin no deshace estos cambios: la única vuelta atrás es una copia de seguridad de la base de datos.';
+$s_plugin_TelegramBot_upgrade_backup_checkbox = 'He hecho una copia de seguridad de la base de datos';
+$s_plugin_TelegramBot_upgrade_confirm_button = 'Actualizar';

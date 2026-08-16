@@ -138,6 +138,69 @@ class TelegramBotPlugin extends MantisPlugin {
         );
     }
 
+    # Latched decision of upgrade(): the schema config grows as the steps run,
+    # so whether this request is an install or an upgrade is decided once,
+    # on the first call
+    private $backup_confirmed = null;
+
+    # Called by plugin_upgrade() before every schema step. A schema upgrade is
+    # one-way: rolling the plugin files back does not roll the tables back, so
+    # before the first step runs the administrator must confirm that a database
+    # backup has been made. Modeled on helper_ensure_confirmed(): the form
+    # re-posts the same upgrade request with _confirmed=1 (the form security
+    # token is only purged after plugin_upgrade() finishes), so on confirm this
+    # method is entered again and falls through. The checkbox is enforced
+    # server-side; the CSS gate on the button is a courtesy (the CSP forbids
+    # inline JS but allows inline styles). A fresh install (schema -1) has no
+    # data to lose and CLI runs have no one to ask.
+    function upgrade( $p_schema ) {
+        if( $this->backup_confirmed === null ) {
+            $this->backup_confirmed = php_sapi_name() == 'cli'
+                    || (int)plugin_config_get( 'schema', -1 ) < 0
+                    || ( gpc_get_bool( '_confirmed' ) && gpc_get_bool( 'backup_confirmed' ) );
+        }
+        if( $this->backup_confirmed ) {
+            return true;
+        }
+
+        layout_page_header();
+        layout_page_begin();
+
+        echo '<div class="col-md-12 col-xs-12">';
+        echo '<div class="space-10"></div>';
+        echo '<div class="alert alert-warning center">';
+        echo '<p class="bigger-110"><strong>' . plugin_lang_get( 'upgrade_backup_warning' ) . '</strong></p>';
+        echo '<p>' . plugin_lang_get( 'upgrade_backup_explanation' ) . '</p>';
+        echo '<div class="space-10"></div>';
+
+        echo '<style>'
+                . '#backup_confirmed:not(:checked) ~ input[type="submit"] { pointer-events: none; opacity: .45; }'
+                . '</style>';
+
+        echo '<form method="post" class="center" action="">' . "\n";
+        # CSRF protection not required here - user needs to confirm action
+        # before the form is accepted.
+        $t_post = $_POST;
+        $t_get  = $_GET;
+        unset( $t_post['_confirmed'], $t_post['backup_confirmed'],
+                $t_get['_confirmed'], $t_get['backup_confirmed'] );
+        print_hidden_inputs( $t_post );
+        print_hidden_inputs( $t_get );
+
+        echo '<input type="hidden" name="_confirmed" value="1" />', "\n";
+        echo '<input type="checkbox" id="backup_confirmed" name="backup_confirmed" value="1" /> ';
+        echo '<label for="backup_confirmed" class="bold">' . plugin_lang_get( 'upgrade_backup_checkbox' ) . '</label>';
+        echo '<div class="space-10"></div>';
+        echo '<input type="submit" class="btn btn-primary btn-white btn-round" value="' . plugin_lang_get( 'upgrade_confirm_button' ) . '" />';
+        echo "\n</form>\n";
+
+        echo '<div class="space-10"></div>';
+        echo '</div></div>';
+
+        layout_page_end();
+        exit;
+    }
+
     function init() {
         require_once 'api/vendor/autoload.php';
         require_once 'core/TelegramBot_bug_api.php';

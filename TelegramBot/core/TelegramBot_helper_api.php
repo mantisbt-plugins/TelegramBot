@@ -94,10 +94,12 @@ function helper_ensure_telegram_bot_registred_confirmed( $p_message ) {
     echo '<div class="space-10"></div>';
 
     echo '<form method="post" class="center" action="">' . "\n";
-    # CSRF protection not required here - user needs to confirm action
-    # before the form is accepted.
     print_hidden_inputs( $_POST );
     print_hidden_inputs( $_GET );
+    # The binding of the accounts changes data, so the confirmation must not be
+    # forgeable cross-site: the fresh token is printed after the reprinted fields
+    # and thus overrides a stale one among them
+    echo form_security_field( 'plugin_TelegramBot_registred' );
     echo '<input type="hidden" name="_confirmed" value="1" />', "\n";
     echo '<input type="submit" class="btn btn-primary btn-white btn-round" value="' . plugin_lang_get( 'user_relationship_yes' ) . '" />';
     echo "\n</form>";

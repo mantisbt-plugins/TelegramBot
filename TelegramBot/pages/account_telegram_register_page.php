@@ -63,8 +63,8 @@ $t_bot_name = plugin_config_get( 'bot_name' );
                                     <tr>
                                         <th class="category" width="35%">
                                             <?php
-                                            echo sprintf( plugin_lang_get( 'account_telegram_prefs_subscribe_bot' ), $t_bot_name ) .
-                                            '<a href="' . plugin_config_get( 'telegram_url' ) . $t_bot_name . '">' . '@' . $t_bot_name . '</a>';
+                                            echo sprintf( plugin_lang_get( 'account_telegram_prefs_subscribe_bot' ), string_display_line( $t_bot_name ) ) .
+                                            '<a href="' . string_attribute( plugin_config_get( 'telegram_url' ) . $t_bot_name ) . '">' . '@' . string_display_line( $t_bot_name ) . '</a>';
                                             ?>
                                             <br><span class="small"><?php echo plugin_lang_get( 'account_telegram_register_notice' ) ?></span>
                                         </th>

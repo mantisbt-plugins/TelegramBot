@@ -199,6 +199,13 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'bug_data_draft_chat_id'                      => '',
                                   'bug_data_draft_message_id'                   => '',
                                   'bug_data_draft_current_field_to_save'        => '',
+                                  # per-user "count:window_start" of wrong PIN code guesses
+                                  'pin_code_attempts'                           => '',
+                                  # wrong PIN code guesses allowed within one lockout window:
+                                  # a 4-digit code is only a secret while the guesses are counted
+                                  'pin_code_attempts_max'                       => 5,
+                                  # minutes the lockout window lasts, counted from the first wrong guess
+                                  'pin_code_attempts_window'                    => 15,
                                   'cli_g_path'                                  => '',
                                   'broadcast_enabled'                           => OFF,
                                   'broadcast_send_threshold'                    => ADMINISTRATOR,
@@ -361,6 +368,7 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'ERROR_TG_SESSION_NOT_INITIALIZED'    => plugin_lang_get('ERROR_TG_SESSION_NOT_INITIALIZED'),
                                   'ERROR_TG_GET_UPDATE'                 => plugin_lang_get('ERROR_TG_GET_UPDATE'),
                                   'ERROR_TG_PIN_CODE_INVALID'           => plugin_lang_get('ERROR_TG_PIN_CODE_INVALID'),
+                                  'ERROR_TG_PIN_CODE_ATTEMPTS'          => plugin_lang_get('ERROR_TG_PIN_CODE_ATTEMPTS'),
                                   'ERROR_TG_PIN_CODE_EXPIRED'           => plugin_lang_get('ERROR_TG_PIN_CODE_EXPIRED'),
                                   'ERROR_TG_PIN_CODE_GENERATE'          => plugin_lang_get('ERROR_TG_PIN_CODE_GENERATE'),
                                   'ERROR_TG_USER_ALREADY_ASSOCIATED'    => plugin_lang_get('ERROR_TG_USER_ALREADY_ASSOCIATED'),

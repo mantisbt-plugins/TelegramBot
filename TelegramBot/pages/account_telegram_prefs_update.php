@@ -20,7 +20,7 @@ form_security_validate( 'account_telegram_prefs_update' );
 auth_ensure_user_authenticated();
 
 $f_user_id      = gpc_get_int( 'user_id' );
-$f_redirect_url = gpc_get_string( 'redirect_url' );
+$f_redirect_url = string_sanitize_url( gpc_get_string( 'redirect_url' ) );
 
 user_ensure_exists( $f_user_id );
 

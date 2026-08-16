@@ -126,8 +126,6 @@ function telegram_session_send_message( $p_telegram_user_id, $p_data ) {
 * @return bool
 */
 function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_telegram_user_lang_code = null ) {
-    
-    global $g_cache_cookie_valid;
 
     plugin_log_event( 'Telegram user ' . $p_telegram_user_id . ' request language: "'.$p_telegram_user_lang_code.'"' );
     
@@ -152,9 +150,12 @@ function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_telegr
         plugin_log_event( 'Authorization Error! User ' . user_get_username( $t_mantis_user_id ) . ' is disabled or deleted. As a response, an authorization invitation was sent.' );
         return false;
     } else {
-        current_user_set( $t_mantis_user_id );
+        # The account may get disabled between the check above and the login
+        if( !auth_attempt_script_login( user_get_username( $t_mantis_user_id ) ) ) {
+            plugin_log_event( 'Authorization Error! Script login failed for user ' . user_get_username( $t_mantis_user_id ) . '.' );
+            return false;
+        }
         plugin_log_event( 'Authorization success! Server telegrams successfully logged in as user: ' . user_get_username( $t_mantis_user_id ) );
-        $g_cache_cookie_valid = TRUE;
 
         lang_push( telegram_lang_get_default( $p_telegram_user_lang_code ) );
         return true;

@@ -302,6 +302,7 @@ $s_plugin_TelegramBot_create_button = 'Crear';
 $s_plugin_TelegramBot_fill_optional_button = 'Rellenar los campos opcionales';
 $s_plugin_TelegramBot_draft_menu_prompt = 'Todos los campos obligatorios están rellenados. Cree la incidencia o rellene primero los campos opcionales.';
 $s_plugin_TelegramBot_draft_required_missing = 'Responda primero a las preguntas obligatorias.';
+$s_plugin_TelegramBot_draft_other_message = 'Ya hay un borrador de incidencia en curso en otro mensaje. Termínelo allí o cancélelo con los botones de la tarjeta del borrador.';
 $s_plugin_TelegramBot_card_separator = '———————————';
 $s_plugin_TelegramBot_card_question_prefix = '❓ ';
 $s_plugin_TelegramBot_card_error_prefix = '⚠ ';

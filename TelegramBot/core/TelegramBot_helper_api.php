@@ -209,6 +209,29 @@ function telegram_callback_alert_get() {
 }
 
 /**
+ * Whether the issue draft of the current user is driven by the given message.
+ *
+ * The state of the wizard is kept per user and bound to a single card message, so
+ * a press on any other message is refused: two cards driving one draft show the
+ * user two views of it contradicting each other.
+ *
+ * @param integer $p_message_id Message the callback query has arrived from.
+ * @return boolean TRUE when there is no draft yet or the draft belongs to the message.
+ */
+function telegram_draft_belongs_to_message( $p_message_id ) {
+
+    $t_user_id = auth_get_current_user_id();
+
+    if( json_decode( plugin_config_get( 'bug_data_draft', NULL, FALSE, $t_user_id ), TRUE ) == NULL ) {
+        return TRUE;
+    }
+
+    $t_message_id = plugin_config_get( 'bug_data_draft_message_id', NULL, FALSE, $t_user_id );
+
+    return is_blank( $t_message_id ) || $t_message_id == $p_message_id;
+}
+
+/**
  * Create the issue from the draft, clean the draft up and build the final view of
  * the draft card.
  *
@@ -1040,6 +1063,15 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
     $t_callback_msg_id = $p_callback_query->getMessage()->getMessageId();
     $t_orgl_chat_id    = $p_callback_query->getMessage()->getChat()->getId();
+
+    # The draft is being filled in somewhere else, so this message shows a draft
+    # which does not exist anymore: keeping its buttons would leave the user with
+    # a card looking alive, it turns into the list of the actions instead
+    if( !telegram_draft_belongs_to_message( $t_callback_msg_id ) ) {
+        telegram_callback_alert_set( plugin_lang_get( 'draft_other_message' ) );
+
+        return telegram_action_select( $t_orgl_chat_id, $t_callback_msg_id );
+    }
 
     $t_orgl_message = $p_callback_query->getMessage()->getReplyToMessage();
     $t_content_type = $t_orgl_message->getType();

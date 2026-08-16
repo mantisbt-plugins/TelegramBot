@@ -142,6 +142,8 @@ function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(),
         # so the values may carry language neutral data only
         plugin_history_log( $p_bug_id, 'history_file_added', '' );
 
+        # Files without text produce no bugnote, so there is no note id to link to
+        return null;
     } else {
         $t_payload = array(
                                   'text'          => $p_text,
@@ -167,6 +169,8 @@ function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(),
         if( count( $p_files ) > 0 ) {
             plugin_history_log( $p_bug_id, 'history_file_added', '' );
         }
+
+        return (int)$t_noteId['id'];
     }
 }
 
@@ -1618,10 +1622,18 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
             }
 
             try {
-                bugnote_add_from_telegram( $t_bug_id, $t_text, $t_file_for_attach );
+                $t_note_id = bugnote_add_from_telegram( $t_bug_id, $t_text, $t_file_for_attach );
+
+                # A bugnote gets a direct link to its anchor, a bare attachment
+                # only has the issue page to point at
+                if( $t_note_id === null ) {
+                    $t_content_url = string_get_bug_view_url_with_fqdn( $t_bug_id );
+                } else {
+                    $t_content_url = string_get_bugnote_view_url_with_fqdn( $t_bug_id, $t_note_id );
+                }
 
                 $t_data_send = [
-                                          'text'         => plugin_lang_get( 'content_upload_complete' ) . $p_current_action['set_bug'],
+                                          'text'         => plugin_lang_get( 'content_upload_complete' ) . $p_current_action['set_bug'] . PHP_EOL . $t_content_url,
 //                                          'reply_markup' => keyboard_bug_status_change_is( $t_bug_id )
                 ];
             } catch( Mantis\Exceptions\MantisException $t_error ) {

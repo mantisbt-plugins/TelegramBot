@@ -295,15 +295,126 @@ function telegram_pin_code_free_get() {
     }
 
     # 9000 possible codes against the few registrations running at the same time:
-    # a free code is found on the first attempts, the limit only guards the loop
+    # a free code is found on the first attempts, the limit only guards the loop.
+    # random_int(): the code is a secret, so a CSPRNG - mt_rand() is predictable
     for( $i = 0; $i < 100; $i++ ) {
-        $t_candidate = mt_rand( 1000, 9999 );
+        $t_candidate = random_int( 1000, 9999 );
         if( !isset( $t_codes_in_use[$t_candidate] ) ) {
             return $t_candidate;
         }
     }
 
     plugin_error( 'ERROR_TG_PIN_CODE_GENERATE', ERROR );
+}
+
+/**
+ * Seconds the PIN code lockout window lasts, from the settings of the plugin.
+ *
+ * @return integer
+ */
+function telegram_pin_code_attempts_window_get() {
+
+    return 60 * max( 1, (int) plugin_config_get( 'pin_code_attempts_window' ) );
+}
+
+/**
+ * Return true when the user has spent every PIN code guess of the current window.
+ *
+ * A 4-digit code holds no more than 9000 values, so it is only a secret while the
+ * guesses are counted: the state is "count:window_start" per MantisBT user, the
+ * limit and the window come from the settings of the plugin.
+ *
+ * @param integer $p_user_id MantisBT user id.
+ * @return boolean
+ */
+function telegram_pin_code_attempts_exceeded( $p_user_id ) {
+
+    $t_state = plugin_config_get( 'pin_code_attempts', '', FALSE, (int) $p_user_id );
+
+    if( is_blank( $t_state ) ) {
+        return false;
+    }
+
+    list( $t_count, $t_started ) = array_pad( explode( ':', $t_state ), 2, 0 );
+
+    if( (int) $t_started < db_now() - telegram_pin_code_attempts_window_get() ) {
+        return false;
+    }
+
+    return (int) $t_count >= max( 1, (int) plugin_config_get( 'pin_code_attempts_max' ) );
+}
+
+/**
+ * Count a wrong PIN code guess. An expired window starts over.
+ *
+ * @param integer $p_user_id MantisBT user id.
+ * @return void
+ */
+function telegram_pin_code_attempt_failed( $p_user_id ) {
+
+    $t_state   = plugin_config_get( 'pin_code_attempts', '', FALSE, (int) $p_user_id );
+    $t_count   = 0;
+    $t_started = db_now();
+
+    if( !is_blank( $t_state ) ) {
+        list( $t_old_count, $t_old_started ) = array_pad( explode( ':', $t_state ), 2, 0 );
+
+        if( (int) $t_old_started >= db_now() - telegram_pin_code_attempts_window_get() ) {
+            $t_count   = (int) $t_old_count;
+            $t_started = (int) $t_old_started;
+        }
+    }
+
+    plugin_config_set( 'pin_code_attempts', ( $t_count + 1 ) . ':' . $t_started, (int) $p_user_id );
+}
+
+/**
+ * Return the PIN code guess counters of every user, keyed by user id.
+ *
+ * The rows are read straight from the config table: the core has no way to list
+ * the users a plugin option is set for. Stale windows are included, filtering is
+ * up to the caller.
+ *
+ * @return array array( user_id => array( 'count' => int, 'started' => int ) )
+ */
+function telegram_pin_code_attempts_all_get() {
+
+    $t_basename = plugin_get_current();
+
+    if( is_blank( $t_basename ) ) {
+        return array();
+    }
+
+    $t_config_table = db_get_table( 'config' );
+
+    db_param_push();
+
+    $t_query  = "SELECT user_id, value FROM $t_config_table
+			WHERE config_id=" . db_param() . ' AND user_id<>0';
+    $t_result = db_query( $t_query, array( 'plugin_' . $t_basename . '_pin_code_attempts' ) );
+
+    $t_rows = array();
+    while( $t_row = db_fetch_array( $t_result ) ) {
+        list( $t_count, $t_started ) = array_pad( explode( ':', (string) $t_row['value'] ), 2, 0 );
+
+        $t_rows[(int) $t_row['user_id']] = array(
+                                  'count'   => (int) $t_count,
+                                  'started' => (int) $t_started,
+        );
+    }
+
+    return $t_rows;
+}
+
+/**
+ * Forget the guesses counted for the user, called when a code is accepted.
+ *
+ * @param integer $p_user_id MantisBT user id.
+ * @return void
+ */
+function telegram_pin_code_attempts_reset( $p_user_id ) {
+
+    plugin_config_delete( 'pin_code_attempts', (int) $p_user_id );
 }
 
 /**

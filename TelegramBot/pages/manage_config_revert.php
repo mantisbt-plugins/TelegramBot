@@ -43,7 +43,7 @@ auth_reauthenticate();
 
 $f_project_id = gpc_get_int( 'project', 0 );
 $f_revert = gpc_get_string( 'revert', '' );
-$f_return = gpc_get_string( 'return' );
+$f_return = string_sanitize_url( gpc_get_string( 'return' ) );
 
 $t_access = true;
 $t_revert_vars = explode( ',', $f_revert );

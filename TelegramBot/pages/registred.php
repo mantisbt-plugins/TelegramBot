@@ -46,6 +46,10 @@ helper_ensure_telegram_bot_registred_confirmed( plugin_lang_get( 'user_relations
 # else must not be relinked: its owner would end up working in the bot on behalf of the
 # account that opened this page. The chat is released by /stop sent from that chat.
 if( $f_is_confirmed ) {
+    # The token is printed by the confirmation form: a cross-site request has no way
+    # to obtain it, so a forged confirmation cannot bind a foreign chat to the session
+    form_security_validate( 'plugin_TelegramBot_registred' );
+
     $t_associated_user_id = user_get_id_by_telegram_user_id( $f_telegram_user_id );
 
     if( $t_associated_user_id != 0 && $t_associated_user_id != auth_get_current_user_id() ) {
@@ -59,6 +63,8 @@ layout_page_header_end();
 layout_page_begin( 'account_page' );
 
 if( $f_is_confirmed ) {
+
+    form_security_purge( 'plugin_TelegramBot_registred' );
 
     $t_current_user_id = auth_get_current_user_id();
 
@@ -86,7 +92,7 @@ if( $f_is_confirmed ) {
 
     echo '</div></div>';
 
-    echo "\t" . '<meta http-equiv="Refresh" content="' . current_user_get_pref( 'redirect_delay' ) . '; URL=' . $t_redirect_url . '" />' . "\n";
+    echo "\t" . '<meta http-equiv="Refresh" content="' . (int)current_user_get_pref( 'redirect_delay' ) . '; URL=' . string_attribute( $t_redirect_url ) . '" />' . "\n";
 }
 
 layout_page_end();

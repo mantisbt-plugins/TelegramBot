@@ -30,7 +30,7 @@ telegrambot_print_menu_config( 'config_page' );
         <p><i class="fa fa-info-circle"></i>
             <?php echo plugin_lang_get( 'help_registration_bot_header' ) ?>
         </p>
-        <p><?php echo sprintf(plugin_lang_get('help_registration_bot_message'), '<a href=' . plugin_config_get('bot_father_url') . ' target="_blank">' . plugin_config_get('bot_father_url') . '</a>') ?></p>
+        <p><?php echo sprintf(plugin_lang_get('help_registration_bot_message'), '<a href="' . string_attribute( plugin_config_get('bot_father_url') ) . '" target="_blank">' . string_display_line( plugin_config_get('bot_father_url') ) . '</a>') ?></p>
     </div>
     
     <div class="form-container">
@@ -59,7 +59,7 @@ telegrambot_print_menu_config( 'config_page' );
                                         <br><span class="small"><?php echo plugin_lang_get( 'config_bot_username_notice' ) ?></span>
                                     </th>
                                     <td class="center" colspan="1">
-                                        <textarea name="bot_username" id="bot_username" class="form-control" rows="1" required><?php echo plugin_config_get( 'bot_name' ) ?></textarea>
+                                        <textarea name="bot_username" id="bot_username" class="form-control" rows="1" required><?php echo string_textarea( plugin_config_get( 'bot_name' ) ) ?></textarea>
                                     </td>
                                 </tr>
 
@@ -68,7 +68,7 @@ telegrambot_print_menu_config( 'config_page' );
                                         <span class="required">*</span><?php echo ' ' . plugin_lang_get( 'config_api_key' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <textarea name="api_key" id="api_key" class="form-control" rows="1" required><?php echo plugin_config_get( 'api_key' ) ?></textarea>
+                                        <textarea name="api_key" id="api_key" class="form-control" rows="1" required><?php echo string_textarea( plugin_config_get( 'api_key' ) ) ?></textarea>
                                     </td>
                                 </tr>
                             </table>
@@ -108,6 +108,26 @@ telegrambot_print_menu_config( 'config_page' );
                                             <span class="lbl padding-6"><?php echo plugin_lang_get( 'registration_method_pin' ) ?></span></label>
                                         <label><input type="radio" class="ace" name="registration_method" value="<?php echo TELEGRAM_REGISTRATION_BOTH ?>" <?php echo( TELEGRAM_REGISTRATION_BOTH == $t_registration_method ) ? 'checked="checked" ' : '' ?>/>
                                             <span class="lbl padding-6"><?php echo plugin_lang_get( 'registration_method_both' ) ?></span></label>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <?php echo plugin_lang_get( 'pin_code_attempts_max' ) ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'pin_code_attempts_max_notice' ) ?></span>
+                                    </th>
+                                    <td class="center" colspan="1">
+                                        <input type="number" name="pin_code_attempts_max" id="pin_code_attempts_max" class="form-control" min="1" value="<?php echo (int)plugin_config_get( 'pin_code_attempts_max' ) ?>">
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th class="category" width="5%">
+                                        <?php echo plugin_lang_get( 'pin_code_attempts_window' ) ?>
+                                        <br><span class="small"><?php echo plugin_lang_get( 'pin_code_attempts_window_notice' ) ?></span>
+                                    </th>
+                                    <td class="center" colspan="1">
+                                        <input type="number" name="pin_code_attempts_window" id="pin_code_attempts_window" class="form-control" min="1" value="<?php echo (int)plugin_config_get( 'pin_code_attempts_window' ) ?>">
                                     </td>
                                 </tr>
 
@@ -166,7 +186,7 @@ telegrambot_print_menu_config( 'config_page' );
                                                 <br><span class="small"><?php echo 'Current curl version='. curl_version()['version']  ?></span>
 	                                    </th>
 	                                    <td class="center" colspan="1"> 
-	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo plugin_config_get( 'proxy_address' ) ?></textarea>
+	                                        <textarea name="proxy_address" id="proxy_address" class="form-control" rows="1" placeholder="login:password@address:port"><?php echo string_textarea( plugin_config_get( 'proxy_address' ) ) ?></textarea>
 	                                    </td>
 	                                </tr>
 				<?php				
@@ -187,7 +207,7 @@ telegrambot_print_menu_config( 'config_page' );
 					<?php echo plugin_lang_get( 'debug_connection_log_path_title' ) ?>
                                     </th>
                                     <td class="center" colspan="1"> 
-                                        <textarea name="debug_connection_log_path" id="debug_connection_log_path" class="form-control" rows="1"><?php echo plugin_config_get( 'debug_connection_log_path' ) ?></textarea>
+                                        <textarea name="debug_connection_log_path" id="debug_connection_log_path" class="form-control" rows="1"><?php echo string_textarea( plugin_config_get( 'debug_connection_log_path' ) ) ?></textarea>
                                     </td>
                                 </tr>
 								
@@ -263,7 +283,7 @@ telegrambot_print_menu_config( 'config_page' );
 
                                         <?php
                                         if( plugin_config_get( 'bot_cert' ) != '' ) {
-                                            echo '<pre><code>' . plugin_config_get('bot_cert') . '</code></pre>';
+                                            echo '<pre><code>' . string_html_specialchars( plugin_config_get('bot_cert') ) . '</code></pre>';
                                         }
                                         ?>
                                         
@@ -291,7 +311,7 @@ telegrambot_print_menu_config( 'config_page' );
                                         <br><span class="small"><?php echo $t_path_notice ?></span>
                                     </th>
                                     <td class="center" colspan="1">
-                                        <textarea name="cli_g_path" id="cli_g_path" class="form-control" rows="1" placeholder="<?php echo string_attribute( $t_path_placeholder ) ?>"><?php echo plugin_config_get( 'cli_g_path' ) ?></textarea>
+                                        <textarea name="cli_g_path" id="cli_g_path" class="form-control" rows="1" placeholder="<?php echo string_attribute( $t_path_placeholder ) ?>"><?php echo string_textarea( plugin_config_get( 'cli_g_path' ) ) ?></textarea>
                                     </td>
                                 </tr>
                                 <tr>

@@ -54,10 +54,42 @@ if( $g_tg == NULL ) {
 }
 
 # Only one instance per installation: parallel getUpdates calls are rejected by Telegram with 409 Conflict.
+# The lock lives in the world-writable temp under a predictable name, so the file is trusted only
+# after the checks below: one planted by another local user has to fail loudly instead of holding
+# the flock() and posing as a running instance forever.
 $t_lock_path = rtrim( sys_get_temp_dir(), '/\\' ) . DIRECTORY_SEPARATOR . 'mantis_telegrambot_' . md5( __FILE__ ) . '.lock';
-$t_lock_handle = fopen( $t_lock_path, 'c' );
 
-if( $t_lock_handle === false || !flock( $t_lock_handle, LOCK_EX | LOCK_NB ) ) {
+# A symlink or a FIFO in place of the lock redirects the open elsewhere or hangs it
+if( file_exists( $t_lock_path ) && ( is_link( $t_lock_path ) || !is_file( $t_lock_path ) ) ) {
+	plugin_log_event( 'Get updates refused: lock path ' . $t_lock_path . ' is not a regular file.' );
+	echo "Lock path $t_lock_path is not a regular file, exiting.\n";
+	exit( 1 );
+}
+
+$t_lock_handle = @fopen( $t_lock_path, 'c' );
+
+if( $t_lock_handle === false ) {
+	# The file of this user always opens - it is created 0600 below, so a failure
+	# means a foreign one, and the sticky bit on temp keeps it there until its owner
+	# or root removes it
+	plugin_log_event( 'Get updates refused: lock file ' . $t_lock_path . ' is not writable, probably created by another user.' );
+	echo "Lock file $t_lock_path is not writable, exiting.\n";
+	exit( 1 );
+}
+
+# The very first run may still open a file planted before it: the owner gives that away
+$t_lock_stat = fstat( $t_lock_handle );
+if( function_exists( 'posix_geteuid' ) && $t_lock_stat['uid'] !== posix_geteuid() ) {
+	plugin_log_event( 'Get updates refused: lock file ' . $t_lock_path . ' is owned by another user.' );
+	echo "Lock file $t_lock_path is owned by another user, exiting.\n";
+	exit( 1 );
+}
+
+# Nobody else may open the file: anybody able to open it can hold flock() on it
+# and silence the polling
+@chmod( $t_lock_path, 0600 );
+
+if( !flock( $t_lock_handle, LOCK_EX | LOCK_NB ) ) {
 	plugin_log_event( 'Get updates skipped: another instance is already running.' );
 	echo "Another instance is already running, exiting.\n";
 	exit( 0 );

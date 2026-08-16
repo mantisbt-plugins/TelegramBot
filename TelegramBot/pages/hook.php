@@ -19,7 +19,11 @@ use Longman\TelegramBot\Entities\CallbackQuery;
 
 $f_token = gpc_get_string( 'token', '' );
 
-if( $f_token != plugin_config_get( 'api_key' ) || is_blank( $f_token ) ) {
+$t_api_key = (string)plugin_config_get( 'api_key' );
+
+# hash_equals: a strict constant-time comparison, the loose one is open to type
+# juggling and leaks the position of the first wrong byte through the timing
+if( is_blank( $f_token ) || is_blank( $t_api_key ) || !hash_equals( $t_api_key, $f_token ) ) {
     plugin_log_event( 'ERROR! Wrong api key.' );
     exit();
 }

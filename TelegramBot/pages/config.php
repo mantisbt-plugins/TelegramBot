@@ -19,10 +19,15 @@ use Longman\TelegramBot\Request;
 
 form_security_validate( 'config' );
 
+auth_reauthenticate();
+access_ensure_global_level( config_get( 'manage_plugin_threshold' ) );
+
 $f_bot_name			= gpc_get_string   ( 'bot_username' );
 $f_api_key			= gpc_get_string   ( 'api_key' );
 $f_reinstall_webhook            = gpc_get_bool     ( 'reinstall_webhook' );
 $f_registration_method          = gpc_get_int      ( 'registration_method', plugin_config_get( 'registration_method' ) );
+$f_pin_code_attempts_max        = gpc_get_int      ( 'pin_code_attempts_max', plugin_config_get( 'pin_code_attempts_max' ) );
+$f_pin_code_attempts_window     = gpc_get_int      ( 'pin_code_attempts_window', plugin_config_get( 'pin_code_attempts_window' ) );
 $f_admin_unlink_notify          = gpc_get_bool     ( 'admin_unlink_notify' );
 $f_use_cert                     = gpc_get_bool     ( 'use_cert' );
 $f_bot_cert_file                = gpc_get_file     ( 'bot_cert_file', null );
@@ -95,6 +100,18 @@ if( plugin_config_get( 'registration_method' ) != $f_registration_method ) {
 	plugin_config_set( 'registration_method', $f_registration_method );
 }
 
+# Zero or a negative value would turn the brute force protection off entirely
+$f_pin_code_attempts_max    = max( 1, $f_pin_code_attempts_max );
+$f_pin_code_attempts_window = max( 1, $f_pin_code_attempts_window );
+
+if( plugin_config_get( 'pin_code_attempts_max' ) != $f_pin_code_attempts_max ) {
+	plugin_config_set( 'pin_code_attempts_max', $f_pin_code_attempts_max );
+}
+
+if( plugin_config_get( 'pin_code_attempts_window' ) != $f_pin_code_attempts_window ) {
+	plugin_config_set( 'pin_code_attempts_window', $f_pin_code_attempts_window );
+}
+
 if( plugin_config_get( 'admin_unlink_notify' ) != $f_admin_unlink_notify ) {
 	# ON/OFF, not a PHP boolean: plugin_config_set() would store false as an empty string
 	plugin_config_set( 'admin_unlink_notify', $f_admin_unlink_notify ? ON : OFF );
@@ -135,7 +152,9 @@ if( plugin_config_get( 'get_updates_run_time' ) != $f_get_updates_run_time ) {
 }
 
 if( $f_debug_connection_enabled == ON ) {
-	if( fopen( $f_debug_connection_log_path, 'a' ) ) {
+	$t_log_handle = @fopen( $f_debug_connection_log_path, 'a' );
+	if( $t_log_handle !== false ) {
+		fclose( $t_log_handle );
 		plugin_config_set( 'debug_connection_enabled', $f_debug_connection_enabled ? ON : OFF );
 		plugin_config_set( 'debug_connection_log_path', $f_debug_connection_log_path );
 	} else {

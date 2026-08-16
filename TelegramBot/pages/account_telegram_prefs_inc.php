@@ -114,8 +114,8 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                             <tr>
                                                 <th class="category" width="35%">
                                                     <?php
-                                                    echo sprintf( plugin_lang_get( 'account_telegram_prefs_subscribe_bot' ), plugin_config_get( 'bot_name' ) ) .
-                                                    '<a href="' . plugin_config_get( 'telegram_url' ) . plugin_config_get( 'bot_name' ) . '">' . '@' . plugin_config_get( 'bot_name' ) . '</a>';
+                                                    echo sprintf( plugin_lang_get( 'account_telegram_prefs_subscribe_bot' ), string_display_line( plugin_config_get( 'bot_name' ) ) ) .
+                                                    '<a href="' . string_attribute( plugin_config_get( 'telegram_url' ) . plugin_config_get( 'bot_name' ) ) . '">' . '@' . string_display_line( plugin_config_get( 'bot_name' ) ) . '</a>';
                                                     ?>
                                                 </th>
                                                 <td class="left" colspan="1">

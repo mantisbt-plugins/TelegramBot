@@ -129,6 +129,8 @@ $s_plugin_TelegramBot_keyboard_button_back = 'A la lista de acciones';
 $s_plugin_TelegramBot_keyboard_button_delete_draft = 'Eliminar borrador';
 
 $s_plugin_TelegramBot_error_file_size = 'El archivo es demasiado grande. %1$s';
+$s_plugin_TelegramBot_file_types_allowed = 'Tipos de archivo permitidos: %1$s.';
+$s_plugin_TelegramBot_file_types_disallowed = 'Tipos de archivo no permitidos: %1$s.';
 $s_plugin_TelegramBot_error_content_type = 'La solicitud no es compatible con este bot';
 
 $s_plugin_TelegramBot_get_description = 'INTRODUZCA EL TEXTO DE LA DESCRIPCIÓN:';

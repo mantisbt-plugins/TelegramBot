@@ -132,6 +132,8 @@ $s_plugin_TelegramBot_keyboard_button_back = 'К списку действий';
 $s_plugin_TelegramBot_keyboard_button_delete_draft = 'Удалить черновик';
 
 $s_plugin_TelegramBot_error_file_size = 'Файл слишком большой. %1$s';
+$s_plugin_TelegramBot_file_types_allowed = 'Допустимые типы файлов: %1$s.';
+$s_plugin_TelegramBot_file_types_disallowed = 'Запрещённые типы файлов: %1$s.';
 $s_plugin_TelegramBot_error_content_type = 'Запрос не поддерживается ботом';
 
 $s_plugin_TelegramBot_get_description = 'ВВЕДИТЕ ТЕКСТ ОПИСАНИЯ:';

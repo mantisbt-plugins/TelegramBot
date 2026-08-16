@@ -44,40 +44,6 @@ class RequestMantis extends Longman\TelegramBot\Request {
 
 }
 
-function telegram_set_webhook() {
-        
-        $t_data = array();
-        
-        if( plugin_config_get( 'use_cert' ) == ON ) {
-            $t_tmp_file = tmpfile();
-            fwrite( $t_tmp_file, plugin_config_get('bot_cert') );
-
-            $t_data['certificate'] = stream_get_meta_data( $t_tmp_file )['uri'];
-        }
-        
-        $t_data        = array_intersect_key($t_data, array_flip([
-            'certificate',
-            'max_connections',
-            'allowed_updates',
-        ]));
-        
-        $t_data['url'] = config_get_global( 'path' ) . plugin_page( 'hook', TRUE ) . '&token=' . plugin_config_get( 'api_key' );
-
-        // If the certificate is passed as a path, encode and add the file to the data array.
-        if (!empty($t_data['certificate']) && is_string($t_data['certificate'])) {
-            $t_data['certificate'] = Request::encodeFile($t_data['certificate']);
-        }
-        
-        return Request::setWebhook( $t_data );
-}
-
-function telegram_webhook_delete() {
-        global $g_tg;
-	telegram_session_start();
-        
-        return $g_tg->deleteWebhook();
-}
-
 function telegram_session_start() {
 	global $g_tg;
 

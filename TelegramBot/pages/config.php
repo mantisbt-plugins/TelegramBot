@@ -29,7 +29,9 @@ $f_registration_method          = gpc_get_int      ( 'registration_method', plug
 $f_pin_code_attempts_max        = gpc_get_int      ( 'pin_code_attempts_max', plugin_config_get( 'pin_code_attempts_max' ) );
 $f_pin_code_attempts_window     = gpc_get_int      ( 'pin_code_attempts_window', plugin_config_get( 'pin_code_attempts_window' ) );
 $f_admin_unlink_notify          = gpc_get_bool     ( 'admin_unlink_notify' );
-$f_use_cert                     = gpc_get_bool     ( 'use_cert' );
+# the use_cert radio is only rendered in Webhook mode: fall back to the stored
+# value so that saving the form in Script mode does not wipe the certificate
+$f_use_cert                     = gpc_get_bool     ( 'use_cert', plugin_config_get( 'use_cert' ) == ON );
 $f_bot_cert_file                = gpc_get_file     ( 'bot_cert_file', null );
 $f_proxy_address		= gpc_get_string   ( 'proxy_address', '' );
 $f_time_out_server_response	= gpc_get_int      ( 'time_out_server_response' );
@@ -39,14 +41,16 @@ $f_debug_connection_log_path    = gpc_get_string   ( 'debug_connection_log_path'
 $f_debug_connection_enabled	= gpc_get_bool     ( 'debug_connection_enabled', FALSE );
 $f_cli_g_path                   = gpc_get_string   ( 'cli_g_path', plugin_config_get( 'cli_g_path' ) );
 
-if( $f_bot_cert_file !== null && $f_bot_cert_file['error'] !== 4 ) {
+$t_cert_uploaded = $f_bot_cert_file !== null && $f_bot_cert_file['error'] !== UPLOAD_ERR_NO_FILE;
+
+if( $t_cert_uploaded ) {
         $t_tmp_file = $f_bot_cert_file['tmp_name'];
 
 	file_ensure_uploaded( $f_bot_cert_file );
-        
+
 	$t_file_name = $f_bot_cert_file['name'];
 
-	if( 
+	if(
                 strcasecmp( pathinfo( $t_file_name, PATHINFO_EXTENSION ), 'crt' ) != 0
                 && strcasecmp( pathinfo( $t_file_name, PATHINFO_EXTENSION ), 'pem' ) != 0
                 && strcasecmp( pathinfo( $t_file_name, PATHINFO_EXTENSION ), 'cer' ) != 0
@@ -70,13 +74,34 @@ if( $f_bot_cert_file !== null && $f_bot_cert_file['error'] !== 4 ) {
 			sprintf( "File '%s' too big", $t_file_name ),
 			ERROR_FILE_TOO_BIG );
 	}
-        
-        $c_content = db_prepare_binary_string( fread( fopen( $t_tmp_file, 'rb' ), $t_file_size ) );
-        
-        plugin_config_set( 'bot_cert', $c_content );
+
+        # store the raw file content: plugin_config_set() does its own escaping,
+        # db_prepare_binary_string() would corrupt the value on pgsql/mssql
+        $t_content = file_get_contents( $t_tmp_file );
+        if( $t_content === false ) {
+		throw new ClientException(
+			sprintf( "File '%s' not uploaded", $t_file_name ),
+			ERROR_FILE_NO_UPLOAD_FAILURE );
+        }
+
+        plugin_config_set( 'bot_cert', $t_content );
         plugin_config_set( 'use_cert', ON );
-        
+
         unlink($t_tmp_file);
+} else if( $f_use_cert ) {
+        # validate before any config writes to avoid the inconsistent
+        # "use_cert is ON but no certificate is stored" state
+        if( plugin_config_get( 'bot_cert' ) == '' ) {
+                error_parameters( plugin_lang_get( 'bot_cert' ) );
+                plugin_error( 'ERROR_CERT_FILE_NOT_FOUND', ERROR );
+        }
+
+        if( plugin_config_get( 'use_cert' ) != ON ) {
+                plugin_config_set( 'use_cert', ON );
+        }
+} else {
+        plugin_config_delete( 'bot_cert' );
+        plugin_config_delete( 'use_cert' );
 }
 
 if( plugin_config_get( 'bot_name' ) != $f_bot_name ) {
@@ -115,20 +140,6 @@ if( plugin_config_get( 'pin_code_attempts_window' ) != $f_pin_code_attempts_wind
 if( plugin_config_get( 'admin_unlink_notify' ) != $f_admin_unlink_notify ) {
 	# ON/OFF, not a PHP boolean: plugin_config_set() would store false as an empty string
 	plugin_config_set( 'admin_unlink_notify', $f_admin_unlink_notify ? ON : OFF );
-}
-
-if( $f_use_cert == false ) {
-        plugin_config_delete( 'bot_cert' );
-        plugin_config_delete( 'use_cert' );
-}
-
-if( $f_use_cert == true ) {
-        plugin_config_set( 'use_cert', ON );
-}
-
-if( $f_use_cert == ON && plugin_config_get( 'bot_cert' ) == '' ) {
-        error_parameters( plugin_lang_get( 'bot_cert' ) );
-        plugin_error( 'ERROR_CERT_FILE_NOT_FOUND', ERROR );
 }
 
 if( plugin_config_get( 'proxy_address' ) != $f_proxy_address ) {
@@ -177,24 +188,15 @@ if( $f_reinstall_webhook == ON ) {
         $t_data = array();
 
         if( plugin_config_get( 'use_cert' ) == ON ) {
-                $t_tmp_file = tmpfile();
-                fwrite( $t_tmp_file, plugin_config_get('bot_cert') );
+                # the handle must stay referenced until setWebhook(): closing it deletes the file;
+                # Request turns a local path in 'certificate' into a multipart upload by itself
+                $t_cert_file = tmpfile();
+                fwrite( $t_cert_file, plugin_config_get( 'bot_cert' ) );
 
-                $t_data['certificate'] = stream_get_meta_data( $t_tmp_file )['uri'];
+                $t_data['certificate'] = stream_get_meta_data( $t_cert_file )['uri'];
         }
-
-        $t_data = array_intersect_key($t_data, array_flip([
-                'certificate',
-                'max_connections',
-                'allowed_updates',
-        ]));
 
         $t_data['url'] = config_get_global( 'path' ) . plugin_page( 'hook', TRUE ) . '&token=' . plugin_config_get( 'api_key' );
-
-        // If the certificate is passed as a path, encode and add the file to the data array.
-        if (!empty($t_data['certificate']) && is_string($t_data['certificate'])) {
-                $t_data['certificate'] = Request::encodeFile($t_data['certificate']);
-        }
 
         try {
                 telegram_session_start();

@@ -30,6 +30,8 @@ Features
 - Support SOCKS5 proxy server ( Requires curl >= 7.21.7 );
 - Two ways of getting updates from Telegram: webhook and long polling (v. >= 2.0);
 - Two ways of linking a Telegram account to a MantisBT one: a confirmation link, or a PIN code shown in the chat and entered in MantisBT (v. >= 2.0);
+- Unlink a Telegram account: with the `/stop` command in the chat, from the user's own account page, or by an administrator (v. >= 2.0);
+- Broadcast a message with attached files to the Telegram chats of the members of chosen projects (v. >= 2.0);
 - Guided issue creation covering every field of the report form (v. >= 2.0):
     - custom fields of all MantisBT types, including the ones defined by third party cfdef files;
     - the required fields are asked first, then the issue can be created right away or the optional fields filled in;
@@ -62,7 +64,9 @@ Telegram delivers updates to a bot in one of two ways, chosen in the plugin sett
 (*Manage -> Manage Plugins -> TelegramBot -> Settings*, option **Getting updates method**).
 
 **Webhook** - Telegram servers connect to your MantisBT instance themselves, so it has to be
-reachable from the Internet over HTTPS with a certificate signed by a trusted CA. Updates arrive
+reachable from the Internet over HTTPS. The certificate may be either issued by a trusted CA or
+self-signed: in the latter case upload the public certificate (`.pem`, `.crt`, `.cer`) on the
+settings page, and the plugin passes it to Telegram when installing the webhook. Updates arrive
 instantly and nothing has to be scheduled.
 
 **Script** (long polling) - MantisBT asks Telegram for updates itself, over an outgoing connection
@@ -125,9 +129,51 @@ deleted from the chat as soon as the accounts are linked, so an unused code does
 screen; when the PIN code method is active, an invitation link sent earlier leads to a page saying
 so instead of binding anything.
 
+Entering wrong PIN codes is rate limited: after the configured number of wrong attempts within the
+lockout window the page refuses further codes until the window ends. Both the limit and the window
+are plugin settings; active lockouts are listed on the *Status of the Telegram API* page, each with
+a reset button.
+
+Unlinking
+---------
+
+A binding is released in one of three ways:
+
+- **From the chat** - the `/stop` command unsubscribes the chat from the notifications and
+  releases the binding.
+- **By the user** - the *My Account -> Telegram binding* page shows the linked account with an
+  **Unlink** button next to it. This is the way to go when the Telegram account is lost or has
+  changed hands, so the `/stop` command is out of reach; the chat is told it was unsubscribed.
+- **By an administrator** - the *Status of the Telegram API* page lists the linked users, each
+  with an **Unlink** button. Whether the chat is told about the unlink is decided by a checkbox on
+  the confirmation page - a lost account deserves the notice, a cleanup of stale bindings does not;
+  the **Tell the user when an administrator unlinks his account** setting only chooses the state
+  the checkbox starts in.
+
+Deleting a MantisBT account releases its binding as well, silently: the account is gone, so there
+is nothing to invite the chat back to. In every case the chat itself keeps working as an unlinked
+one and offers to link an account on the next message.
+
+Broadcast messages
+------------------
+
+A user can send a one-off message - text and files - from MantisBT to the Telegram chats of all
+members of the chosen projects at once. The feature is off by default and is configured on the
+*Broadcast* tab of the plugin pages: users at or above the configured access level may broadcast
+to every project, any other user - only to the projects explicitly granted to him there. Everybody
+allowed to broadcast to at least one project gets the *Send message* entry in the MantisBT menu.
+
+The recipients are the enabled members of the selected projects who have linked their Telegram
+accounts; the message opens with a header naming the sender, in the language of each recipient.
+
+<!-- SCREENSHOT: the "Send message" page with projects, a message and files chosen -->
+<!-- SCREENSHOT: the broadcast message as it looks in the chat -->
+
 Supported Versions
 ------------------
 
 - MantisBT 2.14 to 2.26 - supported in plugin version up to 1.5.x
 - MantisBT 2.26 and higher - supported in plugin version 1.6 and higher
-- Only https ssl certificate signed trusted ca is supported for MantisBT ( In the near future, a self-signed https certificate will be supported. )
+- MantisBT 2.26 to 2.28, PHP 7.2 to 8.4 - plugin version 2.0
+- The Webhook mode requires MantisBT to be served over HTTPS - with a certificate from a trusted
+  CA or a self-signed one uploaded on the settings page; the Script mode needs no HTTPS at all.

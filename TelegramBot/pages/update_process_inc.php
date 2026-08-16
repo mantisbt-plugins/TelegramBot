@@ -227,9 +227,9 @@ foreach ( $t_results as $t_result ) {
 
             switch( $t_command[0] ) {
                 case TelegrambotActions::REPORT_BUG_TAG:
-                    $t_data = telegram_bug_report( 
-                                                    $t_data[ TelegrambotActions::REPORT_BUG_TAG ], 
-                                                    $t_update_content 
+                    $t_data = telegram_bug_report(
+                                                    $t_data[ TelegrambotActions::REPORT_BUG_TAG ],
+                                                    $t_update_content
                             );
                     $t_result = Request::editMessageText( $t_data );
                     break;
@@ -269,12 +269,20 @@ foreach ( $t_results as $t_result ) {
                     telegram_status_change_draft_clear();
                     //And next, change the action selection keyboard
                 case TelegrambotActions::STOP_REPORT_ISSUE_TAG:
-                    plugin_config_delete( 'bug_data_draft', auth_get_current_user_id() );
-                    plugin_config_delete( 'bug_data_draft_chat_id', auth_get_current_user_id() );
-                    plugin_config_delete( 'bug_data_draft_message_id', auth_get_current_user_id() );
-                    plugin_config_delete( 'bug_data_draft_text_msg', auth_get_current_user_id() );
-                    plugin_config_delete( 'bug_data_draft_current_field_to_save', auth_get_current_user_id() );
-                    //And next, change the action selection keyboard 
+                    //The draft is dropped by the card driving it only: a press on another
+                    //message would take away the draft being filled in somewhere else
+                    if( telegram_draft_belongs_to_message( $t_update_content->getMessage()->getMessageId() ) ) {
+                        plugin_config_delete( 'bug_data_draft', auth_get_current_user_id() );
+                        plugin_config_delete( 'bug_data_draft_chat_id', auth_get_current_user_id() );
+                        plugin_config_delete( 'bug_data_draft_message_id', auth_get_current_user_id() );
+                        plugin_config_delete( 'bug_data_draft_text_msg', auth_get_current_user_id() );
+                        plugin_config_delete( 'bug_data_draft_current_field_to_save', auth_get_current_user_id() );
+                    } else if( $t_command[0] == TelegrambotActions::STOP_REPORT_ISSUE_TAG ) {
+                        //Cancelling a status change touches no draft of its own, only the
+                        //user asking for the draft to be removed is told about the refusal
+                        telegram_callback_alert_set( plugin_lang_get( 'draft_other_message' ) );
+                    }
+                    //And next, change the action selection keyboard
                 case TelegrambotActions::ACTION_SELECT_TAG:
                     $t_orgl_message = $t_update_content->getMessage();
                     $t_data         = telegram_action_select( $t_orgl_message->getChat()->getId(), $t_orgl_message->getMessageId() );

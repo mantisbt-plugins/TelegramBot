@@ -304,6 +304,7 @@ $s_plugin_TelegramBot_create_button = 'Create';
 $s_plugin_TelegramBot_fill_optional_button = 'Fill in the optional fields';
 $s_plugin_TelegramBot_draft_menu_prompt = 'Every mandatory field is filled in. Create the issue or fill in the optional fields first.';
 $s_plugin_TelegramBot_draft_required_missing = 'Answer the mandatory questions first.';
+$s_plugin_TelegramBot_draft_other_message = 'An issue draft is already in progress in another message. Finish it there or cancel it with the buttons of the draft card.';
 $s_plugin_TelegramBot_card_separator = '———————————';
 $s_plugin_TelegramBot_card_question_prefix = '❓ ';
 $s_plugin_TelegramBot_card_error_prefix = '⚠ ';

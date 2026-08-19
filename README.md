@@ -69,9 +69,10 @@ self-signed: in the latter case upload the public certificate (`.pem`, `.crt`, `
 settings page, and the plugin passes it to Telegram when installing the webhook. Updates arrive
 instantly and nothing has to be scheduled.
 
-**Script** (long polling) - MantisBT asks Telegram for updates itself, over an outgoing connection
-only. Use it when publishing MantisBT on the Internet is not possible. Add the script shown on the
-settings page to your scheduler, for example:
+**Script** (long polling) - MantisBT asks Telegram for updates itself, over an outgoing HTTPS
+connection only - no certificate of your own is involved. Use it when publishing MantisBT on the
+Internet is not possible. Add the script shown on the settings page to your scheduler, for
+example:
 
 ```
 * * * * * /usr/bin/php <mantisbt>/plugins/TelegramBot/scripts/telegram_get_updates.php >/dev/null 2>&1
@@ -172,8 +173,15 @@ accounts; the message opens with a header naming the sender, in the language of 
 Supported Versions
 ------------------
 
-- MantisBT 2.14 to 2.26 - supported in plugin version up to 1.5.x
-- MantisBT 2.26 and higher - supported in plugin version 1.6 and higher
-- MantisBT 2.26 to 2.28, PHP 7.2 to 8.4 - plugin version 2.0
-- The Webhook mode requires MantisBT to be served over HTTPS - with a certificate from a trusted
-  CA or a self-signed one uploaded on the settings page; the Script mode needs no HTTPS at all.
+- MantisBT 2.14 to 2.25 - plugin version 1.5.x, which receives fixes only;
+- MantisBT 2.26 to 2.27.2 - plugin version 1.6.0, which is not developed any more. It cannot be
+  installed on MantisBT 2.27.3 and higher, where the ADOdb shipped with the core rejects one of
+  the schema steps of the plugin - use version 2.x there;
+- MantisBT 2.26 and higher - plugin version 2.x, the current line, verified up to MantisBT 2.28.4;
+- The plugin declares no PHP version of its own: the minimum is the one required by the MantisBT
+  release it runs on - PHP 7.2.5 for MantisBT 2.26.x and PHP 7.4.0 for 2.27.0 and higher. Tested
+  up to PHP 8.4;
+- The Webhook mode requires MantisBT itself to be reachable from the Internet over HTTPS, with a
+  certificate from a trusted CA or a self-signed one uploaded on the settings page. The Script
+  mode needs no certificate of its own and no inbound access: the plugin talks to
+  api.telegram.org over an outgoing HTTPS connection.

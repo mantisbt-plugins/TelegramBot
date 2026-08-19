@@ -71,6 +71,24 @@ class TelegrambotActions {
         const END_CUSTOM_FIELD          = 'endcf';
         # Marker used instead of a value index to request the default value of a custom field
         const CUSTOM_FIELD_DEFAULT_MARK = 'd';
+        # Calendar integration: the wizard creating a calendar event out of the chat.
+        # The project of the event is picked with GET_PROJECT / SET_PROJECT and the
+        # issue it is attached to is left out with SKIP_FIELD, the tags below name
+        # the steps of its own.
+        const CREATE_EVENT_TAG          = 'ce';
+        # Cancel the event wizard and go back to the action list
+        const STOP_EVENT_TAG            = 'stop_ce';
+        # Leaf through the calendar of a date of the event, the value is the date shown
+        const GET_EVENT_DATE            = 'ged';
+        const SET_EVENT_DATE            = 'sed';
+        # Take the end of the event an hour after its start
+        const SET_EVENT_HOUR            = 'seh';
+        # Members of the event: leaf through the list, tick one off, close the list
+        const GET_EVENT_MEMBER          = 'gem';
+        const TOGGLE_EVENT_MEMBER       = 'tem';
+        const END_EVENT_MEMBER          = 'eem';
+        # Create the event out of the draft as it is
+        const CREATE_EVENT              = 'cre';
 
         private $text = array();
         private $buttons;

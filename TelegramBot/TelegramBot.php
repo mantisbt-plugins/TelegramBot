@@ -217,6 +217,7 @@ class TelegramBotPlugin extends MantisPlugin {
         require_once 'core/classes/TelegrambotActions.class.php';
         require_once 'core/TelegramBot_custom_field_api.php';
         require_once 'core/TelegramBot_broadcast_api.php';
+        require_once 'core/TelegramBot_calendar_api.php';
         
         global $g_skip_sending_bugnote, $g_telegram_callback_alert;
         $g_skip_sending_bugnote    = FALSE;
@@ -262,6 +263,11 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'bug_data_draft_chat_id'                      => '',
                                   'bug_data_draft_message_id'                   => '',
                                   'bug_data_draft_current_field_to_save'        => '',
+                                  # per-user state of the calendar event wizard, see TelegramBot_calendar_api.php
+                                  'event_draft'                                 => '',
+                                  'event_draft_chat_id'                         => '',
+                                  'event_draft_message_id'                      => '',
+                                  'event_draft_current_field'                   => '',
                                   # per-user "count:window_start" of wrong PIN code guesses
                                   'pin_code_attempts'                           => '',
                                   # wrong PIN code guesses allowed within one lockout window:
@@ -411,7 +417,7 @@ class TelegramBotPlugin extends MantisPlugin {
     }
 
     public function hooks() {
-        return array(
+        $t_hooks = array(
                                   'EVENT_REPORT_BUG'      => 'telegram_message_bug_added',
                                   'EVENT_BUGNOTE_ADD'     => 'telegram_message_bugnote_add',
                                   'EVENT_UPDATE_BUG_DATA' => 'telegram_message_skip_sending',
@@ -422,6 +428,25 @@ class TelegramBotPlugin extends MantisPlugin {
                                   //TODO: Delete realatationship
                                   //'EVENT_BUG_DELETED' => 'delete_realatationship_tgmessage',
         );
+
+        # EVENT_CALENDAR_EVENT_CREATED belongs to the Calendar plugin, and hooking an
+        # event nobody has declared raises a warning. The order the plugins are
+        # initialized in is not defined, so Calendar may still be waiting for its
+        # turn while this runs and its event may not be declared yet; the plugins
+        # are all registered before any of them is initialized, though, so the
+        # presence of Calendar itself is a reliable test.
+        # The event is declared here as well for the case this plugin comes first:
+        # event_declare() keeps the declaration made first and the type below is
+        # the one Calendar declares, so the two declarations cannot disagree.
+        # Without Calendar nothing ever signals the event and the callback simply
+        # never runs, which is why no dependency on Calendar is needed.
+        if( plugin_is_registered( 'Calendar' ) ) {
+            event_declare( 'EVENT_CALENDAR_EVENT_CREATED', EVENT_TYPE_EXECUTE );
+
+            $t_hooks['EVENT_CALENDAR_EVENT_CREATED'] = 'telegram_calendar_event_created';
+        }
+
+        return $t_hooks;
     }
     
     public function errors() {
@@ -436,6 +461,22 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'ERROR_TG_PIN_CODE_GENERATE'          => plugin_lang_get('ERROR_TG_PIN_CODE_GENERATE'),
                                   'ERROR_TG_USER_ALREADY_ASSOCIATED'    => plugin_lang_get('ERROR_TG_USER_ALREADY_ASSOCIATED'),
         );
+    }
+
+    /**
+     * Notify the members of a calendar event about its creation.
+     *
+     * EVENT_CALENDAR_EVENT_CREATED is declared as EVENT_TYPE_EXECUTE and signalled
+     * with a single parameter, so the callback receives the name of the event and
+     * the identifier of the calendar event created.
+     *
+     * @param string  $p_type_event Name of the signalled event.
+     * @param integer $p_event_id   Identifier of the created calendar event.
+     * @return void
+     */
+    function telegram_calendar_event_created( $p_type_event, $p_event_id ) {
+        plugin_log_event( sprintf( 'Calendar event #%d created', $p_event_id ) );
+        telegram_calendar_message_event_created( $p_event_id );
     }
 
     function telegram_message_bug_added( $p_type_event, $p_issue, $p_issue_id ) {

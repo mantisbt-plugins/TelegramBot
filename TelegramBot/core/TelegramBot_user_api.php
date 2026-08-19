@@ -171,6 +171,9 @@ function telegram_bot_user_unlink( $p_user_id, $p_notify = true ) {
     plugin_config_delete( 'bug_data_draft_text_msg', $p_user_id );
     plugin_config_delete( 'bug_data_draft_current_field_to_save', $p_user_id );
 
+    # the draft of an unfinished calendar event belongs to the user as well
+    telegram_event_draft_clear( $p_user_id );
+
     plugin_log_event( 'Telegram user id#' . $t_telegram_user_id . ' is unlinked from mantisbt user ' . user_get_username( $p_user_id ) );
 
     if( $p_notify ) {

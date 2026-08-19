@@ -106,14 +106,17 @@ function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_telegr
         }
         plugin_log_event( 'Authorization Error! Telegram user id#' . $p_telegram_user_id . ' is not mapped to any mantisbt user. As a response, an authorization invitation was sent.' );
         return false;
-    } else if( !user_is_enabled( $t_mantis_user_id ) || !user_exists( $t_mantis_user_id ) ) {
+    } else if( !user_exists( $t_mantis_user_id ) || !user_is_enabled( $t_mantis_user_id ) ) {
+        # user_exists() comes first: user_is_enabled() halts on a user that is gone.
+        # For the same reason the name for the log is taken from user_get_name(),
+        # which answers with the placeholder of a deleted user instead of halting
         lang_push( telegram_lang_map_auto( $p_telegram_user_lang_code ) );
         $t_response = user_telegram_signup( $p_telegram_user_id );
         if( !$t_response->isOk() ) {
             error_parameters( $t_response->getDescription() );
             plugin_error( 'ERROR_TG_GET_UPDATE', WARNING );
         }
-        plugin_log_event( 'Authorization Error! User ' . user_get_username( $t_mantis_user_id ) . ' is disabled or deleted. As a response, an authorization invitation was sent.' );
+        plugin_log_event( 'Authorization Error! User ' . user_get_name( $t_mantis_user_id ) . ' (id#' . $t_mantis_user_id . ') is disabled or deleted. As a response, an authorization invitation was sent.' );
         return false;
     } else {
         # The account may get disabled between the check above and the login

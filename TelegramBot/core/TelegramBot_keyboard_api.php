@@ -175,6 +175,21 @@ function keyboard_get_menu_operations() {
         ] );
     }
 
+    # the calendar events are only offered while the Calendar plugin is around,
+    # this one does not depend on it
+    if( telegram_calendar_available() ) {
+
+        $t_inline_keyboard->addRow( [
+                                  'text'          => plugin_lang_get( 'menu_create_event' ),
+                                  'callback_data' => json_encode( array( TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::GET_PROJECT => array(
+                                                                                                                'id' => 0,
+                                                                                                                'p'  => 1,
+                                                                                                                'fp' => 1
+                                                                                      ) )
+                                  ) )
+        ] );
+    }
+
     return $t_inline_keyboard;
 }
 
@@ -204,7 +219,19 @@ function keyboard_bug_actions_get( BugData $p_bug ) {
     return $t_inline_keyboard;
 }
 
-function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1, $p_from_page = 1 ) {
+/**
+ * Build the paginated keyboard of the projects available to the current user.
+ *
+ * The same list drives the issue wizard and the calendar event one, so the tag
+ * of the flow the buttons belong to is told apart by the caller.
+ *
+ * @param integer $p_selected_project Project the subprojects are listed for.
+ * @param integer $p_page             Page of the list, ten projects per page.
+ * @param integer $p_from_page        Page of the parent list, returned to by the back button.
+ * @param string  $p_action_tag       TelegrambotActions tag of the flow.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1, $p_from_page = 1, $p_action_tag = TelegrambotActions::REPORT_BUG_TAG ) {
 
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
@@ -224,11 +251,11 @@ function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1,
         $t_inline_keyboard->addRow( [
                                   'text'          => project_get_field( $t_project_ids[$i], 'name' ),
                                   'callback_data' => json_encode( array(
-                                                            TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::SET_PROJECT => array( 'id' => $t_project_ids[$i] ) )
+                                                            $p_action_tag => array( TelegrambotActions::SET_PROJECT => array( 'id' => $t_project_ids[$i] ) )
                                   ) )
                 ], count( $t_child_project_ids ) > 0 ? [
                                           'text'          => '>>',
-                                          'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
+                                          'callback_data' => json_encode( array( $p_action_tag => array( TelegrambotActions::GET_PROJECT => array(
                                                                                                                                                                         'id' => $t_project_ids[$i],
                                                                                                                                                                         'p'  => 1,
                                                                                                                                                                         'fp' => $p_page
@@ -241,7 +268,7 @@ function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1,
     if( $p_page > 1 ) {
         $t_inline_keyboard->addRow( [
                                   'text'          => '<<',
-                                  'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
+                                  'callback_data' => json_encode( array( $p_action_tag => array( TelegrambotActions::GET_PROJECT => array(
                                                                                                                 'id' => $p_selected_project,
                                                                                                                 'p'  => $p_page - 1,
                                                                                                                 'fp' => $p_from_page
@@ -255,7 +282,7 @@ function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1,
         if( $t_parent_project_id != $p_selected_project ) {
             $t_inline_keyboard->addRow( [
                                       'text'          => '<<',
-                                      'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
+                                      'callback_data' => json_encode( array( $p_action_tag => array( TelegrambotActions::GET_PROJECT => array(
                                                                                                                     'id' => $t_parent_project_id,
                                                                                                                     'p'  => $p_from_page,
                                                                                                                     'fp' => $p_page
@@ -268,7 +295,7 @@ function keyboard_projects_get( $p_selected_project = ALL_PROJECTS, $p_page = 1,
     if( (count( $t_project_ids ) / 10) > $p_page ) {
         $t_inline_keyboard->addRow( [
                                   'text'          => '>>',
-                                  'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::GET_PROJECT => array(
+                                  'callback_data' => json_encode( array( $p_action_tag => array( TelegrambotActions::GET_PROJECT => array(
                                                                                                                 'id' => $p_selected_project,
                                                                                                                 'p'  => $p_page + 1,
                                                                                                                 'fp' => $p_from_page
@@ -552,18 +579,17 @@ function keyboard_summary_get() {
 }
 
 /**
- * Add the button cancelling the status change dialog to the keyboard of one
+ * Add the navigation buttons of the status change dialog to the keyboard of one
  * of its questions.
  *
- * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the button to.
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the buttons to.
+ * @param array   $p_draft Draft of the dialog.
+ * @param BugData $p_bug   A valid bug object.
  * @return void
  */
-function keyboard_status_change_cancel_button_add( $p_inline_keyboard ) {
+function keyboard_status_change_buttons_add( $p_inline_keyboard, array $p_draft, BugData $p_bug ) {
 
-    $p_inline_keyboard->addRow( [
-                              'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
-                              'callback_data' => json_encode( array( TelegrambotActions::STOP_CHANGE_STATUS_TAG => '' ) )
-    ] );
+    keyboard_wizard_buttons_add( $p_inline_keyboard, telegram_status_change_wizard_descriptor( $p_draft, $p_bug ) );
 }
 
 /**
@@ -610,19 +636,149 @@ function keyboard_buttons_bug_change_status( BugData $p_bug ) {
 }
 
 /**
- * Add the "back to the previous question" button to the keyboard of a question of
- * the issue draft wizard.
+ * Describe a step by step dialog for the navigation buttons of its cards.
+ *
+ * The dialogs of the bot ( the issue wizard, the calendar event wizard, the status
+ * change dialog ) keep their own state and ask their own questions, but the way out
+ * of a question is the same everywhere: give the answer given last up, drop the whole
+ * dialog, or go back to the list the dialog has been entered from. The descriptor is
+ * what tells these dialogs apart for keyboard_wizard_buttons_add().
+ *
+ * @param string $p_tag            Root TelegrambotActions tag of the callbacks of the dialog.
+ * @param string $p_cancel_tag     TelegrambotActions tag dropping the dialog.
+ * @param array  $p_answered       Steps answered so far, in the canonical order of the dialog.
+ * @param string $p_label_callback Name of the function naming a step of the dialog.
+ * @param array  $p_options        Anything the dialog differs from the defaults in:
+ *                                 'replace'      => array( step => plugin lang key ) of the
+ *                                                   step back button labels written by hand,
+ *                                 'project_step' => name of the step picking the project when
+ *                                                   the dialog starts with it, '' otherwise,
+ *                                 'cancel_deep'  => plugin lang key of the button dropping the
+ *                                                   dialog once it holds answers, '' to keep
+ *                                                   the button leading back to the action list.
+ * @return array Descriptor of the dialog.
+ */
+function keyboard_wizard_descriptor( $p_tag, $p_cancel_tag, array $p_answered, $p_label_callback, array $p_options = array() ) {
+
+        $t_wizard = array(
+                              'tag'          => $p_tag,
+                              'cancel_tag'   => $p_cancel_tag,
+                              'answered'     => array_values( $p_answered ),
+                              'label'        => $p_label_callback,
+                              'replace'      => array(),
+                              'project_step' => '',
+                              'cancel_deep'  => '',
+        );
+
+        return array_merge( $t_wizard, $p_options );
+}
+
+/**
+ * The label of the step back button of a dialog.
+ *
+ * The step back replaces the answer given last, so the button carries the name of
+ * that very action instead of a bare "back": the user is told which field the press
+ * is going to give up. A step named by hand keeps the grammar of the language of the
+ * user, the steps the dialog learns about at run time ( the custom fields of the
+ * issue wizard ) are named after the label of the step, the way the card labels it.
+ *
+ * @param array  $p_wizard Descriptor of the dialog.
+ * @param string $p_step   Step the press returns to.
+ * @return string
+ */
+function keyboard_wizard_replace_label( array $p_wizard, $p_step ) {
+
+        if( array_key_exists( $p_step, $p_wizard['replace'] ) ) {
+                return plugin_lang_get( $p_wizard['replace'][$p_step] );
+        }
+
+        return sprintf( plugin_lang_get( 'wizard_replace_button' ), call_user_func( $p_wizard['label'], $p_step ) );
+}
+
+/**
+ * Add the step back button of a dialog to the keyboard of one of its questions.
  *
  * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the button to.
+ * @param array  $p_wizard Descriptor of the dialog.
+ * @param string $p_step   Step of the dialog the press returns to, '' for a bare "back".
  * @return void
  */
-function keyboard_back_button_add( $p_inline_keyboard ) {
+function keyboard_wizard_back_button_add( $p_inline_keyboard, array $p_wizard, $p_step = '' ) {
+
+        $t_label = is_blank( (string)$p_step ) ? plugin_lang_get( 'back_button' ) : keyboard_wizard_replace_label( $p_wizard, $p_step );
 
         $p_inline_keyboard->addRow( [
-                              'text'          => '(← ' . plugin_lang_get( 'back_button' ) . ')',
+                              'text'          => '(← ' . $t_label . ')',
                               'callback_data' => json_encode( array(
-                                                        TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::BACK_FIELD => 1 )
+                                                        $p_wizard['tag'] => array( TelegrambotActions::BACK_FIELD => 1 )
                               ) )
+        ] );
+}
+
+/**
+ * Add the button leading out of a dialog back to the list of the actions.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the button to.
+ * @param array $p_wizard Descriptor of the dialog.
+ * @return void
+ */
+function keyboard_wizard_cancel_button_add( $p_inline_keyboard, array $p_wizard ) {
+
+        $p_inline_keyboard->addRow( [
+                              'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
+                              'callback_data' => json_encode( array( $p_wizard['cancel_tag'] => 1 ) )
+        ] );
+}
+
+/**
+ * Add the navigation buttons of a dialog to the keyboard of one of its cards.
+ *
+ * The entry steps of a dialog carry the same navigation buttons as the project lists
+ * of the other flows; deeper in the dialog they turn into the step back and the way
+ * of dropping the dialog, there are answers to lose then.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the buttons to.
+ * @param array $p_wizard Descriptor of the dialog.
+ * @return void
+ */
+function keyboard_wizard_buttons_add( $p_inline_keyboard, array $p_wizard ) {
+
+        $t_answered = $p_wizard['answered'];
+
+        if( empty( $t_answered ) ) {
+                # The first question: nothing is answered yet, the only way back
+                # is the action list
+                keyboard_wizard_cancel_button_add( $p_inline_keyboard, $p_wizard );
+
+                return;
+        }
+
+        if( !is_blank( $p_wizard['project_step'] ) && $t_answered == array( $p_wizard['project_step'] ) ) {
+                # The question following the project: going back means picking the
+                # project anew, which is a list of its own rather than a question
+                $p_inline_keyboard->addRow( [
+                                      'text'          => '>> ' . plugin_lang_get( 'keyboard_button_list_of_projects' ) . ' <<',
+                                      'callback_data' => json_encode( array( $p_wizard['tag'] => array( TelegrambotActions::BACK_FIELD => 1 ) ) )
+                ] );
+
+                keyboard_wizard_cancel_button_add( $p_inline_keyboard, $p_wizard );
+
+                return;
+        }
+
+        # The label names the step the BACK_FIELD handler is going to reset: both take
+        # the step answered last, so the button never promises the wrong field
+        keyboard_wizard_back_button_add( $p_inline_keyboard, $p_wizard, end( $t_answered ) );
+
+        if( is_blank( $p_wizard['cancel_deep'] ) ) {
+                keyboard_wizard_cancel_button_add( $p_inline_keyboard, $p_wizard );
+
+                return;
+        }
+
+        $p_inline_keyboard->addRow( [
+                              'text'          => '(' . plugin_lang_get( $p_wizard['cancel_deep'] ) . ')',
+                              'callback_data' => json_encode( array( $p_wizard['cancel_tag'] => 1 ) )
         ] );
 }
 
@@ -694,41 +850,101 @@ function keyboard_draft_buttons_add( $p_inline_keyboard, array $p_bug_data_draft
                 keyboard_create_button_add( $p_inline_keyboard );
         }
 
-        # The entry steps of the wizard carry the same navigation buttons as the
-        # project lists of the other flows; deeper in the wizard they turn into
-        # the step back and the draft removal, there are answers to lose then
-        $t_answered = telegram_draft_answered_steps( $p_bug_data_draft );
+        keyboard_wizard_buttons_add( $p_inline_keyboard, telegram_draft_wizard_descriptor( $p_bug_data_draft ) );
+}
 
-        if( empty( $t_answered ) ) {
-                # The project list: nothing is answered yet, the only way back
-                # is the action list
-                $p_inline_keyboard->addRow( [
-                                      'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
-                                      'callback_data' => json_encode( array( TelegrambotActions::STOP_REPORT_ISSUE_TAG => 1 ) )
-                ] );
+/**
+ * Add the navigation buttons of the calendar event wizard to the keyboard of one
+ * of its cards, the way keyboard_draft_buttons_add() serves the issue wizard.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the buttons to.
+ * @param array $p_draft Event draft.
+ * @return void
+ */
+function keyboard_event_buttons_add( $p_inline_keyboard, array $p_draft ) {
 
-                return;
-        }
+        keyboard_wizard_buttons_add( $p_inline_keyboard, telegram_event_wizard_descriptor( $p_draft ) );
+}
 
-        if( $t_answered == array( 'project' ) ) {
-                # The first question: going back means picking the project anew
-                $p_inline_keyboard->addRow( [
-                                      'text'          => '>> ' . plugin_lang_get( 'keyboard_button_list_of_projects' ) . ' <<',
-                                      'callback_data' => json_encode( array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::BACK_FIELD => 1 ) ) )
-                ] );
-
-                $p_inline_keyboard->addRow( [
-                                      'text'          => '>> ' . plugin_lang_get( 'keyboard_button_back' ) . ' <<',
-                                      'callback_data' => json_encode( array( TelegrambotActions::STOP_REPORT_ISSUE_TAG => 1 ) )
-                ] );
-
-                return;
-        }
-
-        keyboard_back_button_add( $p_inline_keyboard );
+/**
+ * Add the "create the event" button to the keyboard of the calendar event wizard.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the button to.
+ * @return void
+ */
+function keyboard_event_create_button_add( $p_inline_keyboard ) {
 
         $p_inline_keyboard->addRow( [
-                              'text'          => '(' . plugin_lang_get( 'keyboard_button_delete_draft' ) . ')',
-                              'callback_data' => json_encode( array( TelegrambotActions::STOP_REPORT_ISSUE_TAG => 1 ) )
+                              'text'          => '(' . plugin_lang_get( 'create_button' ) . ')',
+                              'callback_data' => json_encode( array(
+                                                        TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::CREATE_EVENT => 1 )
+                              ) )
         ] );
+}
+
+/**
+ * Build the paginated keyboard of the members of a calendar event.
+ *
+ * Every button toggles the membership of one user and the list is redrawn, the
+ * ticked ones are marked; the list is closed with the button of its own, which
+ * is the answer to the question.
+ *
+ * @param array   $p_candidates Users which may be signed up, as calendar_api_candidate_members() returns them.
+ * @param array   $p_selected   Users ticked off so far.
+ * @param integer $p_page       Page of the list, ten members per page.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function keyboard_event_members_get( array $p_candidates, array $p_selected, $p_page = 1 ) {
+
+        $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+        $t_page  = $p_page < 1 ? 1 : (int)$p_page;
+        $t_count = count( $p_candidates );
+
+        user_cache_array_rows( $p_candidates );
+
+        for( $i = ( $t_page * TELEGRAM_EVENT_MEMBERS_PER_PAGE ) - TELEGRAM_EVENT_MEMBERS_PER_PAGE;
+                        $i < ( $t_page * TELEGRAM_EVENT_MEMBERS_PER_PAGE ) && $i < $t_count; $i++ ) {
+
+                $t_member_id = (int)$p_candidates[$i];
+                $t_mark      = in_array( $t_member_id, $p_selected ) ? '☑ ' : '☐ ';
+
+                $t_inline_keyboard->addRow( [
+                                      'text'          => $t_mark . user_get_name( $t_member_id ),
+                                      'callback_data' => json_encode( array( TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::TOGGLE_EVENT_MEMBER => array(
+                                                                                                                    'id' => $t_member_id,
+                                                                                                                    'p'  => $t_page
+                                                                                          ) )
+                                      ) )
+                ] );
+        }
+
+        if( $t_page > 1 ) {
+                $t_inline_keyboard->addRow( [
+                                      'text'          => '<<',
+                                      'callback_data' => json_encode( array( TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::GET_EVENT_MEMBER => array(
+                                                                                                                    'p' => $t_page - 1
+                                                                                          ) )
+                                      ) )
+                ] );
+        }
+
+        if( ( $t_count / TELEGRAM_EVENT_MEMBERS_PER_PAGE ) > $t_page ) {
+                $t_inline_keyboard->addRow( [
+                                      'text'          => '>>',
+                                      'callback_data' => json_encode( array( TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::GET_EVENT_MEMBER => array(
+                                                                                                                    'p' => $t_page + 1
+                                                                                          ) )
+                                      ) )
+                ] );
+        }
+
+        $t_inline_keyboard->addRow( [
+                              'text'          => '(' . plugin_lang_get( 'custom_field_done_button' ) . ')',
+                              'callback_data' => json_encode( array(
+                                                        TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::END_EVENT_MEMBER => 1 )
+                              ) )
+        ] );
+
+        return $t_inline_keyboard;
 }

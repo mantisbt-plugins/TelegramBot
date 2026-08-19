@@ -209,6 +209,82 @@ function telegram_callback_alert_get() {
 }
 
 /**
+ * Turn a fatal error signalled by the core into an exception.
+ *
+ * The error handler of MantisBT stops the process on E_USER_ERROR, and a single
+ * poisonous update would take down the whole batch: in the long polling loop that
+ * happens before the offset is stored, so the very same batch is read again on
+ * every run of cron and the bot stays deaf for everybody. Only the fatal errors
+ * are converted, the rest keeps the handling it had - a warning is not meant to
+ * interrupt anything.
+ *
+ * @param integer $p_type  Level of the error raised.
+ * @param string  $p_error Message of the error, the code of the error for a core one.
+ * @param string  $p_file  File the error was raised in.
+ * @param integer $p_line  Line the error was raised on.
+ * @return boolean FALSE to fall back to the standard handling of PHP.
+ * @throws ErrorException
+ */
+function telegram_update_error_handler( $p_type, $p_error, $p_file, $p_line ) {
+    global $g_telegram_previous_error_handler;
+
+    if( $p_type != E_USER_ERROR ) {
+        if( $g_telegram_previous_error_handler === NULL ) {
+            return FALSE;
+        }
+
+        return call_user_func( $g_telegram_previous_error_handler, $p_type, $p_error, $p_file, $p_line );
+    }
+
+    # The message of a core trigger_error is the numeric code of the error, it is
+    # carried in the code of the exception so that the text can be resolved later
+    $t_code = is_numeric( $p_error ) ? (int)$p_error : 0;
+
+    throw new ErrorException( $p_error, $t_code, $p_type, $p_file, $p_line );
+}
+
+/**
+ * Tell the user that the update he has sent could not be processed.
+ *
+ * Best effort only: the update is dropped either way and a failure of the
+ * notification itself must not take down the rest of the batch.
+ *
+ * @param object    $p_update_content Content of the update being processed, NULL when unknown.
+ * @param Throwable $p_exception      Error the processing has died on.
+ * @return void
+ */
+function telegram_update_error_notify( $p_update_content, $p_exception ) {
+
+    # An error of the core carries its code, its text is the one the web interface shows
+    if( $p_exception instanceof ErrorException && $p_exception->getCode() > 0 ) {
+        $t_text = error_string( (int)$p_exception->getCode() );
+    } else {
+        $t_text = plugin_lang_get( 'error_update_processing' ) . ' ' . $p_exception->getMessage();
+    }
+
+    try {
+        if( $p_update_content instanceof \Longman\TelegramBot\Entities\CallbackQuery ) {
+            # The regular path answers the query at the end of the callback branch, and a
+            # query answered twice is simply refused by Telegram, which does no harm here.
+            # The pop-up of a callback answer holds 200 characters, a longer one is refused
+            $p_update_content->answer( array(
+                                      'text'       => mb_substr( $t_text, 0, 200 ),
+                                      'show_alert' => true,
+            ) );
+        } else if( $p_update_content instanceof \Longman\TelegramBot\Entities\Message ) {
+            # Not a reply: the dispatcher removes the messages answering the wizard,
+            # and a reply to a message already gone is refused by Telegram
+            RequestMantis::sendMessage( array(
+                                      'chat_id' => $p_update_content->getChat()->getId(),
+                                      'text'    => $t_text,
+            ) );
+        }
+    } catch( Throwable $t_exception ) {
+        plugin_log_event( 'ERROR! The error notification was not sent: ' . $t_exception->getMessage() );
+    }
+}
+
+/**
  * Whether the issue draft of the current user is driven by the given message.
  *
  * The state of the wizard is kept per user and bound to a single card message, so
@@ -567,15 +643,11 @@ function telegram_draft_text_step_pending( array $p_bug_data_draft, $p_current_f
  */
 function telegram_draft_step_last_answered( array $p_bug_data_draft ) {
 
-    $t_last_step = NULL;
+    # The step back button of the card is labelled with the very same step, so both
+    # of them are taken out of one list
+    $t_answered = telegram_draft_answered_steps( $p_bug_data_draft );
 
-    foreach( telegram_draft_steps_get( $p_bug_data_draft ) as $t_step ) {
-        if( telegram_draft_step_is_answered( $t_step, $p_bug_data_draft ) ) {
-            $t_last_step = $t_step;
-        }
-    }
-
-    return $t_last_step;
+    return empty( $t_answered ) ? NULL : end( $t_answered );
 }
 
 /**
@@ -805,6 +877,37 @@ function telegram_draft_answered_steps( array $p_bug_data_draft ) {
 }
 
 /**
+ * Describe the issue draft wizard for the navigation buttons of its cards.
+ *
+ * The steps the core insists on are the ones every reporter walks through, so their
+ * step back buttons are written by hand and read as a sentence of the language of the
+ * user. The optional fields and the custom fields of the project, the names of which
+ * are only known at run time, are named after the label of the step instead: a label
+ * put behind a colon needs no grammar of its own.
+ *
+ * @param array $p_bug_data_draft Issue draft.
+ * @return array Descriptor of the wizard.
+ */
+function telegram_draft_wizard_descriptor( array $p_bug_data_draft ) {
+
+    return keyboard_wizard_descriptor(
+                              TelegrambotActions::REPORT_BUG_TAG,
+                              TelegrambotActions::STOP_REPORT_ISSUE_TAG,
+                              telegram_draft_answered_steps( $p_bug_data_draft ),
+                              'telegram_draft_step_label',
+                              array(
+                                                        'replace'      => array(
+                                                                                  'category'    => 'draft_replace_category',
+                                                                                  'summary'     => 'draft_replace_summary',
+                                                                                  'description' => 'draft_replace_description',
+                                                        ),
+                                                        'project_step' => 'project',
+                                                        'cancel_deep'  => 'keyboard_button_delete_draft',
+                              )
+            );
+}
+
+/**
  * Build the whole text of the draft card.
  *
  * The card keeps the data of the draft apart from what the wizard says to the user:
@@ -1024,6 +1127,27 @@ function telegram_draft_ask_next_step( array &$p_bug_data_draft, $p_page = 1 ) {
 }
 
 /**
+ * The text a message carries: the text of a plain message, the caption of a file.
+ *
+ * @param Longman\TelegramBot\Entities\Message|null $p_message Message to read, null when there is none.
+ * @return string Text of the message, empty when it carries none.
+ */
+function telegram_message_text_get( $p_message ) {
+
+    if( $p_message === NULL ) {
+        return '';
+    }
+
+    $t_text = $p_message->getText();
+
+    if( is_blank( $t_text ) ) {
+        $t_text = $p_message->getCaption();
+    }
+
+    return (string)$t_text;
+}
+
+/**
  * Take the summary of the issue out of the message the wizard has been started from.
  *
  * The user replies to a message to report an issue about it, so the text of that
@@ -1038,16 +1162,11 @@ function telegram_draft_summary_suggest( array &$p_bug_data_draft, $p_orgl_messa
 
     # The summary is offered instead of being asked for, so the questions asked
     # before it have to be answered already
-    if( $p_orgl_message === NULL
-            || telegram_draft_required_step_pending( $p_bug_data_draft ) !== 'summary' ) {
+    if( telegram_draft_required_step_pending( $p_bug_data_draft ) !== 'summary' ) {
         return;
     }
 
-    $t_summary = $p_orgl_message->getText();
-
-    if( is_blank( $t_summary ) ) {
-        $t_summary = $p_orgl_message->getCaption();
-    }
+    $t_summary = telegram_message_text_get( $p_orgl_message );
 
     if( is_blank( $t_summary ) ) {
         return;
@@ -1081,6 +1200,15 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
     $t_draft_is_new = ( $t_bug_data_draft == NULL );
 
     if( $t_bug_data_draft == NULL ) {
+
+        # Only one wizard may be in progress at a time: they all take their answers
+        # from the plain text messages of the same chat, so a second one would steal
+        # the answers of the first
+        if( !is_blank( plugin_config_get( 'event_draft', '', FALSE, auth_get_current_user_id() ) ) ) {
+            telegram_callback_alert_set( plugin_lang_get( 'event_draft_busy_event' ) );
+
+            return telegram_action_select( $t_orgl_chat_id, $t_callback_msg_id );
+        }
 
         $t_issue = array(
                                   'project'     => '',
@@ -1986,6 +2114,17 @@ function telegram_status_change_entry_check( BugData $p_bug, $p_new_status, &$p_
 }
 
 /**
+ * The questions of the status change dialog in the order they are asked in, the
+ * order the fields are shown in on bug_change_status_page.php of the core.
+ *
+ * @return array Step names.
+ */
+function telegram_status_change_steps_get() {
+
+    return array( 'resolution', 'duplicate_id', 'handler', 'fixed_in_version' );
+}
+
+/**
  * Whether the step of the status change dialog applies to the transition, the
  * conditions mirror the fields of bug_change_status_page.php.
  *
@@ -2023,6 +2162,87 @@ function telegram_status_change_step_is_applicable( $p_step, $p_draft, BugData $
     }
 
     return FALSE;
+}
+
+/**
+ * The label of a question of the status change dialog, the same one the card
+ * shows the answer under.
+ *
+ * @param string $p_step Step name.
+ * @return string
+ */
+function telegram_status_change_step_label( $p_step ) {
+
+    switch( $p_step ) {
+        case 'handler':
+            return lang_get( 'assigned_to' );
+    }
+
+    return lang_get( $p_step );
+}
+
+/**
+ * The steps of the status change dialog already answered, in the canonical order.
+ *
+ * A step holding an empty string is not asked yet, null is a skipped one and a
+ * skip is an answer to return to, the way the wizards treat theirs.
+ *
+ * @param array   $p_draft Draft of the dialog.
+ * @param BugData $p_bug   A valid bug object.
+ * @return array Step names.
+ */
+function telegram_status_change_answered_steps( array $p_draft, BugData $p_bug ) {
+    $t_answered = array();
+
+    foreach( telegram_status_change_steps_get() as $t_step ) {
+        if( $p_draft[$t_step] !== ''
+                && telegram_status_change_step_is_applicable( $t_step, $p_draft, $p_bug ) ) {
+            $t_answered[] = $t_step;
+        }
+    }
+
+    return $t_answered;
+}
+
+/**
+ * Drop the answer given to a question of the status change dialog so that it can
+ * be asked again.
+ *
+ * @param string $p_step  Step name.
+ * @param array  $p_draft Draft of the dialog.
+ * @return void
+ */
+function telegram_status_change_step_reset( $p_step, array &$p_draft ) {
+
+    $p_draft[$p_step] = '';
+
+    # The duplicate issue is only asked about when the issue is resolved as a
+    # duplicate, so the answer given to it dies along with the resolution
+    if( $p_step == 'resolution' ) {
+        $p_draft['duplicate_id'] = '';
+    }
+}
+
+/**
+ * Describe the status change dialog for the navigation buttons of its cards.
+ *
+ * The dialog holds no draft of its own to delete and starts at the issue picked
+ * beforehand rather than at a project, so both ends of it lead to the list of the
+ * actions; its questions are named after the fields of the core, which the step
+ * back button takes as they are.
+ *
+ * @param array   $p_draft Draft of the dialog.
+ * @param BugData $p_bug   A valid bug object.
+ * @return array Descriptor of the dialog.
+ */
+function telegram_status_change_wizard_descriptor( array $p_draft, BugData $p_bug ) {
+
+    return keyboard_wizard_descriptor(
+                              TelegrambotActions::CHANGE_STATUS_TAG,
+                              TelegrambotActions::STOP_CHANGE_STATUS_TAG,
+                              telegram_status_change_answered_steps( $p_draft, $p_bug ),
+                              'telegram_status_change_step_label'
+            );
 }
 
 /**
@@ -2144,7 +2364,7 @@ function telegram_status_change_step_ask( $p_step, $p_draft, BugData $p_bug, $p_
             break;
     }
 
-    keyboard_status_change_cancel_button_add( $t_inline_keyboard );
+    keyboard_status_change_buttons_add( $t_inline_keyboard, $p_draft, $p_bug );
 
     return array(
                               'text'         => telegram_status_change_card_compose( $p_draft, $t_question, $p_error ),
@@ -2165,7 +2385,7 @@ function telegram_status_change_ask_next_step( $p_draft ) {
 
     $t_bug = bug_get( (int)$p_draft['bug_id'] );
 
-    foreach( array( 'resolution', 'duplicate_id', 'handler', 'fixed_in_version' ) as $t_step ) {
+    foreach( telegram_status_change_steps_get() as $t_step ) {
         # An empty string is a step not asked yet, null is a skipped one
         if( $p_draft[$t_step] !== '' ) {
             continue;
@@ -2213,7 +2433,7 @@ function telegram_status_change_answer( $p_step, $p_value ) {
     $t_draft = telegram_status_change_draft_get();
 
     # The step name comes back inside callback_data, only the known ones are taken
-    if( $t_draft === NULL || !in_array( $p_step, array( 'resolution', 'duplicate_id', 'handler', 'fixed_in_version' ), TRUE ) ) {
+    if( $t_draft === NULL || !in_array( $p_step, telegram_status_change_steps_get(), TRUE ) ) {
         # The dialog is gone, the button went stale: the flow starts over
         return telegram_bug_select_step( array( 'start' => '' ), TelegrambotActions::UPDATE_BUG_TAG );
     }
@@ -2355,6 +2575,34 @@ function telegram_change_status( $p_current_action, $p_callback_query = NULL ) {
             $t_data_send = telegram_status_change_answer( $p_current_action[TelegrambotActions::SKIP_FIELD], null );
             break;
 
+//BACK TO THE QUESTION ANSWERED LAST
+//The answer given last is dropped and the question is asked once again, the way
+//the wizards of the bot do it: the dialog skips the questions which are already
+//answered, so it goes on where it has been interrupted.
+        case TelegrambotActions::BACK_FIELD:
+            $t_draft = telegram_status_change_draft_get();
+
+            if( $t_draft === NULL ) {
+                # The dialog is gone, the button went stale: the flow starts over
+                $t_data_send = telegram_bug_select_step( array( 'start' => '' ), TelegrambotActions::UPDATE_BUG_TAG );
+                break;
+            }
+
+            $t_answered = telegram_status_change_answered_steps( $t_draft, bug_get( (int)$t_draft['bug_id'] ) );
+
+            if( empty( $t_answered ) ) {
+                # Nothing is answered yet, the first question stays as it is
+                telegram_callback_alert_set( plugin_lang_get( 'back_nothing' ) );
+            } else {
+                telegram_status_change_step_reset( end( $t_answered ), $t_draft );
+                telegram_status_change_draft_set( $t_draft );
+            }
+
+            # The text answer awaited by the question being given up is dropped by
+            # the next question of the dialog
+            $t_data_send = telegram_status_change_ask_next_step( $t_draft );
+            break;
+
         default:
             # A button of the flow layout before the project step went stale
             $t_data_send = telegram_bug_select_step( array( 'start' => '' ), TelegrambotActions::UPDATE_BUG_TAG );
@@ -2409,12 +2657,16 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
                     $t_error_text = telegram_file_check( $t_file_name, $t_file_orgl->getFileSize() );
 
                     if( $t_error_text == '' ) {
-                        $t_download = Longman\TelegramBot\Request::getFile( [ 'file_id' => $t_file_orgl->getFileId() ] );
-                        $t_file     = $t_download->getResult();
+                        try {
+                            $t_download = Longman\TelegramBot\Request::getFile( [ 'file_id' => $t_file_orgl->getFileId() ] );
+                            $t_file     = $t_download->getResult();
 
-                        if( $t_file_name == '' ) {
-                            $t_file_name  = $t_file->getFilePath();
-                            $t_error_text = telegram_file_check( $t_file_name, 0 );
+                            if( $t_file_name == '' ) {
+                                $t_file_name  = $t_file->getFilePath();
+                                $t_error_text = telegram_file_check( $t_file_name, 0 );
+                            }
+                        } catch( Longman\TelegramBot\Exception\TelegramException $t_exception ) {
+                            $t_error_text = $t_exception->getMessage();
                         }
                     }
 

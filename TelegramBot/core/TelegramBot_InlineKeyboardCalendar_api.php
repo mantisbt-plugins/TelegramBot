@@ -90,14 +90,14 @@ class TelegramBotInlineKeyboardCalendar {
          *
          * @return array
          */
-        public function getKeyboard( $p_action, $p_id = 0 ) {
+        public function getKeyboard( $p_action, $p_id = 0, $p_tag = TelegrambotActions::REPORT_BUG_TAG ) {
                 $t_lists = $this -> listOfDate();
 
                 $t_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
                 # The header switches the calendar to the overview of the whole year
                 $t_keyboard -> addRow(
-                        ['text' => plugin_lang_get( 'month_' . $this -> month_array[( $this -> month ) - 1] ) . ' ' . $this -> year, 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                        ['text' => plugin_lang_get( 'month_' . $this -> month_array[( $this -> month ) - 1] ) . ' ' . $this -> year, 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array(
                             $p_id => '' . $this -> year
                             ) ) ) )]
                 );
@@ -108,12 +108,18 @@ class TelegramBotInlineKeyboardCalendar {
 
                 call_user_func_array( array( $t_keyboard, 'addRow' ), $t_days_name_payload );
 
+                # The button of the current day is marked so the user can tell
+                # today's date without leaving the chat
+                $t_today = date( 'Y-n-j' );
+
                 foreach( $t_lists as $t_keyList => $t_valueList ) {
                         $t_row = [];
                         foreach( $this -> weekdays as $t_keyArray => $t_valueArray ) {
                                 if( isset( $t_lists[$t_keyList][$t_keyArray] ) ) {
-                                        $t_row[] = ['text' => $t_lists[$t_keyList][$t_keyArray], 'callback_data' => json_encode( array( 'rb' => array( 's' . $p_action => array(
-                                            $p_id => $this -> year . '-' . $this -> month . '-' . $t_lists[$t_keyList][$t_keyArray]
+                                        $t_day = $t_lists[$t_keyList][$t_keyArray];
+                                        $t_is_today = ( $t_today == (int)$this -> year . '-' . (int)$this -> month . '-' . (int)$t_day );
+                                        $t_row[] = ['text' => ( $t_is_today ? '🟢' : '' ) . $t_day, 'callback_data' => json_encode( array( $p_tag => array( 's' . $p_action => array(
+                                            $p_id => $this -> year . '-' . $this -> month . '-' . $t_day
                                             ) ) ) )];
                                 } else {
                                         $t_row[] = ['text' => '-', 'callback_data' => '0'];
@@ -123,10 +129,10 @@ class TelegramBotInlineKeyboardCalendar {
                 }
 
                 $t_keyboard -> addRow(
-                        ['text' => '« ' . plugin_lang_get( 'prev_month' ), 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array( 
+                        ['text' => '« ' . plugin_lang_get( 'prev_month' ), 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array( 
                             $p_id => $this -> prevMonth( $this -> year . '-' . $this -> month ) 
                             ) ) ) )],
-                        ['text' => plugin_lang_get( 'next_month' ) . ' »', 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array( 
+                        ['text' => plugin_lang_get( 'next_month' ) . ' »', 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array( 
                             $p_id => $this -> nextMonth( $this -> year . '-' . $this -> month )
                             ) ) ) )]
                 );
@@ -144,7 +150,7 @@ class TelegramBotInlineKeyboardCalendar {
          * @param integer $p_id     Identifier passed back along with the action.
          * @return Longman\TelegramBot\Entities\InlineKeyboard
          */
-        public function getYearKeyboard( $p_action, $p_id = 0 ) {
+        public function getYearKeyboard( $p_action, $p_id = 0, $p_tag = TelegrambotActions::REPORT_BUG_TAG ) {
                 list( $t_year ) = explode( '-', $this -> date );
                 $t_year = (int)$t_year;
 
@@ -152,7 +158,7 @@ class TelegramBotInlineKeyboardCalendar {
 
                 # The header switches the calendar to the overview of the years
                 $t_keyboard -> addRow(
-                        ['text' => '' . $t_year, 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                        ['text' => '' . $t_year, 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array(
                             $p_id => 'd' . $t_year
                             ) ) ) )]
                 );
@@ -161,7 +167,7 @@ class TelegramBotInlineKeyboardCalendar {
                         $t_row = [];
                         for( $j = 0; $j < 3; $j++ ) {
                                 $t_month = $i * 3 + $j + 1;
-                                $t_row[] = ['text' => plugin_lang_get( 'month_' . $this -> month_array[$t_month - 1] ), 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                                $t_row[] = ['text' => plugin_lang_get( 'month_' . $this -> month_array[$t_month - 1] ), 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array(
                                     $p_id => $t_year . '-' . $t_month
                                     ) ) ) )];
                         }
@@ -169,10 +175,10 @@ class TelegramBotInlineKeyboardCalendar {
                 }
 
                 $t_keyboard -> addRow(
-                        ['text' => '« ' . ( $t_year - 1 ), 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                        ['text' => '« ' . ( $t_year - 1 ), 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array(
                             $p_id => '' . ( $t_year - 1 )
                             ) ) ) )],
-                        ['text' => ( $t_year + 1 ) . ' »', 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                        ['text' => ( $t_year + 1 ) . ' »', 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array(
                             $p_id => '' . ( $t_year + 1 )
                             ) ) ) )]
                 );
@@ -191,7 +197,7 @@ class TelegramBotInlineKeyboardCalendar {
          * @param integer $p_id     Identifier passed back along with the action.
          * @return Longman\TelegramBot\Entities\InlineKeyboard
          */
-        public function getYearsKeyboard( $p_action, $p_id = 0 ) {
+        public function getYearsKeyboard( $p_action, $p_id = 0, $p_tag = TelegrambotActions::REPORT_BUG_TAG ) {
                 $t_year  = (int)preg_replace( '/\D/', '', $this -> date );
                 $t_start = $t_year - ( $t_year % 12 );
 
@@ -205,7 +211,7 @@ class TelegramBotInlineKeyboardCalendar {
                         $t_row = [];
                         for( $j = 0; $j < 3; $j++ ) {
                                 $t_item = $t_start + $i * 3 + $j;
-                                $t_row[] = ['text' => '' . $t_item, 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                                $t_row[] = ['text' => '' . $t_item, 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array(
                                     $p_id => '' . $t_item
                                     ) ) ) )];
                         }
@@ -213,10 +219,10 @@ class TelegramBotInlineKeyboardCalendar {
                 }
 
                 $t_keyboard -> addRow(
-                        ['text' => '« ' . ( $t_start - 12 ) . ' - ' . ( $t_start - 1 ), 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                        ['text' => '« ' . ( $t_start - 12 ) . ' - ' . ( $t_start - 1 ), 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array(
                             $p_id => 'd' . ( $t_start - 12 )
                             ) ) ) )],
-                        ['text' => ( $t_start + 12 ) . ' - ' . ( $t_start + 23 ) . ' »', 'callback_data' => json_encode( array( 'rb' => array( 'g' . $p_action => array(
+                        ['text' => ( $t_start + 12 ) . ' - ' . ( $t_start + 23 ) . ' »', 'callback_data' => json_encode( array( $p_tag => array( 'g' . $p_action => array(
                             $p_id => 'd' . ( $t_start + 12 )
                             ) ) ) )]
                 );

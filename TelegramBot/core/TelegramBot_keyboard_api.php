@@ -883,6 +883,73 @@ function keyboard_event_create_button_add( $p_inline_keyboard ) {
 }
 
 /**
+ * Build the paginated keyboard of the issues a calendar event is attached to.
+ *
+ * The list is built the way keyboard_event_members_get() builds the member list,
+ * with one difference: the issues of a project are read page by page from the
+ * Calendar plugin, so the page shown arrives ready made and the caller tells
+ * whether there is one more page behind it.
+ *
+ * @param array   $p_candidates Issues of the page shown, as calendar_api_candidate_issues() returns them.
+ * @param array   $p_selected   Identifiers of the issues ticked off so far.
+ * @param integer $p_page       Page of the list, ten issues per page.
+ * @param boolean $p_has_next   Whether one more page follows the one shown.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function keyboard_event_issues_get( array $p_candidates, array $p_selected, $p_page = 1, $p_has_next = FALSE ) {
+
+        $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+        $t_page       = $p_page < 1 ? 1 : (int)$p_page;
+        $t_max_length = config_get( 'max_dropdown_length' );
+
+        foreach( $p_candidates as $t_candidate ) {
+                $t_bug_id = (int)$t_candidate['id'];
+                $t_mark   = in_array( $t_bug_id, $p_selected ) ? '☑ ' : '☐ ';
+
+                # the summary of an issue is as long as the reporter wanted it to
+                # be, the button carries as much of it as a list of values does
+                $t_inline_keyboard->addRow( [
+                                      'text'          => $t_mark . string_shorten( $t_bug_id . ': ' . $t_candidate['summary'], $t_max_length ),
+                                      'callback_data' => json_encode( array( TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::TOGGLE_EVENT_ISSUE => array(
+                                                                                                                    'id' => $t_bug_id,
+                                                                                                                    'p'  => $t_page
+                                                                                          ) )
+                                      ) )
+                ] );
+        }
+
+        if( $t_page > 1 ) {
+                $t_inline_keyboard->addRow( [
+                                      'text'          => '<<',
+                                      'callback_data' => json_encode( array( TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::GET_EVENT_ISSUE => array(
+                                                                                                                    'p' => $t_page - 1
+                                                                                          ) )
+                                      ) )
+                ] );
+        }
+
+        if( $p_has_next ) {
+                $t_inline_keyboard->addRow( [
+                                      'text'          => '>>',
+                                      'callback_data' => json_encode( array( TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::GET_EVENT_ISSUE => array(
+                                                                                                                    'p' => $t_page + 1
+                                                                                          ) )
+                                      ) )
+                ] );
+        }
+
+        $t_inline_keyboard->addRow( [
+                              'text'          => '(' . plugin_lang_get( 'custom_field_done_button' ) . ')',
+                              'callback_data' => json_encode( array(
+                                                        TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::END_EVENT_ISSUE => 1 )
+                              ) )
+        ] );
+
+        return $t_inline_keyboard;
+}
+
+/**
  * Build the paginated keyboard of the members of a calendar event.
  *
  * Every button toggles the membership of one user and the list is redrawn, the

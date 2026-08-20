@@ -40,6 +40,9 @@ define( 'TELEGRAM_EVENT_DATE_TO', 't' );
 # Buttons of the member list, ten per page as everywhere else in the plugin
 define( 'TELEGRAM_EVENT_MEMBERS_PER_PAGE', 10 );
 
+# Buttons of the issue list, the page is asked from Calendar with this size
+define( 'TELEGRAM_EVENT_ISSUES_PER_PAGE', 10 );
+
 # Width of the name column of the events table of the Calendar plugin
 define( 'TELEGRAM_EVENT_NAME_LENGTH_MAX', 255 );
 
@@ -172,7 +175,7 @@ function telegram_event_draft_new() {
                               'name'      => '',
                               'date_from' => '',
                               'date_to'   => '',
-                              'bug_id'    => '',
+                              'bug_ids'   => '',
                               'members'   => '',
     );
 }
@@ -228,7 +231,7 @@ function telegram_event_busy_dialog_message() {
  */
 function telegram_event_draft_steps_get() {
 
-    return array( 'project', 'name', 'date_from', 'date_to', 'bug_id', 'members' );
+    return array( 'project', 'name', 'date_from', 'date_to', 'bug_ids', 'members' );
 }
 
 /**
@@ -374,8 +377,10 @@ function telegram_event_draft_step_value_reset( $p_step, array &$p_draft ) {
         unset( $p_draft[$p_step . '_day'] );
     }
 
-    if( $p_step == 'members' ) {
-        unset( $p_draft['members_selected'] );
+    # a step answered with a multi select list keeps the entries ticked so far
+    # next to its answer, and they are part of the answer being dropped
+    if( $p_step == 'bug_ids' || $p_step == 'members' ) {
+        unset( $p_draft[$p_step . '_selected'] );
     }
 }
 
@@ -406,9 +411,9 @@ function telegram_event_draft_step_reset( $p_step, array &$p_draft ) {
 /**
  * Drop the state of the question the user is answering right now.
  *
- * A date the day of which is picked still waits for its time, and the member
- * list holds the members ticked so far: the step back gives both up, the way
- * the issue wizard drops the state of the custom field being picked.
+ * A date the day of which is picked still waits for its time, and the issue and
+ * member lists hold the entries ticked so far: the step back gives all of them
+ * up, the way the issue wizard drops the state of the custom field being picked.
  *
  * @param array $p_draft Event draft.
  * @return void
@@ -421,8 +426,10 @@ function telegram_event_draft_pending_state_reset( array &$p_draft ) {
         }
     }
 
-    if( !telegram_event_draft_step_is_answered( 'members', $p_draft ) ) {
-        unset( $p_draft['members_selected'] );
+    foreach( array( 'bug_ids', 'members' ) as $t_step ) {
+        if( !telegram_event_draft_step_is_answered( $t_step, $p_draft ) ) {
+            unset( $p_draft[$t_step . '_selected'] );
+        }
     }
 }
 
@@ -489,6 +496,55 @@ function telegram_event_candidate_members( $p_project_id ) {
 }
 
 /**
+ * One page of the issues the current user may attach an event of the project to.
+ *
+ * @param integer $p_project_id Project of the event.
+ * @param integer $p_page       One-based number of the page, ten issues per page.
+ * @return array List of arrays with the 'id', 'summary' and 'status' of an issue.
+ */
+function telegram_event_candidate_issues( $p_project_id, $p_page = 1 ) {
+    static $s_candidates = array();
+
+    if( !telegram_calendar_available() || !function_exists( 'calendar_api_candidate_issues' ) ) {
+        return array();
+    }
+
+    $c_project_id = (int)$p_project_id;
+    $t_user_id    = (int)auth_get_current_user_id();
+    $t_page       = (int)$p_page < 1 ? 1 : (int)$p_page;
+    $t_cache_key  = $c_project_id . '_' . $t_user_id . '_' . $t_page;
+
+    # the page is read for the buttons and once more to tell whether the answer
+    # names an issue of it, so it is kept for the request
+    if( !array_key_exists( $t_cache_key, $s_candidates ) ) {
+        # the facade of Calendar pushes the plugin itself and never raises an error
+        $s_candidates[$t_cache_key] = calendar_api_candidate_issues( $c_project_id, $t_user_id, $t_page, TELEGRAM_EVENT_ISSUES_PER_PAGE );
+    }
+
+    return $s_candidates[$t_cache_key];
+}
+
+/**
+ * Whether one more page of issues follows the given one.
+ *
+ * The facade of Calendar answers with the rows of the page alone, so the only
+ * way to know is to ask for the page behind it - which is done for a full page
+ * only and is cached along with it, so leafing forward costs nothing extra.
+ *
+ * @param integer $p_project_id Project of the event.
+ * @param integer $p_page       One-based number of the page shown.
+ * @return boolean
+ */
+function telegram_event_candidate_issues_has_next( $p_project_id, $p_page = 1 ) {
+
+    if( count( telegram_event_candidate_issues( $p_project_id, $p_page ) ) < TELEGRAM_EVENT_ISSUES_PER_PAGE ) {
+        return FALSE;
+    }
+
+    return count( telegram_event_candidate_issues( $p_project_id, (int)$p_page + 1 ) ) > 0;
+}
+
+/**
  * The label of a question of the event wizard, the same one the card shows.
  *
  * @param string $p_step Step of the wizard.
@@ -509,8 +565,8 @@ function telegram_event_draft_step_label( $p_step ) {
         case 'date_to':
             return plugin_lang_get( 'event_date_to' );
 
-        case 'bug_id':
-            return plugin_lang_get( 'event_bug' );
+        case 'bug_ids':
+            return plugin_lang_get( 'event_bugs' );
 
         case 'members':
             return plugin_lang_get( 'event_members' );
@@ -543,14 +599,29 @@ function telegram_event_draft_step_display( $p_step, array $p_draft ) {
         case 'date_to':
             return telegram_event_datetime_display( (int)$t_value );
 
-        case 'bug_id':
-            # the answer may outlive the issue it names, and a card redrawn out of
-            # the draft must not end the request over a deleted one
-            if( !bug_exists( (int)$t_value ) ) {
-                return lang_get( 'issue_id' ) . (int)$t_value;
+        case 'bug_ids':
+            if( !is_array( $t_value ) || count( $t_value ) == 0 ) {
+                return '';
             }
 
-            return lang_get( 'issue_id' ) . (int)$t_value . ': ' . bug_get_field( (int)$t_value, 'summary' );
+            $t_issues = array();
+
+            foreach( $t_value as $t_bug_id ) {
+                $t_bug_id = (int)$t_bug_id;
+
+                # the answer may outlive the issue it names, and a card redrawn out
+                # of the draft must not end the request over a deleted one
+                if( !bug_exists( $t_bug_id ) ) {
+                    $t_issues[] = lang_get( 'issue_id' ) . $t_bug_id;
+
+                    continue;
+                }
+
+                $t_issues[] = lang_get( 'issue_id' ) . $t_bug_id . ': ' . bug_get_field( $t_bug_id, 'summary' );
+            }
+
+            # one issue per line, the summaries make a single line unreadable
+            return implode( PHP_EOL, $t_issues );
 
         case 'members':
             if( !is_array( $t_value ) || count( $t_value ) == 0 ) {
@@ -638,7 +709,7 @@ function telegram_event_draft_card_compose( array $p_draft, $p_question = '', $p
  * @param string $p_step     Step of the wizard.
  * @param array  $p_draft    Event draft.
  * @param string $p_question Out: question shown under the answers given so far.
- * @param mixed  $p_page     Page of the member list, month of the calendar of a date.
+ * @param mixed  $p_page     Page of the issue or the member list, month of the calendar of a date.
  * @return Longman\TelegramBot\Entities\InlineKeyboard
  */
 function telegram_event_draft_step_ask( $p_step, array $p_draft, &$p_question, $p_page = 1 ) {
@@ -685,12 +756,17 @@ function telegram_event_draft_step_ask( $p_step, array $p_draft, &$p_question, $
             }
             break;
 
-        case 'bug_id':
-            $t_await    = 'bug_id';
-            $p_question = plugin_lang_get( 'event_bug_prompt' );
+        case 'bug_ids':
+            $p_question        = plugin_lang_get( 'event_bugs_prompt' );
+            $t_inline_keyboard = keyboard_event_issues_get(
+                                      telegram_event_candidate_issues( (int)$p_draft['project'], (int)$p_page ),
+                                      telegram_event_draft_issues_selected( $p_draft ),
+                                      (int)$p_page,
+                                      telegram_event_candidate_issues_has_next( (int)$p_draft['project'], (int)$p_page )
+                    );
 
             keyboard_skip_button_add( $t_inline_keyboard, array(
-                                      TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::SKIP_FIELD => 'bug_id' )
+                                      TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::SKIP_FIELD => 'bug_ids' )
             ) );
             break;
 
@@ -771,6 +847,24 @@ function telegram_event_time_question_get( array $p_draft, $p_step, $p_error = '
 }
 
 /**
+ * The issues currently ticked in the issue list of the wizard.
+ *
+ * An event does not have to be attached to an issue at all, so an untouched
+ * list starts out empty.
+ *
+ * @param array $p_draft Event draft.
+ * @return array List of issue identifiers.
+ */
+function telegram_event_draft_issues_selected( array $p_draft ) {
+
+    if( array_key_exists( 'bug_ids_selected', $p_draft ) && is_array( $p_draft['bug_ids_selected'] ) ) {
+        return $p_draft['bug_ids_selected'];
+    }
+
+    return array();
+}
+
+/**
  * The members currently ticked in the member list of the wizard.
  *
  * The author of the event is always a member, so an untouched list starts with
@@ -793,7 +887,7 @@ function telegram_event_draft_members_selected( array $p_draft ) {
  *
  * @param array  $p_draft    Event draft.
  * @param string $p_question Out: question of the wizard shown under the answers.
- * @param mixed  $p_page     Page of the member list, month of the calendar of a date.
+ * @param mixed  $p_page     Page of the issue or the member list, month of the calendar of a date.
  * @return array array(
  *         'state'    => what the wizard is up to, TELEGRAM_EVENT_NEXT_*,
  *         'keyboard' => Longman\TelegramBot\Entities\InlineKeyboard keyboard to show,
@@ -835,7 +929,7 @@ function telegram_event_draft_ask_next_step( array $p_draft, $p_page = 1 ) {
  *
  * @param array  $p_draft Event draft.
  * @param string $p_error Message about the answer being rejected.
- * @param mixed  $p_page  Page of the member list, month of the calendar of a date.
+ * @param mixed  $p_page  Page of the issue or the member list, month of the calendar of a date.
  * @return array Data for Longman\TelegramBot\Request::editMessageText().
  */
 function telegram_event_draft_card_refresh( array $p_draft, $p_error = '', $p_page = 1 ) {
@@ -866,7 +960,7 @@ function telegram_event_draft_submit( array $p_draft ) {
     $t_request->user_id            = (int)$t_user_id;
     $t_request->date_from          = (int)$p_draft['date_from'];
     $t_request->date_to            = (int)$p_draft['date_to'];
-    $t_request->bug_id             = is_blank( (string)$p_draft['bug_id'] ) ? NULL : (int)$p_draft['bug_id'];
+    $t_request->bug_ids            = is_array( $p_draft['bug_ids'] ) ? array_map( 'intval', $p_draft['bug_ids'] ) : array();
     $t_request->members            = is_array( $p_draft['members'] ) ? $p_draft['members'] : array();
     # a recurring event is filled in on the web form of the calendar only
     $t_request->recurrence_pattern = '';
@@ -887,11 +981,18 @@ function telegram_event_draft_submit( array $p_draft ) {
 
     plugin_log_event( sprintf( 'Calendar event #%d created from the chat', $t_event_id ) );
 
+    # the base name is passed explicitly: plugin_page() of the current plugin
+    # would point the link at TelegramBot instead of Calendar
+    $t_url = config_get_global( 'path' ) . plugin_page( 'view', /* redirect */ TRUE, 'Calendar' )
+            . '&event_id=' . (int)$t_event_id . '&date=' . (int)$p_draft['date_from'];
+
     $t_text  = telegram_event_draft_card_compose( $p_draft );
     $t_text .= PHP_EOL;
     $t_text .= plugin_lang_get( 'card_separator' );
     $t_text .= PHP_EOL;
-    $t_text .= plugin_lang_get( 'event_creation_complete' );
+    $t_text .= sprintf( plugin_lang_get( 'event_creation_complete' ), (int)$t_event_id );
+    $t_text .= PHP_EOL;
+    $t_text .= $t_url;
 
     telegram_event_draft_clear( $t_user_id );
 
@@ -950,23 +1051,6 @@ function telegram_event_draft_text_answer( $p_text ) {
             }
 
             $t_draft[$t_step] = $t_timestamp;
-            break;
-
-        case 'bug_id':
-            $t_bug_id = (int)$t_text;
-
-            if( $t_bug_id <= 0 || !bug_exists( $t_bug_id ) ) {
-                error_parameters( $t_text );
-                $t_error = error_string( ERROR_BUG_NOT_FOUND );
-                break;
-            }
-
-            if( !access_has_bug_level( config_get( 'view_bug_threshold' ), $t_bug_id, $t_user_id ) ) {
-                $t_error = error_string( ERROR_ACCESS_DENIED );
-                break;
-            }
-
-            $t_draft['bug_id'] = $t_bug_id;
             break;
 
         default:
@@ -1162,7 +1246,7 @@ function telegram_event_report( $p_current_action, Longman\TelegramBot\Entities\
             telegram_event_draft_set( $t_draft );
             break;
 
-//ISSUE THE EVENT IS ATTACHED TO
+//ISSUES THE EVENT IS ATTACHED TO
         case TelegrambotActions::SKIP_FIELD:
             $t_field_to_skip = $p_current_action[TelegrambotActions::SKIP_FIELD];
 
@@ -1174,6 +1258,44 @@ function telegram_event_report( $p_current_action, Longman\TelegramBot\Entities\
                 $t_draft[$t_field_to_skip] = NULL;
                 telegram_event_draft_set( $t_draft );
             }
+            break;
+
+        case TelegrambotActions::GET_EVENT_ISSUE:
+            $t_page = (int)$p_current_action[TelegrambotActions::GET_EVENT_ISSUE]['p'];
+            break;
+
+        case TelegrambotActions::TOGGLE_EVENT_ISSUE:
+            $t_page       = (int)$p_current_action[TelegrambotActions::TOGGLE_EVENT_ISSUE]['p'];
+            $t_bug_id     = (int)$p_current_action[TelegrambotActions::TOGGLE_EVENT_ISSUE]['id'];
+            $t_candidates = telegram_event_candidate_issues( (int)$t_draft['project'], $t_page );
+
+            # the button goes stale along with the card it sits on, and an issue
+            # which is not offered any more must not end up in the request
+            if( !in_array( $t_bug_id, array_column( $t_candidates, 'id' ) ) ) {
+                telegram_callback_alert_set( plugin_lang_get( 'event_error_bug' ) );
+                break;
+            }
+
+            $t_selected = telegram_event_draft_issues_selected( $t_draft );
+            $t_position = array_search( $t_bug_id, $t_selected );
+
+            if( $t_position === FALSE ) {
+                $t_selected[] = $t_bug_id;
+            } else {
+                unset( $t_selected[$t_position] );
+            }
+
+            $t_draft['bug_ids_selected'] = array_values( $t_selected );
+            telegram_event_draft_set( $t_draft );
+            break;
+
+        case TelegrambotActions::END_EVENT_ISSUE:
+            $t_selected = telegram_event_draft_issues_selected( $t_draft );
+
+            # an event does not have to be attached to an issue, so an empty
+            # list is the very answer the skip button gives
+            $t_draft['bug_ids'] = count( $t_selected ) == 0 ? NULL : array_values( $t_selected );
+            telegram_event_draft_set( $t_draft );
             break;
 
 //MEMBERS
@@ -1224,7 +1346,7 @@ function telegram_event_report( $p_current_action, Longman\TelegramBot\Entities\
 //own - the user takes the step back to type the name by hand.
         case TelegrambotActions::BACK_FIELD:
             # the question the user is looking at is given up, including the day
-            # of a date waiting for its time and the members ticked so far
+            # of a date waiting for its time and the issues or members ticked so far
             telegram_event_draft_pending_state_reset( $t_draft );
 
             $t_step_to_ask = telegram_event_draft_step_last_answered( $t_draft );

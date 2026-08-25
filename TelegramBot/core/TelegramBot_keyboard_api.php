@@ -332,7 +332,7 @@ function keyboard_category_get( $p_project_id ) {
                                           ($t_category['project_name'] == NULL ? lang_get( 'all_projects' ) : $t_category['project_name'])
                                           . '] ' . $t_category['name'],
                                   'callback_data' => json_encode( array(
-                                                            TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::SET_CATEGORY => array( 'id' => $t_category['id'] ) )
+                                                            TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::SET_CATEGORY => array( 'id' => (int)$t_category['id'] ) )
                                   ) )
         ] );
     }

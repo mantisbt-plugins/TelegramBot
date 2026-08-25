@@ -215,6 +215,7 @@ class TelegramBotPlugin extends MantisPlugin {
         require_once 'core/TelegramBot_InlineKeyboardCalendar_api.php';
 //        require_once 'core/cfdefs/TelegramBot_cfdef_standard.php';
         require_once 'core/classes/TelegrambotActions.class.php';
+        require_once 'core/classes/TelegramBotFileLogger.class.php';
         require_once 'core/TelegramBot_custom_field_api.php';
         require_once 'core/TelegramBot_broadcast_api.php';
         require_once 'core/TelegramBot_calendar_api.php';

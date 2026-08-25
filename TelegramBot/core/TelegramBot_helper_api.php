@@ -255,6 +255,14 @@ function telegram_update_error_handler( $p_type, $p_error, $p_file, $p_line ) {
  */
 function telegram_update_error_notify( $p_update_content, $p_exception ) {
 
+    # The update is dropped, so the log is the only place the error is left in
+    plugin_log_event( sprintf( 'ERROR! The update was dropped: %s, code %d, %s at %s:%d',
+                              get_class( $p_exception ),
+                              $p_exception->getCode(),
+                              $p_exception->getMessage(),
+                              $p_exception->getFile(),
+                              $p_exception->getLine() ) );
+
     # An error of the core carries its code, its text is the one the web interface shows
     if( $p_exception instanceof ErrorException && $p_exception->getCode() > 0 ) {
         $t_text = error_string( (int)$p_exception->getCode() );
@@ -336,6 +344,14 @@ function telegram_draft_submit( array $p_bug_data_draft ) {
     } catch( Mantis\Exceptions\MantisException $t_error ) {
 
         $t_params = $t_error->getParams();
+
+        # The draft is dropped along with the refused answers, so the log is the
+        # only place the rejected data is left in
+        plugin_log_event( sprintf( 'The issue was not created, error %d ( %s ), draft %s',
+                                  $t_error->getCode(),
+                                  json_encode( $t_params ),
+                                  json_encode( $p_bug_data_draft ) ) );
+
         if( !empty( $t_params ) ) {
             call_user_func_array( 'error_parameters', $t_params );
         }

@@ -93,8 +93,10 @@ function telegram_bug_add( $p_bug_data_draft, $p_orgl_chat_id, $p_callback_msg_i
         $t_issue['view_state'] = array( 'id' => $t_view_state );
     }
 
-    $t_category_id = array_key_exists( 'category', $p_bug_data_draft ) ? $p_bug_data_draft['category'] : 0;
-    if( (int)$t_category_id != 0 ) {
+    # The id has to be an integer: since 2.28.0 the core refuses a category given
+    # as a string, and the draft keeps whatever the keyboard has put into it
+    $t_category_id = array_key_exists( 'category', $p_bug_data_draft ) ? (int)$p_bug_data_draft['category'] : 0;
+    if( $t_category_id != 0 ) {
         $t_issue['category'] = array( 'id' => $t_category_id );
     }
 

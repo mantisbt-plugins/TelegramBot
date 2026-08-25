@@ -148,7 +148,10 @@ function telegram_bug_add( $p_bug_data_draft, $p_orgl_chat_id, $p_callback_msg_i
     # A field which is neither answered nor skipped holds an empty string
     $t_due_date = array_key_exists( 'due_date', $p_bug_data_draft ) ? $p_bug_data_draft['due_date'] : null;
     if( $t_due_date !== null && !is_blank( (string)$t_due_date ) ) {
-        $t_issue['due_date'] = $t_due_date;
+        # The draft keeps the timestamp the calendar has picked, while the command
+        # of the core runs strtotime() over the value: a bare timestamp is not a
+        # date to it and the due date would be dropped without a word
+        $t_issue['due_date'] = date( 'c', (int)$t_due_date );
     }
     
     # Collect the custom fields of the draft, the values are validated by the command.

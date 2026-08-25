@@ -67,9 +67,15 @@ function telegram_session_start() {
                 $g_tg->useGetUpdatesWithoutDatabase();
 
 		if( plugin_config_get( 'debug_connection_enabled' ) == ON ) {
-			Longman\TelegramBot\TelegramLog::initDebugLog( plugin_config_get( 'debug_connection_log_path' ) );
-                        Longman\TelegramBot\TelegramLog::initErrorLog( plugin_config_get( 'debug_connection_log_path' ) );
-                        Longman\TelegramBot\TelegramLog::initUpdateLog( plugin_config_get( 'debug_connection_log_path' ) );
+			$t_logger = new TelegramBotFileLogger( plugin_config_get( 'debug_connection_log_path' ) );
+
+			# The same file takes the exchange and the updates: they belong to one
+			# conversation with Telegram and are read together
+			Longman\TelegramBot\TelegramLog::initialize( $t_logger, $t_logger );
+
+			# Without this the library keeps the successful requests to itself and
+			# writes the failed ones only, which tells nothing about what was sent
+			Longman\TelegramBot\TelegramLog::$always_log_request_and_response = TRUE;
 		}
 	}
 }

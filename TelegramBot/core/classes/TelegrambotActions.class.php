@@ -83,6 +83,9 @@ class TelegrambotActions {
         const SET_EVENT_DATE            = 'sed';
         # Take the end of the event an hour after its start
         const SET_EVENT_HOUR            = 'seh';
+        # Time of a date of the event: reopen the hours, pick an hour or a time
+        const GET_EVENT_TIME            = 'gtm';
+        const SET_EVENT_TIME            = 'stm';
         # Issues of the event: leaf through the list, tick one off, close the list
         const GET_EVENT_ISSUE           = 'gei';
         const TOGGLE_EVENT_ISSUE        = 'tei';

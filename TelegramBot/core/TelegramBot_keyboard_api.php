@@ -378,6 +378,87 @@ function keyboard_duedate_get() {
     return $keyboard->getKeyboard();
 }
 
+/**
+ * Build the first half of the inline time picker: the twenty four hours.
+ *
+ * The buttons are tagged the way the inline calendar tags its own, 's' + action
+ * with the bare hour as the value; the minutes are asked next.
+ *
+ * @param string $p_action Action the time picker is shown for.
+ * @param mixed  $p_id     Identifier passed back along with the action.
+ * @param string $p_tag    Root tag of the callback data.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function keyboard_time_hours_get( $p_action, $p_id = 0, $p_tag = TelegrambotActions::REPORT_BUG_TAG ) {
+
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    for( $t_row_start = 0; $t_row_start < 24; $t_row_start += 6 ) {
+        $t_row = array();
+
+        for( $t_hour = $t_row_start; $t_hour < $t_row_start + 6; $t_hour++ ) {
+            $t_row[] = array(
+                                      'text'          => sprintf( '%02d', $t_hour ),
+                                      'callback_data' => json_encode( array(
+                                                                $p_tag => array( 's' . $p_action => array( $p_id => '' . $t_hour ) )
+                                      ) )
+            );
+        }
+
+        call_user_func_array( array( $t_inline_keyboard, 'addRow' ), $t_row );
+    }
+
+    return $t_inline_keyboard;
+}
+
+/**
+ * Build the second half of the inline time picker: the minutes of the hour picked.
+ *
+ * The header shows the hour and switches the picker back to the hours, 'g' +
+ * action; a minute completes the answer, 's' + action with "H:MM" as the value,
+ * so nothing has to be remembered between the two halves.
+ *
+ * @param integer $p_hour   Hour picked with the first half.
+ * @param integer $p_step   Minutes between the buttons.
+ * @param string  $p_action Action the time picker is shown for.
+ * @param mixed   $p_id     Identifier passed back along with the action.
+ * @param string  $p_tag    Root tag of the callback data.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function keyboard_time_minutes_get( $p_hour, $p_step, $p_action, $p_id = 0, $p_tag = TelegrambotActions::REPORT_BUG_TAG ) {
+
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    $t_inline_keyboard->addRow( array(
+                              'text'          => sprintf( '%02d:__', $p_hour ),
+                              'callback_data' => json_encode( array(
+                                                        $p_tag => array( 'g' . $p_action => array( $p_id => '' ) )
+                              ) )
+    ) );
+
+    $t_row = array();
+
+    for( $t_minute = 0; $t_minute < 60; $t_minute += $p_step ) {
+        $t_row[] = array(
+                                  'text'          => sprintf( '%02d:%02d', $p_hour, $t_minute ),
+                                  'callback_data' => json_encode( array(
+                                                            $p_tag => array( 's' . $p_action => array( $p_id => $p_hour . ':' . sprintf( '%02d', $t_minute ) ) )
+                                  ) )
+        );
+
+        if( count( $t_row ) == 6 ) {
+            call_user_func_array( array( $t_inline_keyboard, 'addRow' ), $t_row );
+            $t_row = array();
+        }
+    }
+
+    if( count( $t_row ) > 0 ) {
+        call_user_func_array( array( $t_inline_keyboard, 'addRow' ), $t_row );
+    }
+
+    return $t_inline_keyboard;
+}
+
 function keyboard_profile_option_list( $p_user_id, $p_select_id = 0, array $p_profiles = array() ) {
 	if( 0 == $p_select_id ) {
 		$p_select_id = profile_get_default( $p_user_id );

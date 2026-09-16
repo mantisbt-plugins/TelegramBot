@@ -32,6 +32,13 @@ define( 'TELEGRAM_EVENT_NEXT_MENU', 'menu' );
 # built as 'g'/'s' + this value, see TelegramBotInlineKeyboardCalendar
 define( 'TELEGRAM_EVENT_CALENDAR_ACTION', 'ed' );
 
+# Action of the inline time picker of the event dates, tagged the same way
+define( 'TELEGRAM_EVENT_TIME_ACTION', 'tm' );
+
+# Minutes offered by the time picker, any other minute is sent as a text
+define( 'TELEGRAM_EVENT_TIME_MINUTE_STEP', 5 );
+
+
 # Identifiers of the two dates within the callback data of the inline calendar,
 # kept to a single character because callback_data is limited to 64 bytes
 define( 'TELEGRAM_EVENT_DATE_FROM', 'f' );
@@ -818,19 +825,28 @@ function telegram_event_calendar_keyboard_get( TelegramBotInlineKeyboardCalendar
  * Ask for the time of one of the dates of the event.
  *
  * The day has been picked with the inline calendar and is waiting in the draft,
- * only the time is left; it is answered with a plain text message, so the step
+ * only the time is left. It is picked with the inline time picker in two taps,
+ * the hour and then the minute, or sent as a plain text message, so the step
  * is remembered as the one the next message belongs to.
  *
- * @param array  $p_draft Event draft.
- * @param string $p_step  Step of the wizard, 'date_from' or 'date_to'.
- * @param string $p_error Message about the answer being rejected.
+ * @param array   $p_draft Event draft.
+ * @param string  $p_step  Step of the wizard, 'date_from' or 'date_to'.
+ * @param string  $p_error Message about the answer being rejected.
+ * @param integer $p_hour  Hour already picked, null while the hours are shown.
  * @return array Data for Longman\TelegramBot\Request::editMessageText().
  */
-function telegram_event_time_question_get( array $p_draft, $p_step, $p_error = '' ) {
+function telegram_event_time_question_get( array $p_draft, $p_step, $p_error = '', $p_hour = NULL ) {
 
     plugin_config_set( 'event_draft_current_field', $p_step . '_time', auth_get_current_user_id() );
 
-    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+    $t_id  = $p_step == 'date_from' ? TELEGRAM_EVENT_DATE_FROM : TELEGRAM_EVENT_DATE_TO;
+    $t_tag = TelegrambotActions::CREATE_EVENT_TAG;
+
+    if( $p_hour === NULL ) {
+        $t_inline_keyboard = keyboard_time_hours_get( TELEGRAM_EVENT_TIME_ACTION, $t_id, $t_tag );
+    } else {
+        $t_inline_keyboard = keyboard_time_minutes_get( $p_hour, TELEGRAM_EVENT_TIME_MINUTE_STEP, TELEGRAM_EVENT_TIME_ACTION, $t_id, $t_tag );
+    }
 
     keyboard_event_buttons_add( $t_inline_keyboard, $p_draft );
 
@@ -1237,6 +1253,51 @@ function telegram_event_report( $p_current_action, Longman\TelegramBot\Entities\
 
             return $t_data_send;
 
+        case TelegrambotActions::GET_EVENT_TIME:
+            # the action reopens the hours of the time picker
+            $t_step = telegram_event_date_step_get( $p_current_action[TelegrambotActions::GET_EVENT_TIME] );
+
+            if( $t_step === NULL ) {
+                break;
+            }
+
+            $t_data_send               = telegram_event_time_question_get( $t_draft, $t_step );
+            $t_data_send['chat_id']    = $t_orgl_chat_id;
+            $t_data_send['message_id'] = $t_callback_msg_id;
+
+            return $t_data_send;
+
+        case TelegrambotActions::SET_EVENT_TIME:
+            $t_step = telegram_event_date_step_get( $p_current_action[TelegrambotActions::SET_EVENT_TIME] );
+
+            if( $t_step === NULL ) {
+                break;
+            }
+
+            $t_time = (string)reset( $p_current_action[TelegrambotActions::SET_EVENT_TIME] );
+
+            # a bare hour is only half of the answer, the minutes are asked next
+            if( preg_match( '/^([01]?\d|2[0-3])$/', $t_time ) ) {
+                $t_data_send = telegram_event_time_question_get( $t_draft, $t_step, '', (int)$t_time );
+            } else {
+                $t_timestamp = telegram_event_time_apply( $t_draft, $t_step, $t_time, $t_error );
+
+                if( $t_error == '' ) {
+                    $t_draft[$t_step] = $t_timestamp;
+                    telegram_event_draft_set( $t_draft );
+                    break;
+                }
+
+                # the button goes stale along with the card it sits on: the day
+                # may be gone from the draft, so the time is asked once again
+                $t_data_send = telegram_event_time_question_get( $t_draft, $t_step, $t_error );
+            }
+
+            $t_data_send['chat_id']    = $t_orgl_chat_id;
+            $t_data_send['message_id'] = $t_callback_msg_id;
+
+            return $t_data_send;
+
         case TelegrambotActions::SET_EVENT_HOUR:
             if( is_blank( (string)$t_draft['date_from'] ) ) {
                 break;
@@ -1399,12 +1460,13 @@ function telegram_event_report( $p_current_action, Longman\TelegramBot\Entities\
 }
 
 /**
- * The step of the wizard a date carried by the inline calendar belongs to.
+ * The step of the wizard a date carried by the inline calendar or by the inline
+ * time picker belongs to.
  *
  * The identifier of the date is the key of the payload, kept to a single
  * character because callback_data is limited to 64 bytes.
  *
- * @param array $p_payload Payload of the calendar button.
+ * @param array $p_payload Payload of the calendar or time picker button.
  * @return string|null Step of the wizard, null for an unknown identifier.
  */
 function telegram_event_date_step_get( $p_payload ) {

@@ -1438,7 +1438,7 @@ function telegram_event_report( $p_current_action, Longman\TelegramBot\Entities\
             # the button goes stale along with the card it sits on, so the draft
             # is checked again instead of being trusted to be complete
             if( telegram_event_draft_pending_step( $t_draft ) !== NULL ) {
-                telegram_callback_alert_set( plugin_lang_get( 'event_required_missing' ) );
+                telegram_callback_alert_set( plugin_lang_get( 'wizard_required_missing' ) );
                 break;
             }
 

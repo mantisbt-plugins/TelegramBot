@@ -935,6 +935,25 @@ function keyboard_draft_buttons_add( $p_inline_keyboard, array $p_bug_data_draft
 }
 
 /**
+ * Add the button applying the status change to the keyboard of the menu of the
+ * status change dialog, labelled the way bug_change_status_page.php of the core
+ * labels its submit button.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard to add the button to.
+ * @param integer $p_new_status Status the issue is moved to.
+ * @return void
+ */
+function keyboard_status_change_apply_button_add( $p_inline_keyboard, $p_new_status ) {
+
+        $p_inline_keyboard->addRow( [
+                              'text'          => '(' . telegram_status_change_process_string( $p_new_status, '_bug_button' ) . ')',
+                              'callback_data' => json_encode( array(
+                                                        TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::APPLY_STATUS => 1 )
+                              ) )
+        ] );
+}
+
+/**
  * Add the navigation buttons of the calendar event wizard to the keyboard of one
  * of its cards, the way keyboard_draft_buttons_add() serves the issue wizard.
  *

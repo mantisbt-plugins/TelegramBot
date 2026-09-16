@@ -2048,15 +2048,17 @@ function telegram_status_change_draft_clear() {
 }
 
 /**
- * Distill the note content out of the message the dialog was started from: the
- * text and, for the media messages, the id of the file picked up at the submit
- * step. The change status page of the core carries a bugnote the same way.
+ * Distill the attachment out of the message the dialog was started from: for the
+ * media messages the id of the file picked up at the submit step. The change
+ * status page of the core carries a file next to its note the same way; the text
+ * of the message is the note offered by the dialog, see
+ * telegram_status_change_bugnote_suggest().
  *
  * @param Longman\TelegramBot\Entities\Message|null $p_message Message the action menu replied to.
  * @return array Content descriptor stored in the draft.
  */
 function telegram_status_change_content_descriptor( $p_message ) {
-    $t_content = array( 'text' => '', 'file_id' => '', 'file_name' => '', 'file_size' => 0 );
+    $t_content = array( 'file_id' => '', 'file_name' => '', 'file_size' => 0 );
 
     if( $p_message === NULL ) {
         return $t_content;
@@ -2081,9 +2083,6 @@ function telegram_status_change_content_descriptor( $p_message ) {
         $t_content['file_id']   = $t_file->getFileId();
         $t_content['file_name'] = (string)$t_file->getFileName();
         $t_content['file_size'] = (int)$t_file->getFileSize();
-        $t_content['text']      = (string)$p_message->getCaption();
-    } else {
-        $t_content['text'] = (string)$p_message->getText();
     }
 
     return $t_content;
@@ -2137,7 +2136,7 @@ function telegram_status_change_entry_check( BugData $p_bug, $p_new_status, &$p_
  */
 function telegram_status_change_steps_get() {
 
-    return array( 'resolution', 'duplicate_id', 'handler', 'fixed_in_version' );
+    return array( 'resolution', 'duplicate_id', 'handler', 'fixed_in_version', 'bugnote' );
 }
 
 /**
@@ -2175,6 +2174,9 @@ function telegram_status_change_step_is_applicable( $p_step, $p_draft, BugData $
                     && version_should_show_product_version( $t_project_id )
                     && !bug_is_readonly( $p_bug->id )
                     && access_has_bug_level( config_get( 'update_bug_threshold' ), $p_bug->id );
+
+        case 'bugnote':
+            return access_has_bug_level( config_get( 'add_bugnote_threshold' ), $p_bug->id );
     }
 
     return FALSE;
@@ -2262,16 +2264,70 @@ function telegram_status_change_wizard_descriptor( array $p_draft, BugData $p_bu
 }
 
 /**
- * The name of the process the transition stands for, the title
- * bug_change_status_page.php of the core shows on its form.
+ * A string of the core named after the process the transition stands for, the
+ * way bug_change_status_page.php takes the title of its form ( '_bug_title' )
+ * and the label of its submit button ( '_bug_button' ).
  *
  * @param integer $p_new_status Status the issue is moved to.
+ * @param string  $p_suffix     Suffix of the string key following the status label.
  * @return string
  */
-function telegram_status_change_process_title( $p_new_status ) {
+function telegram_status_change_process_string( $p_new_status, $p_suffix ) {
     $t_status_label = str_replace( ' ', '_', MantisEnum::getLabel( config_get( 'status_enum_string' ), (int)$p_new_status ) );
 
-    return lang_get( $t_status_label . '_bug_title' );
+    return lang_get( $t_status_label . $p_suffix );
+}
+
+/**
+ * Offer the text of the message the dialog was started from as the note of the
+ * transition, the way the issue wizard offers the summary of the issue.
+ *
+ * The note is offered instead of being asked for, so the questions asked before
+ * it have to be answered already; the offer is made once and dies with the
+ * making, a note undone by the step back button must not come back on its own.
+ *
+ * @param array $p_draft Draft of the dialog, saved by the function.
+ * @return void
+ */
+function telegram_status_change_bugnote_suggest( array &$p_draft ) {
+
+    if( !array_key_exists( 'bugnote_suggested', $p_draft ) ) {
+        return;
+    }
+
+    if( telegram_status_change_pending_step( $p_draft ) !== 'bugnote' ) {
+        return;
+    }
+
+    $t_bugnote = trim( (string)$p_draft['bugnote_suggested'] );
+    unset( $p_draft['bugnote_suggested'] );
+
+    if( $t_bugnote != '' ) {
+        $p_draft['bugnote'] = $t_bugnote;
+    }
+
+    telegram_status_change_draft_set( $p_draft );
+}
+
+/**
+ * The first question of the status change dialog left unanswered, null when the
+ * change can be applied.
+ *
+ * @param array $p_draft Draft of the dialog.
+ * @return string|null Step name.
+ */
+function telegram_status_change_pending_step( array $p_draft ) {
+    $t_bug = bug_get( (int)$p_draft['bug_id'] );
+
+    foreach( telegram_status_change_steps_get() as $t_step ) {
+        # An empty string is a step not asked yet, null is a skipped one
+        if( $p_draft[$t_step] === ''
+                && telegram_status_change_step_is_applicable( $t_step, $p_draft, $t_bug ) ) {
+            return $t_step;
+        }
+    }
+
+    return NULL;
 }
 
 /**
@@ -2289,7 +2345,7 @@ function telegram_status_change_card_compose( $p_draft, $p_question = '', $p_err
     $t_lines   = array();
     $t_lines[] = telegram_bug_select_context( TelegrambotActions::CHANGE_STATUS_TAG );
     $t_lines[] = telegram_bug_line( $t_bug );
-    $t_lines[] = telegram_status_change_process_title( (int)$p_draft['new_status'] );
+    $t_lines[] = telegram_status_change_process_string( (int)$p_draft['new_status'], '_bug_title' );
 
     if( $p_draft['resolution'] !== '' && $p_draft['resolution'] !== null ) {
         $t_lines[] = lang_get( 'resolution' ) . ': ' . get_enum_element( 'resolution', (int)$p_draft['resolution'] );
@@ -2305,6 +2361,10 @@ function telegram_status_change_card_compose( $p_draft, $p_question = '', $p_err
 
     if( $p_draft['fixed_in_version'] !== '' && $p_draft['fixed_in_version'] !== null ) {
         $t_lines[] = lang_get( 'fixed_in_version' ) . ': ' . $p_draft['fixed_in_version'];
+    }
+
+    if( $p_draft['bugnote'] !== '' && $p_draft['bugnote'] !== null ) {
+        $t_lines[] = lang_get( 'bugnote' ) . ': ' . $p_draft['bugnote'];
     }
 
     if( isset( $p_draft['warning'] ) && $p_draft['warning'] != '' ) {
@@ -2378,6 +2438,15 @@ function telegram_status_change_step_ask( $p_step, $p_draft, BugData $p_bug, $p_
             keyboard_skip_button_add( $t_inline_keyboard, array( TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SKIP_FIELD => 'fixed_in_version' ) ) );
             $t_question = lang_get( 'fixed_in_version' );
             break;
+
+        case 'bugnote':
+            plugin_config_set( 'status_change_draft_await', 'bugnote', $t_user_id );
+
+            $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+            keyboard_skip_button_add( $t_inline_keyboard, array( TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SKIP_FIELD => 'bugnote' ) ) );
+            $t_question = lang_get( 'bugnote' );
+            break;
     }
 
     keyboard_status_change_buttons_add( $t_inline_keyboard, $p_draft, $p_bug );
@@ -2390,7 +2459,9 @@ function telegram_status_change_step_ask( $p_step, $p_draft, BugData $p_bug, $p_
 
 /**
  * Ask the question of the first unanswered applicable step of the status change
- * dialog or submit the change when nothing is left to ask.
+ * dialog or, when nothing is left to ask, show the menu the change is applied
+ * from: the change is applied on demand only, the way the wizards create their
+ * issue and event.
  *
  * @param array $p_draft Draft of the dialog.
  * @return array Data of the message to send.
@@ -2399,20 +2470,35 @@ function telegram_status_change_ask_next_step( $p_draft ) {
     $t_user_id = auth_get_current_user_id();
     plugin_config_delete( 'status_change_draft_await', $t_user_id );
 
-    $t_bug = bug_get( (int)$p_draft['bug_id'] );
+    # The message the dialog was started from offers the note of the transition
+    telegram_status_change_bugnote_suggest( $p_draft );
 
-    foreach( telegram_status_change_steps_get() as $t_step ) {
-        # An empty string is a step not asked yet, null is a skipped one
-        if( $p_draft[$t_step] !== '' ) {
-            continue;
-        }
+    $t_bug  = bug_get( (int)$p_draft['bug_id'] );
+    $t_step = telegram_status_change_pending_step( $p_draft );
 
-        if( !telegram_status_change_step_is_applicable( $t_step, $p_draft, $t_bug ) ) {
-            continue;
-        }
-
+    if( $t_step !== NULL ) {
         return telegram_status_change_step_ask( $t_step, $p_draft, $t_bug );
     }
+
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    keyboard_status_change_apply_button_add( $t_inline_keyboard, (int)$p_draft['new_status'] );
+    keyboard_status_change_buttons_add( $t_inline_keyboard, $p_draft, $t_bug );
+
+    return array(
+                              'text'         => telegram_status_change_card_compose( $p_draft, plugin_lang_get( 'status_change_menu_prompt' ) ),
+                              'reply_markup' => $t_inline_keyboard,
+    );
+}
+
+/**
+ * Apply the change out of the draft, clean the draft up and build the final view
+ * of its card.
+ *
+ * @param array $p_draft Draft of the dialog.
+ * @return array Data of the message to send.
+ */
+function telegram_status_change_submit( $p_draft ) {
 
     $t_result = telegram_bug_status_change( $p_draft );
     telegram_status_change_draft_clear();
@@ -2462,7 +2548,7 @@ function telegram_status_change_answer( $p_step, $p_value ) {
 
 /**
  * Take the message text as the answer to the text question of the status change
- * dialog, for now the only such question is the duplicate issue id.
+ * dialog: the duplicate issue id or the note of the transition.
  *
  * @param string $p_text Text of the message.
  * @return array|null Data of the card message to edit or null when no text question is pending.
@@ -2482,27 +2568,47 @@ function telegram_status_change_text_answer( $p_text ) {
         return NULL;
     }
 
-    # The checks bug_update.php of the core runs on the duplicate id
-    $t_duplicate_id = (int)trim( (string)$p_text );
-    $t_error        = '';
+    $t_text  = trim( (string)$p_text );
+    $t_error = '';
 
-    if( $t_duplicate_id == (int)$t_draft['bug_id'] ) {
-        $t_error = error_string( ERROR_BUG_DUPLICATE_SELF );
-    } else if( $t_duplicate_id <= 0 || !bug_exists( $t_duplicate_id ) ) {
-        error_parameters( $t_duplicate_id );
-        $t_error = error_string( ERROR_BUG_NOT_FOUND );
-    } else if( !access_has_bug_level( config_get( 'update_bug_threshold' ), $t_duplicate_id ) ) {
-        $t_error = error_string( ERROR_RELATIONSHIP_ACCESS_LEVEL_TO_DEST_BUG_TOO_LOW );
+    switch( $t_await ) {
+        case 'duplicate_id':
+            # The checks bug_update.php of the core runs on the duplicate id
+            $t_value = (int)$t_text;
+
+            if( $t_value == (int)$t_draft['bug_id'] ) {
+                $t_error = error_string( ERROR_BUG_DUPLICATE_SELF );
+            } else if( $t_value <= 0 || !bug_exists( $t_value ) ) {
+                error_parameters( $t_value );
+                $t_error = error_string( ERROR_BUG_NOT_FOUND );
+            } else if( !access_has_bug_level( config_get( 'update_bug_threshold' ), $t_value ) ) {
+                $t_error = error_string( ERROR_RELATIONSHIP_ACCESS_LEVEL_TO_DEST_BUG_TOO_LOW );
+            }
+            break;
+
+        case 'bugnote':
+            # The note is optional, but leaving it out is a press on the skip
+            # button rather than an empty message ( a file without a caption )
+            $t_value = $t_text;
+
+            if( $t_value == '' ) {
+                $t_error = plugin_lang_get( 'custom_field_error_empty' );
+            }
+            break;
+
+        default:
+            plugin_config_delete( 'status_change_draft_await', $t_user_id );
+            return NULL;
     }
 
     if( $t_error != '' ) {
         # A rejected value leaves the state untouched, the question is asked again
-        return telegram_status_change_step_ask( 'duplicate_id', $t_draft, bug_get( (int)$t_draft['bug_id'] ), $t_error );
+        return telegram_status_change_step_ask( $t_await, $t_draft, bug_get( (int)$t_draft['bug_id'] ), $t_error );
     }
 
     plugin_config_delete( 'status_change_draft_await', $t_user_id );
 
-    $t_draft['duplicate_id'] = $t_duplicate_id;
+    $t_draft[$t_await] = $t_value;
     telegram_status_change_draft_set( $t_draft );
 
     return telegram_status_change_ask_next_step( $t_draft );
@@ -2550,7 +2656,8 @@ function telegram_change_status( $p_current_action, $p_callback_query = NULL ) {
                 break;
             }
 
-            # The message the action menu replied to carries the note content
+            # The message the action menu replied to offers the note of the
+            # transition and carries its attachment
             $t_reply_to_message = NULL;
             if( $p_callback_query !== NULL && $p_callback_query->getMessage() !== NULL ) {
                 $t_reply_to_message = $p_callback_query->getMessage()->getReplyToMessage();
@@ -2561,14 +2668,16 @@ function telegram_change_status( $p_current_action, $p_callback_query = NULL ) {
             }
 
             $t_draft = array(
-                                      'bug_id'           => $t_bug_id,
-                                      'new_status'       => $t_new_status,
-                                      'resolution'       => '',
-                                      'duplicate_id'     => '',
-                                      'handler'          => '',
-                                      'fixed_in_version' => '',
-                                      'content'          => telegram_status_change_content_descriptor( $t_reply_to_message ),
-                                      'warning'          => $t_warning,
+                                      'bug_id'            => $t_bug_id,
+                                      'new_status'        => $t_new_status,
+                                      'resolution'        => '',
+                                      'duplicate_id'      => '',
+                                      'handler'           => '',
+                                      'fixed_in_version'  => '',
+                                      'bugnote'           => '',
+                                      'bugnote_suggested' => telegram_message_text_get( $t_reply_to_message ),
+                                      'content'           => telegram_status_change_content_descriptor( $t_reply_to_message ),
+                                      'warning'           => $t_warning,
             );
             telegram_status_change_draft_set( $t_draft );
 
@@ -2617,6 +2726,28 @@ function telegram_change_status( $p_current_action, $p_callback_query = NULL ) {
             # The text answer awaited by the question being given up is dropped by
             # the next question of the dialog
             $t_data_send = telegram_status_change_ask_next_step( $t_draft );
+            break;
+
+//APPLYING THE CHANGE OUT OF THE DRAFT
+        case TelegrambotActions::APPLY_STATUS:
+            $t_draft = telegram_status_change_draft_get();
+
+            if( $t_draft === NULL ) {
+                # The dialog is gone, the button went stale: the flow starts over
+                $t_data_send = telegram_bug_select_step( array( 'start' => '' ), TelegrambotActions::UPDATE_BUG_TAG );
+                break;
+            }
+
+            # The button goes stale along with the card it sits on, so the draft
+            # is checked again instead of being trusted to be complete
+            if( telegram_status_change_pending_step( $t_draft ) !== NULL ) {
+                telegram_callback_alert_set( plugin_lang_get( 'wizard_required_missing' ) );
+
+                $t_data_send = telegram_status_change_ask_next_step( $t_draft );
+                break;
+            }
+
+            $t_data_send = telegram_status_change_submit( $t_draft );
             break;
 
         default:

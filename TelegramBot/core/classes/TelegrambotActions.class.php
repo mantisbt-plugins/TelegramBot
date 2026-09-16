@@ -37,6 +37,8 @@ class TelegrambotActions {
         const SET_STATUS_RESOLUTION     = 'sres';
         const SET_STATUS_HANDLER        = 'sh';
         const SET_STATUS_FIXED_VERSION  = 'sfv';
+        # Apply the status change out of the draft as it is
+        const APPLY_STATUS              = 'sapply';
         const REPORT_BUG_TAG            = 'rb';
         const GET_PROJECT               = 'gp';
         const SET_PROJECT               = 'sp';

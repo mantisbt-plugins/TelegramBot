@@ -339,12 +339,12 @@ function telegram_bug_status_change( $p_draft ) {
     $t_updated_bug->status  = bug_get_status_for_assign( $t_existing_bug->handler_id, $t_updated_bug->handler_id, $t_existing_bug->status, $t_updated_bug->status );
     $t_result['new_status'] = $t_updated_bug->status;
 
-    # The note carried by the dialog: the text of the message the dialog was
-    # started from, the file it carried is picked up from Telegram now
+    # The note carried by the dialog, the file of the message the dialog was
+    # started from is picked up from Telegram now
     $t_content   = isset( $p_draft['content'] ) && is_array( $p_draft['content'] )
             ? $p_draft['content']
-            : array( 'text' => '', 'file_id' => '', 'file_name' => '', 'file_size' => 0 );
-    $t_note_text = trim( (string)$t_content['text'] );
+            : array( 'file_id' => '', 'file_name' => '', 'file_size' => 0 );
+    $t_note_text = trim( (string)$p_draft['bugnote'] );
     $t_files     = array();
 
     if( $t_content['file_id'] != '' ) {

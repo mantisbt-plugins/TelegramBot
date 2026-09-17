@@ -23,6 +23,13 @@ define( 'TELEGRAM_REGISTRATION_LINK', 0 );
 define( 'TELEGRAM_REGISTRATION_PIN', 1 );
 define( 'TELEGRAM_REGISTRATION_BOTH', 2 );
 
+# Whether the iCalendar file of a calendar event goes along with the notifications about
+# the event, see the 'calendar_ics_mode' config option: never, for everybody unless the
+# user turns it off in his preferences, or for nobody unless the user turns it on there.
+define( 'TELEGRAM_ICS_OFF', 0 );
+define( 'TELEGRAM_ICS_ON', 1 );
+define( 'TELEGRAM_ICS_OPT_IN', 2 );
+
 # Where the unlink button was pressed: the account page of the user himself or the
 # plugin pages, where it is an administrative action even for one's own binding
 define( 'TELEGRAM_UNLINK_SOURCE_ACCOUNT', 'account' );
@@ -264,6 +271,35 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'bug_data_draft_chat_id'                      => '',
                                   'bug_data_draft_message_id'                   => '',
                                   'bug_data_draft_current_field_to_save'        => '',
+                                  # master switch of the Calendar integration, folded into
+                                  # telegram_calendar_available(): off, the plugin behaves as if
+                                  # Calendar were not installed
+                                  'calendar_integration_enabled'                => OFF,
+                                  # whether the .ics file goes along with the event notifications:
+                                  # TELEGRAM_ICS_OFF / _ON / _OPT_IN. The personal choice is the
+                                  # per-user 'calendar_ics_attach' option, whose default is derived
+                                  # from the mode, see telegram_calendar_ics_wanted()
+                                  'calendar_ics_mode'                           => TELEGRAM_ICS_OFF,
+                                  # who is told about a calendar event, per action: the author of
+                                  # the event, its members, and the user who acts - the counterpart
+                                  # of notify_flags below for the events, in the shape of the matrix
+                                  # of the Calendar plugin itself. Overridden per project on the
+                                  # notifications page, see telegram_calendar_notify_flags()
+                                  'calendar_notify_flags'                       => array(
+                                                            'created' => array( 'author' => ON, 'members' => ON, 'actor' => OFF ),
+                                                            'updated' => array( 'author' => ON, 'members' => ON, 'actor' => OFF ),
+                                                            'deleted' => array( 'author' => ON, 'members' => ON, 'actor' => OFF ),
+                                  ),
+                                  # whether the reminders of Calendar are repeated in Telegram at
+                                  # all; the reminders have no matrix row, their recipients are
+                                  # chosen by Calendar, so this is the only global switch of them
+                                  'calendar_reminders_enabled'                  => ON,
+                                  # per-user switches of the calendar event notifications, the
+                                  # counterpart of telegram_message_on_* below
+                                  'telegram_message_on_event_created'           => ON,
+                                  'telegram_message_on_event_updated'           => ON,
+                                  'telegram_message_on_event_deleted'           => ON,
+                                  'telegram_message_on_event_reminder'          => ON,
                                   # per-user state of the calendar event wizard, see TelegramBot_calendar_api.php
                                   'event_draft'                                 => '',
                                   'event_draft_chat_id'                         => '',
@@ -444,10 +480,12 @@ class TelegramBotPlugin extends MantisPlugin {
         if( plugin_is_registered( 'Calendar' ) ) {
             event_declare( 'EVENT_CALENDAR_EVENT_CREATED', EVENT_TYPE_EXECUTE );
             event_declare( 'EVENT_CALENDAR_EVENT_UPDATED', EVENT_TYPE_EXECUTE );
+            event_declare( 'EVENT_CALENDAR_EVENT_DELETED', EVENT_TYPE_EXECUTE );
             event_declare( 'EVENT_CALENDAR_EVENT_REMINDER', EVENT_TYPE_EXECUTE );
 
             $t_hooks['EVENT_CALENDAR_EVENT_CREATED']  = 'telegram_calendar_event_created';
             $t_hooks['EVENT_CALENDAR_EVENT_UPDATED']  = 'telegram_calendar_event_updated';
+            $t_hooks['EVENT_CALENDAR_EVENT_DELETED']  = 'telegram_calendar_event_deleted';
             $t_hooks['EVENT_CALENDAR_EVENT_REMINDER'] = 'telegram_calendar_event_reminder';
         }
 
@@ -498,6 +536,22 @@ class TelegramBotPlugin extends MantisPlugin {
     function telegram_calendar_event_updated( $p_type_event, $p_event_id ) {
         plugin_log_event( sprintf( 'Calendar event #%d updated', $p_event_id ) );
         telegram_calendar_message_event( $p_event_id, 'updated' );
+    }
+
+    /**
+     * Notify the circle of a calendar event about its deletion.
+     *
+     * EVENT_CALENDAR_EVENT_DELETED is signalled before the rows of the event are
+     * removed and only when the whole event goes, so the callback still finds
+     * the event and its members.
+     *
+     * @param string  $p_type_event Name of the signalled event.
+     * @param integer $p_event_id   Identifier of the calendar event being deleted.
+     * @return void
+     */
+    function telegram_calendar_event_deleted( $p_type_event, $p_event_id ) {
+        plugin_log_event( sprintf( 'Calendar event #%d deleted', $p_event_id ) );
+        telegram_calendar_message_event( $p_event_id, 'deleted' );
     }
 
     /**

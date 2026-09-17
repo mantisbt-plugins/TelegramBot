@@ -312,6 +312,44 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                                     </label>
                                                 </td>
                                             </tr>
+                                            <?php
+                                            # the calendar events have no severity, hence a switch alone
+                                            if( telegram_calendar_available() ) {
+                                                foreach( telegram_calendar_event_prefs() as $t_pref ) {
+                                                    if( !telegram_calendar_pref_offered( $t_pref ) ) {
+                                                        continue;
+                                                    }
+                                                    ?>
+                                                    <tr>
+                                                        <td class="category">
+                                                            <?php echo plugin_lang_get( $t_pref ) ?>
+                                                        </td>
+                                                        <td>
+                                                            <label class="inline">
+                                                                <input type="checkbox" class="ace input-sm" id="<?php echo str_replace( '_', '-', $t_pref ) ?>" name="<?php echo $t_pref ?>" <?php check_checked( (int) plugin_config_get( $t_pref, NULL, FALSE, $p_user_id, ALL_PROJECTS ), ON ); ?> />
+                                                                <span class="lbl"></span>
+                                                            </label>
+                                                        </td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                            }
+                                            ?>
+                                            <?php if( telegram_calendar_ics_offered() ) { ?>
+                                            <tr>
+                                                <td class="category">
+                                                    <?php echo plugin_lang_get( 'calendar_ics_attach' ) ?>
+                                                </td>
+                                                <td>
+                                                    <label class="inline">
+                                                        <input type="checkbox" class="ace input-sm"
+                                                               id="calendar-ics-attach" name="calendar_ics_attach"
+                                                               <?php check_checked( telegram_calendar_ics_wanted( $p_user_id, ALL_PROJECTS ), TRUE ); ?> />
+                                                        <span class="lbl"></span>
+                                                    </label>
+                                                </td>
+                                            </tr>
+                                            <?php } ?>
 
                                         <?php } else { ?>
 
@@ -333,6 +371,19 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                             <input type="hidden" name="telegram_message_on_bugnote_min_severity"  value="<?php echo plugin_config_get( 'telegram_message_on_bugnote_min_severity' ) ?>" />
                                             <input type="hidden" name="telegram_message_on_status_min_severity"   value="<?php echo plugin_config_get( 'telegram_message_on_status_min_severity' ) ?>" />
                                             <input type="hidden" name="telegram_message_on_priority_min_severity" value="<?php echo plugin_config_get( 'telegram_message_on_priority_min_severity' ) ?>" />
+                                            <?php
+                                            if( telegram_calendar_available() ) {
+                                                foreach( telegram_calendar_event_prefs() as $t_pref ) {
+                                                    if( !telegram_calendar_pref_offered( $t_pref ) ) {
+                                                        continue;
+                                                    }
+                                                    echo '<input type="hidden" name="' . $t_pref . '" value="' . (int) plugin_config_get( $t_pref, NULL, FALSE, $p_user_id, ALL_PROJECTS ) . '" />' . "\n";
+                                                }
+                                            }
+                                            ?>
+                                            <?php if( telegram_calendar_ics_offered() && telegram_calendar_ics_wanted( $p_user_id, ALL_PROJECTS ) ) { ?>
+                                            <input type="hidden" name="calendar_ics_attach" value="1" />
+                                            <?php } ?>
                                             <input type="hidden" name="telegram_message_full_issue" value="<?php echo $t_telegram_message_full_issue ?>" />
                                             <input type="hidden" name="telegram_message_included_all_bugnote_is" value="<?php echo $t_telegram_message_included_all_bugnote_is ?>" />
                                         <?php } ?>

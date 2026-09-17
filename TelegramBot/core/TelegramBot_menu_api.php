@@ -22,6 +22,11 @@ function telegrambot_print_menu_config( $p_page = '' ) {
                                   'broadcast_config_page',
 	);
 
+	# the tab belongs to the Calendar plugin: without it nothing reads the settings
+	if( plugin_is_registered( 'Calendar' ) ) {
+		$t_pages[] = 'calendar_config_page';
+	}
+
 	if( access_has_global_level( config_get( 'manage_plugin_threshold' ) ) ) {
 		?>
 		<div class="col-md-12 col-xs-12">

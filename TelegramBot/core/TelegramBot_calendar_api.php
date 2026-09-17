@@ -38,6 +38,9 @@ define( 'TELEGRAM_EVENT_TIME_ACTION', 'tm' );
 # Minutes offered by the time picker, any other minute is sent as a text
 define( 'TELEGRAM_EVENT_TIME_MINUTE_STEP', 5 );
 
+# Longest caption Telegram accepts on a document, the text itself may be 4096
+define( 'TELEGRAM_CAPTION_LENGTH_MAX', 1024 );
+
 # Identifiers of the two dates within the callback data of the inline calendar,
 # kept to a single character because callback_data is limited to 64 bytes
 define( 'TELEGRAM_EVENT_DATE_FROM', 'f' );
@@ -53,18 +56,23 @@ define( 'TELEGRAM_EVENT_ISSUES_PER_PAGE', 10 );
 define( 'TELEGRAM_EVENT_NAME_LENGTH_MAX', 255 );
 
 /**
- * Whether the Calendar plugin is installed and initialized.
+ * Whether the Calendar plugin is installed and initialized, and the
+ * integration with it is switched on by the administrator.
  *
  * The public api of Calendar names its request class as the documented way of
  * detecting the plugin; the function is checked as well, so that a Calendar
- * older than its public api is treated as absent.
+ * older than its public api is treated as absent. The switch is the master
+ * one of the whole integration - the event wizard, the notifications, the
+ * reminders, the personal settings - and every entry point is guarded by this
+ * function, so nothing of the integration needs to know about the switch.
  *
  * @return boolean
  */
 function telegram_calendar_available() {
 
     return class_exists( 'CalendarPluginApi\\EventCreateRequest' )
-            && function_exists( 'calendar_api_event_create' );
+            && function_exists( 'calendar_api_event_create' )
+            && ON == (int)plugin_config_get( 'calendar_integration_enabled' );
 }
 
 /**
@@ -1536,15 +1544,283 @@ function telegram_event_date_step_get( $p_payload ) {
 }
 
 /**
+ * Actions the notification matrix of the calendar events has a row for, in
+ * the order they are shown. Only the actions this plugin announces: a row
+ * nothing ever reads would be a promise on the settings page.
+ *
+ * @return array
+ */
+function telegram_calendar_notify_actions() {
+
+    return array( 'created', 'updated', 'deleted' );
+}
+
+/**
+ * Groups of recipients the notification matrix of the calendar events has a
+ * column for, in the order they are shown: the author of the event, its
+ * members, and the user who acts. The last one is the counterpart of
+ * telegram_message_receive_own of the issues, a matrix cell here the way the
+ * Calendar plugin has it, so that the two matrices read alike.
+ *
+ * @return array
+ */
+function telegram_calendar_notify_targets() {
+
+    return array( 'author', 'members', 'actor' );
+}
+
+/**
+ * Personal switches of the calendar event notifications, in the order they
+ * are shown on the account page: the rows of the matrix and the reminders,
+ * whose recipients Calendar chooses on its own. Each one is a per-user option
+ * of this plugin, declared among its defaults, read wherever a recipient is
+ * chosen and written, reset and deleted by the account pages.
+ *
+ * @return array
+ */
+function telegram_calendar_event_prefs() {
+
+    $t_prefs = array();
+
+    foreach( telegram_calendar_notify_actions() as $t_action ) {
+        $t_prefs[] = 'telegram_message_on_event_' . $t_action;
+    }
+
+    $t_prefs[] = 'telegram_message_on_event_reminder';
+
+    return $t_prefs;
+}
+
+/**
+ * Whether the reminders of Calendar are repeated in Telegram at all.
+ *
+ * The switch of the administrator, read where a reminder is about to be sent
+ * and where the personal choice is shown or saved: while the reminders are
+ * off for everybody, the personal choice is neither asked for nor applied.
+ *
+ * @return boolean
+ */
+function telegram_calendar_reminders_offered() {
+
+    return telegram_calendar_available() && ON == (int)plugin_config_get( 'calendar_reminders_enabled' );
+}
+
+/**
+ * Whether a personal switch of telegram_calendar_event_prefs() is offered to
+ * the users: the one of the reminders follows the global switch, the rest
+ * are always there.
+ *
+ * @param string $p_pref Option name, one of telegram_calendar_event_prefs().
+ * @return boolean
+ */
+function telegram_calendar_pref_offered( $p_pref ) {
+
+    if( 'telegram_message_on_event_reminder' == $p_pref ) {
+        return telegram_calendar_reminders_offered();
+    }
+
+    return telegram_calendar_available();
+}
+
+/**
+ * Merge a stored matrix of the calendar events over a complete one.
+ *
+ * A matrix is written as a whole, but a hand edited or an older one may miss
+ * a cell, so every cell of the answer is taken from the fallback unless the
+ * stored matrix has a value for it.
+ *
+ * @param mixed $p_flags   Matrix as read from the configuration, of any shape.
+ * @param array $p_default Matrix to fall back to, cell by cell.
+ * @return array Complete matrix of ON and OFF.
+ */
+function telegram_calendar_notify_flags_normalize( $p_flags, array $p_default ) {
+
+    if( !is_array( $p_flags ) ) {
+        $p_flags = array();
+    }
+
+    $t_flags = array();
+
+    foreach( telegram_calendar_notify_actions() as $t_action ) {
+        foreach( telegram_calendar_notify_targets() as $t_target ) {
+
+            if( isset( $p_flags[$t_action][$t_target] ) ) {
+                $t_value = $p_flags[$t_action][$t_target];
+            } else if( isset( $p_default[$t_action][$t_target] ) ) {
+                $t_value = $p_default[$t_action][$t_target];
+            } else {
+                $t_value = OFF;
+            }
+
+            $t_flags[$t_action][$t_target] = (int)$t_value > 0 ? ON : OFF;
+        }
+    }
+
+    return $t_flags;
+}
+
+/**
+ * The notification matrix of the calendar events that applies to a project.
+ *
+ * The whole matrix is one option, so the cascade of the configuration does
+ * the choosing: a project given its own copy uses it, every other one falls
+ * back to the global matrix and, failing that, to the built-in one.
+ *
+ * @param integer $p_project_id Project of the event.
+ * @return array Complete matrix of ON and OFF.
+ */
+function telegram_calendar_notify_flags( $p_project_id = ALL_PROJECTS ) {
+
+    $t_default = plugin_config_get( 'calendar_notify_flags', array(), TRUE );
+
+    return telegram_calendar_notify_flags_normalize(
+                              plugin_config_get( 'calendar_notify_flags', $t_default, FALSE, NO_USER, (int)$p_project_id ),
+                              $t_default );
+}
+
+/**
+ * Users to be told about an action on a calendar event through Telegram.
+ *
+ * The counterpart of telegram_message_collect_recipients() for the events,
+ * laid out the way calendar_notify_recipients() of the Calendar plugin is:
+ * the matrix of this plugin names the groups - the author, the members, the
+ * actor - and every candidate then passes the same checks the mails of the
+ * calendar apply, only against the settings of this plugin. The mails of the
+ * calendar keep their own matrix and their own personal choices, the way the
+ * mails of the core and the Telegram messages about an issue do.
+ *
+ * The other plugins have the same say they have in the mails of the calendar:
+ * EVENT_CALENDAR_NOTIFY_USER_INCLUDE widens the circle before anything is
+ * filtered out, EVENT_CALENDAR_NOTIFY_USER_EXCLUDE vetoes a candidate that
+ * passed every check - the core signals of the issues are raised by
+ * telegram_message_collect_recipients() in the same manner.
+ *
+ * @param array   $p_event_row Row of the event, as event_get_row() returns it.
+ * @param string  $p_action    Row of the matrix, see telegram_calendar_notify_actions().
+ * @param integer $p_actor_id  User whose action is announced.
+ * @return array Recipients: user id => telegram user id.
+ */
+function telegram_calendar_collect_recipients( array $p_event_row, $p_action, $p_actor_id ) {
+
+    $t_event_id = (int)$p_event_row['id'];
+
+    $t_flags = telegram_calendar_notify_flags( (int)$p_event_row['project_id'] );
+    $t_flags = $t_flags[$p_action];
+
+    $t_user_ids = array();
+
+    if( ON == $t_flags['author'] ) {
+        $t_user_ids[] = (int)$p_event_row['author_id'];
+        plugin_log_event( sprintf( 'Calendar event = #%d, add @U%d (author)', $t_event_id, (int)$p_event_row['author_id'] ) );
+    } else {
+        plugin_log_event( sprintf( 'Calendar event = #%d, skip @U%d (author disabled)', $t_event_id, (int)$p_event_row['author_id'] ) );
+    }
+
+    if( ON == $t_flags['members'] ) {
+        try {
+            $t_member_ids = calendar_api_event_members( $t_event_id );
+        } catch( \Mantis\Exceptions\ClientException $t_exception ) {
+            plugin_log_event( sprintf( 'Calendar event = #%d, members unavailable: %s', $t_event_id, $t_exception->getMessage() ) );
+            $t_member_ids = array();
+        }
+
+        foreach( $t_member_ids as $t_member_id ) {
+            $t_user_ids[] = (int)$t_member_id;
+            plugin_log_event( sprintf( 'Calendar event = #%d, add @U%d (member)', $t_event_id, (int)$t_member_id ) );
+        }
+    }
+
+    $t_include_data = event_signal( 'EVENT_CALENDAR_NOTIFY_USER_INCLUDE', array( $t_event_id, $p_action ) );
+
+    foreach( $t_include_data as $t_plugin => $t_plugin_answers ) {
+        foreach( $t_plugin_answers as $t_included_users ) {
+
+            if( !is_array( $t_included_users ) ) {
+                continue;
+            }
+
+            foreach( $t_included_users as $t_included_user_id ) {
+                $t_user_ids[] = (int)$t_included_user_id;
+                plugin_log_event( sprintf( 'Calendar event = #%d, add @U%d (by %s plugin)', $t_event_id, (int)$t_included_user_id, $t_plugin ) );
+            }
+        }
+    }
+
+    $t_pref_field = 'telegram_message_on_event_' . $p_action;
+
+    $t_recipients = array();
+
+    foreach( array_unique( $t_user_ids ) as $t_user_id ) {
+
+        if( $t_user_id <= 0 || !user_exists( $t_user_id ) || !user_is_enabled( $t_user_id ) ) {
+            plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (user disabled)', $t_event_id, $t_user_id ) );
+            continue;
+        }
+
+        if( $t_user_id == (int)$p_actor_id && ON != $t_flags['actor'] ) {
+            plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (own action)', $t_event_id, $t_user_id ) );
+            continue;
+        }
+
+        if( OFF == plugin_config_get( $t_pref_field, NULL, FALSE, $t_user_id ) ) {
+            plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (pref %s off)', $t_event_id, $t_user_id, $t_pref_field ) );
+            continue;
+        }
+
+        # the author and the members have access implicitly, this only catches
+        # users that were meanwhile removed from the project
+        $t_view_threshold = telegram_calendar_call( 'plugin_config_get', array( 'view_event_threshold' ) );
+
+        if( !telegram_calendar_call( 'access_has_event_level', array( $t_view_threshold, $t_event_id, $t_user_id ) ) ) {
+            plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (access level)', $t_event_id, $t_user_id ) );
+            continue;
+        }
+
+        $t_exclude_data = event_signal( 'EVENT_CALENDAR_NOTIFY_USER_EXCLUDE', array( $t_event_id, $p_action, $t_user_id ) );
+        $t_excluded     = FALSE;
+
+        foreach( $t_exclude_data as $t_plugin => $t_plugin_answers ) {
+            foreach( $t_plugin_answers as $t_plugin_answer ) {
+                if( $t_plugin_answer ) {
+                    $t_excluded = TRUE;
+                    plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (by %s plugin)', $t_event_id, $t_user_id, $t_plugin ) );
+                }
+            }
+        }
+
+        if( $t_excluded ) {
+            continue;
+        }
+
+        $t_telegram_user_id = telegram_user_get_id_by_user_id( $t_user_id );
+
+        if( $t_telegram_user_id == 0 ) {
+            plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (no telegram account)', $t_event_id, $t_user_id ) );
+            continue;
+        }
+
+        $t_recipients[$t_user_id] = $t_telegram_user_id;
+    }
+
+    return $t_recipients;
+}
+
+/**
  * Notify the circle of a calendar event about an action on it.
  *
- * The circle is the very audience of the mails of the calendar, asked through
- * calendar_api_event_notify_recipients(): the notification matrix of the
- * project, the personal notify_event_* choices and the view threshold of the
- * event are all applied by the calendar itself, so this plugin adds nothing
- * but its own transport requirement - a linked Telegram account. Whether the
- * acting user hears about the own action is a matrix decision too, which is
- * why the current user is passed as the actor instead of being filtered here.
+ * The circle is chosen by telegram_calendar_collect_recipients() against the
+ * matrix and the personal settings of this plugin, the way the notifications
+ * about an issue are chosen against its copy of the settings of the core
+ * rather than against the mails. Whether the acting user hears about the own
+ * action is a matrix decision, which is why the current user is passed as the
+ * actor instead of being filtered here.
+ *
+ * A deletion is announced while the event can still be read: Calendar raises
+ * EVENT_CALENDAR_EVENT_DELETED before it touches the rows, the way the core
+ * raises EVENT_BUG_DELETED, and only when the whole event goes - a cancelled
+ * occurrence or a cut off tail of a series is a change of the event. The text
+ * of that notification carries neither the link nor the .ics file: both would
+ * point at an event that is gone by the time the reader taps them.
  *
  * The subscribers of the calendar events are called with this plugin being
  * the current one, so every function of Calendar is called on behalf of
@@ -1552,8 +1828,8 @@ function telegram_event_date_step_get( $p_payload ) {
  * the name of this plugin.
  *
  * @param integer $p_event_id Identifier of the event.
- * @param string  $p_action   Row of the notification matrix, 'created' or
- *                            'updated', see calendar_notify_actions().
+ * @param string  $p_action   Row of the notification matrix, 'created',
+ *                            'updated' or 'deleted', see telegram_calendar_notify_actions().
  * @return void
  */
 function telegram_calendar_message_event( $p_event_id, $p_action ) {
@@ -1568,31 +1844,142 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
         return;
     }
 
-    try {
-        $t_recipients = calendar_api_event_notify_recipients( (int)$p_event_id, $p_action, auth_get_current_user_id() );
-    } catch( \Mantis\Exceptions\ClientException $t_exception ) {
-        plugin_log_event( sprintf( 'Calendar event = #%d, %s: recipients unavailable: %s', (int)$p_event_id, $p_action, $t_exception->getMessage() ) );
-        return;
-    }
+    $t_recipients = telegram_calendar_collect_recipients( $t_event_row, $p_action, auth_get_current_user_id() );
+    $t_deleted    = 'deleted' == $p_action;
 
-    foreach( $t_recipients as $t_user_id ) {
-        $t_user_id = (int)$t_user_id;
-
-        $t_telegram_user_id = telegram_user_get_id_by_user_id( $t_user_id );
-
-        if( $t_telegram_user_id == 0 ) {
-            continue;
-        }
+    foreach( $t_recipients as $t_user_id => $t_telegram_user_id ) {
 
         lang_push( user_pref_get_language( $t_user_id, (int)$t_event_row['project_id'] ) );
 
-        $t_text = telegram_calendar_event_message_compose( $t_event_row, plugin_lang_get( 'event_message_' . $p_action ), $t_user_id );
+        $t_text = telegram_calendar_event_message_compose( $t_event_row, plugin_lang_get( 'event_message_' . $p_action ), $t_user_id, /* link */ !$t_deleted );
 
         lang_pop();
 
         plugin_log_event( sprintf( 'Calendar event = #%d, %s, add @U%d', (int)$p_event_id, $p_action, $t_user_id ) );
 
-        telegram_session_send_message( $t_telegram_user_id, array( 'text' => $t_text ) );
+        if( $t_deleted ) {
+            telegram_session_send_message( $t_telegram_user_id, array( 'text' => $t_text ) );
+        } else {
+            telegram_calendar_event_notification_send( (int)$p_event_id, (int)$t_event_row['project_id'], $t_user_id, $t_telegram_user_id, $t_text );
+        }
+    }
+}
+
+/**
+ * Whether the iCalendar file is offered to the users at all.
+ *
+ * The switch of the administrator, read where the preference of a user is
+ * shown or saved: while the file is off for everybody, the personal choice is
+ * neither asked for nor applied.
+ *
+ * @return boolean
+ */
+function telegram_calendar_ics_offered() {
+
+    return telegram_calendar_available() && TELEGRAM_ICS_OFF != (int)plugin_config_get( 'calendar_ics_mode' );
+}
+
+/**
+ * Whether the given user gets the iCalendar file along with the notifications.
+ *
+ * The personal choice is the 'calendar_ics_attach' option of the user, and it
+ * is not declared among the defaults of the plugin on purpose: the value a
+ * user gets before making a choice depends on the mode - on when the file goes
+ * to everybody, off when the users are to turn it on themselves - so the
+ * default is computed here rather than stored.
+ *
+ * @param integer $p_user_id    User the notification goes to.
+ * @param integer $p_project_id Project of the event.
+ * @return boolean
+ */
+function telegram_calendar_ics_wanted( $p_user_id, $p_project_id ) {
+
+    if( !telegram_calendar_ics_offered() ) {
+        return FALSE;
+    }
+
+    $t_default = TELEGRAM_ICS_ON == (int)plugin_config_get( 'calendar_ics_mode' ) ? ON : OFF;
+
+    return ON == (int)plugin_config_get( 'calendar_ics_attach', $t_default, FALSE, (int)$p_user_id, (int)$p_project_id );
+}
+
+/**
+ * Deliver the notification about a calendar event along with its iCalendar file.
+ *
+ * The file goes as a document of the chat rather than as a link in the text:
+ * a tap on the document opens the calendar of the phone right away, while a
+ * link leads through the login page of the tracker first. For the same reason
+ * Telegram is given the content instead of the URL of the file - fetching the
+ * URL, its servers would get the login page too.
+ *
+ * The text is the caption of the document, so the notification is a single
+ * message of the chat. A caption is limited to 1024 characters though, a
+ * quarter of a text message, and a long description or a long list of issues
+ * does not fit: such a text goes as a message of its own, the document being
+ * sent as a reply to it, which keeps the two together on the screen.
+ *
+ * Whether the file goes at all is the choice of the administrator and of the
+ * recipient, see telegram_calendar_ics_wanted(). The file is built by Calendar
+ * for the recipient, so the issues it lists are the ones the recipient may
+ * view, and a recipient who may not view the event gets the text alone. The
+ * document is uploaded from memory: the multipart part is named after the uri
+ * metadata of the stream, which is where the file name goes, so nothing is
+ * written to the disk.
+ *
+ * A failure of the document is logged and nothing else: the text is sent
+ * anyway, and the file can be downloaded from the event page.
+ *
+ * @param integer $p_event_id         Identifier of the event.
+ * @param integer $p_project_id       Project of the event.
+ * @param integer $p_user_id          Recipient of the notification.
+ * @param integer $p_telegram_user_id Telegram account of the recipient.
+ * @param string  $p_text             Text of the notification.
+ * @return void
+ */
+function telegram_calendar_event_notification_send( $p_event_id, $p_project_id, $p_user_id, $p_telegram_user_id, $p_text ) {
+
+    if( !telegram_calendar_ics_wanted( $p_user_id, $p_project_id ) ) {
+        telegram_session_send_message( $p_telegram_user_id, array( 'text' => $p_text ) );
+        return;
+    }
+
+    try {
+        $t_ics = calendar_api_event_ics( (int)$p_event_id, (int)$p_user_id );
+    } catch( \Mantis\Exceptions\ClientException $t_exception ) {
+        plugin_log_event( sprintf( 'Calendar event = #%d, ics for @U%d unavailable: %s', (int)$p_event_id, (int)$p_user_id, $t_exception->getMessage() ) );
+        telegram_session_send_message( $p_telegram_user_id, array( 'text' => $p_text ) );
+        return;
+    }
+
+    $t_data = array( 'chat_id' => $p_telegram_user_id );
+
+    if( mb_strlen( $p_text, 'UTF-8' ) <= TELEGRAM_CAPTION_LENGTH_MAX ) {
+        $t_data['caption'] = $p_text;
+    } else {
+        $t_results = telegram_session_send_message( $p_telegram_user_id, array( 'text' => $p_text ) );
+        $t_last    = end( $t_results );
+
+        if( $t_last instanceof \Longman\TelegramBot\Entities\ServerResponse && $t_last->isOk() ) {
+            $t_data['reply_to_message_id'] = $t_last->getResult()->getMessageId();
+        }
+    }
+
+    $t_resource = fopen( 'php://temp', 'r+' );
+    fwrite( $t_resource, $t_ics['content'] );
+    rewind( $t_resource );
+
+    $t_data['document'] = new \GuzzleHttp\Psr7\Stream( $t_resource, array( 'metadata' => array( 'uri' => $t_ics['filename'] ) ) );
+
+    telegram_session_start();
+
+    try {
+        $t_response = \Longman\TelegramBot\Request::sendDocument( $t_data );
+
+        if( !$t_response->isOk() ) {
+            plugin_log_event( sprintf( 'ERROR! Calendar event = #%d, sendDocument to %d failed: %s', (int)$p_event_id, (int)$p_telegram_user_id, $t_response->getDescription() ) );
+        }
+    } catch( Exception $t_error ) {
+        plugin_log_event( sprintf( 'ERROR! Calendar event = #%d, sendDocument to %d failed: %s', (int)$p_event_id, (int)$p_telegram_user_id, $t_error->getMessage() ) );
     }
 }
 
@@ -1602,9 +1989,12 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
  * The recipient is chosen by the reminder dispatcher of Calendar: the
  * reminders of the event or the personal defaults of the recipient, the
  * personal opt-out and the view threshold of the event are all applied there,
- * so this plugin adds nothing but its own transport requirement - a linked
- * Telegram account. The reminder goes alongside the mail of Calendar, the way
- * the notifications about the issues go alongside the mails of the core.
+ * so this plugin adds nothing but its own switches - the global one of the
+ * administrator and the personal one - and its transport requirement, a
+ * linked Telegram account. The switches are a choice about the channel, not
+ * about the reminders: whoever turns them off keeps the mails.
+ * The reminder goes alongside the mail of Calendar, the way the notifications
+ * about the issues go alongside the mails of the core.
  *
  * The occurrence is what the reminder is about, not the first start of the
  * event: a recurring event is stored once while every occurrence of it is
@@ -1619,13 +2009,18 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
  */
 function telegram_calendar_message_reminder( $p_event_id, $p_occurrence, $p_user_id, $p_offset ) {
 
-    if( !telegram_calendar_available() || OFF == plugin_config_get( 'enable_telegram_message_notification' ) ) {
+    if( !telegram_calendar_reminders_offered() || OFF == plugin_config_get( 'enable_telegram_message_notification' ) ) {
         return;
     }
 
     $t_telegram_user_id = telegram_user_get_id_by_user_id( (int)$p_user_id );
 
     if( $t_telegram_user_id == 0 ) {
+        return;
+    }
+
+    if( OFF == plugin_config_get( 'telegram_message_on_event_reminder', NULL, FALSE, (int)$p_user_id ) ) {
+        plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (pref telegram_message_on_event_reminder off)', (int)$p_event_id, (int)$p_user_id ) );
         return;
     }
 
@@ -1670,9 +2065,11 @@ function telegram_calendar_message_reminder( $p_event_id, $p_occurrence, $p_user
  * @param array   $p_event_row Row of the event, as event_get_row() returns it.
  * @param string  $p_header    First line of the text.
  * @param integer $p_user_id   Recipient of the notification.
+ * @param boolean $p_link      Whether the link to the event page closes the
+ *                             text; off for an event that is being deleted.
  * @return string
  */
-function telegram_calendar_event_message_compose( array $p_event_row, $p_header, $p_user_id ) {
+function telegram_calendar_event_message_compose( array $p_event_row, $p_header, $p_user_id, $p_link = TRUE ) {
 
     $t_separator1 = plugin_config_get( 'telegram_message_separator1' ) . PHP_EOL;
     $t_separator2 = plugin_config_get( 'telegram_message_separator2' ) . PHP_EOL;
@@ -1720,8 +2117,11 @@ function telegram_calendar_event_message_compose( array $p_event_row, $p_header,
     }
 
     $t_message .= $t_separator1;
-    $t_message .= telegram_calendar_event_view_url( $p_event_row ) . PHP_EOL;
-    $t_message .= $t_separator1;
+
+    if( $p_link ) {
+        $t_message .= telegram_calendar_event_view_url( $p_event_row ) . PHP_EOL;
+        $t_message .= $t_separator1;
+    }
 
     date_restore_timezone();
 

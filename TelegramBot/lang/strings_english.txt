@@ -360,6 +360,7 @@ $s_plugin_TelegramBot_wizard_required_missing = 'Answer the questions of the wiz
 $s_plugin_TelegramBot_event_creation_complete = 'Event #%1$d has been created.';
 $s_plugin_TelegramBot_event_message_created = 'A new calendar event';
 $s_plugin_TelegramBot_event_message_updated = 'A calendar event has been changed';
+$s_plugin_TelegramBot_event_message_reminder = 'Reminder: the calendar event starts in %1$s';
 $s_plugin_TelegramBot_event_error_name = 'The name of the event must not be empty.';
 $s_plugin_TelegramBot_event_error_description = 'The description must not be blank, press "Skip" to leave it out.';
 $s_plugin_TelegramBot_event_error_time = 'Enter the time as HH:MM, for example 09:30.';

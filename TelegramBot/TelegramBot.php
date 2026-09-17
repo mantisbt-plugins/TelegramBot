@@ -444,9 +444,11 @@ class TelegramBotPlugin extends MantisPlugin {
         if( plugin_is_registered( 'Calendar' ) ) {
             event_declare( 'EVENT_CALENDAR_EVENT_CREATED', EVENT_TYPE_EXECUTE );
             event_declare( 'EVENT_CALENDAR_EVENT_UPDATED', EVENT_TYPE_EXECUTE );
+            event_declare( 'EVENT_CALENDAR_EVENT_REMINDER', EVENT_TYPE_EXECUTE );
 
-            $t_hooks['EVENT_CALENDAR_EVENT_CREATED'] = 'telegram_calendar_event_created';
-            $t_hooks['EVENT_CALENDAR_EVENT_UPDATED'] = 'telegram_calendar_event_updated';
+            $t_hooks['EVENT_CALENDAR_EVENT_CREATED']  = 'telegram_calendar_event_created';
+            $t_hooks['EVENT_CALENDAR_EVENT_UPDATED']  = 'telegram_calendar_event_updated';
+            $t_hooks['EVENT_CALENDAR_EVENT_REMINDER'] = 'telegram_calendar_event_reminder';
         }
 
         return $t_hooks;
@@ -496,6 +498,25 @@ class TelegramBotPlugin extends MantisPlugin {
     function telegram_calendar_event_updated( $p_type_event, $p_event_id ) {
         plugin_log_event( sprintf( 'Calendar event #%d updated', $p_event_id ) );
         telegram_calendar_message_event( $p_event_id, 'updated' );
+    }
+
+    /**
+     * Remind one user about an occurrence of a calendar event coming up.
+     *
+     * EVENT_CALENDAR_EVENT_REMINDER is signalled by the reminder dispatcher of
+     * Calendar once per due reminder, that is once per occurrence, recipient and
+     * offset, and only for the users who may hear about the event and have not
+     * opted out of the reminders, so nothing is filtered here.
+     *
+     * @param string  $p_type_event Name of the signalled event.
+     * @param integer $p_event_id   Identifier of the calendar event.
+     * @param integer $p_occurrence Timestamp the occurrence starts at.
+     * @param integer $p_user_id    Recipient of the reminder.
+     * @param integer $p_offset     Seconds before the start the reminder was asked for.
+     * @return void
+     */
+    function telegram_calendar_event_reminder( $p_type_event, $p_event_id, $p_occurrence, $p_user_id, $p_offset ) {
+        telegram_calendar_message_reminder( $p_event_id, $p_occurrence, $p_user_id, $p_offset );
     }
 
     function telegram_message_bug_added( $p_type_event, $p_issue, $p_issue_id ) {

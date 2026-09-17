@@ -1586,7 +1586,7 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
 
         lang_push( user_pref_get_language( $t_user_id, (int)$t_event_row['project_id'] ) );
 
-        $t_text = telegram_calendar_event_message_compose( $t_event_row, 'event_message_' . $p_action, $t_user_id );
+        $t_text = telegram_calendar_event_message_compose( $t_event_row, plugin_lang_get( 'event_message_' . $p_action ), $t_user_id );
 
         lang_pop();
 
@@ -1597,7 +1597,64 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
 }
 
 /**
- * The text of the notification about an action on a calendar event.
+ * Remind one user about an occurrence of a calendar event coming up.
+ *
+ * The recipient is chosen by the reminder dispatcher of Calendar: the
+ * reminders of the event or the personal defaults of the recipient, the
+ * personal opt-out and the view threshold of the event are all applied there,
+ * so this plugin adds nothing but its own transport requirement - a linked
+ * Telegram account. The reminder goes alongside the mail of Calendar, the way
+ * the notifications about the issues go alongside the mails of the core.
+ *
+ * The occurrence is what the reminder is about, not the first start of the
+ * event: a recurring event is stored once while every occurrence of it is
+ * reminded of, so the dates and the link of the text are moved to the
+ * occurrence, the length of the event being kept.
+ *
+ * @param integer $p_event_id   Identifier of the event.
+ * @param integer $p_occurrence Timestamp the occurrence starts at.
+ * @param integer $p_user_id    Recipient of the reminder.
+ * @param integer $p_offset     Seconds before the start the reminder was asked for.
+ * @return void
+ */
+function telegram_calendar_message_reminder( $p_event_id, $p_occurrence, $p_user_id, $p_offset ) {
+
+    if( !telegram_calendar_available() || OFF == plugin_config_get( 'enable_telegram_message_notification' ) ) {
+        return;
+    }
+
+    $t_telegram_user_id = telegram_user_get_id_by_user_id( (int)$p_user_id );
+
+    if( $t_telegram_user_id == 0 ) {
+        return;
+    }
+
+    $t_event_row = telegram_calendar_call( 'event_get_row', array( (int)$p_event_id ) );
+
+    if( !is_array( $t_event_row ) ) {
+        return;
+    }
+
+    $t_event_row['date_to']   = (int)$p_occurrence + (int)$t_event_row['date_to'] - (int)$t_event_row['date_from'];
+    $t_event_row['date_from'] = (int)$p_occurrence;
+
+    lang_push( user_pref_get_language( (int)$p_user_id, (int)$t_event_row['project_id'] ) );
+
+    # the offset is worded by Calendar, in the units it was entered in
+    $t_header = sprintf( plugin_lang_get( 'event_message_reminder' ),
+                         telegram_calendar_call( 'calendar_reminder_format_offset', array( (int)$p_offset ) ) );
+
+    $t_text = telegram_calendar_event_message_compose( $t_event_row, $t_header, (int)$p_user_id );
+
+    lang_pop();
+
+    plugin_log_event( sprintf( 'Calendar event = #%d, reminder at %s, add @U%d', (int)$p_event_id, date( 'c', (int)$p_occurrence ), (int)$p_user_id ) );
+
+    telegram_session_send_message( $t_telegram_user_id, array( 'text' => $t_text ) );
+}
+
+/**
+ * The text of the notification about a calendar event.
  *
  * The text is laid out the way the notifications about the issues are: the
  * same separators, the labels padded to the same column and the link to the
@@ -1605,20 +1662,31 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
  *
  * The text is built for one recipient, as email_build_visible_bug_data() does
  * it for the issues: the members are listed only when the recipient may see
- * the member list, and of the linked issues only those the recipient may view.
+ * the member list, of the linked issues only those the recipient may view, and
+ * the dates are rendered in the timezone of the recipient, the way the
+ * reminder mails of Calendar do it - the notification may well be sent from a
+ * cron job, where the timezone of the process means nothing to the reader.
  *
- * @param array   $p_event_row  Row of the event, as event_get_row() returns it.
- * @param string  $p_header_key Plugin lang key of the first line of the text.
- * @param integer $p_user_id    Recipient of the notification.
+ * @param array   $p_event_row Row of the event, as event_get_row() returns it.
+ * @param string  $p_header    First line of the text.
+ * @param integer $p_user_id   Recipient of the notification.
  * @return string
  */
-function telegram_calendar_event_message_compose( array $p_event_row, $p_header_key, $p_user_id ) {
+function telegram_calendar_event_message_compose( array $p_event_row, $p_header, $p_user_id ) {
 
     $t_separator1 = plugin_config_get( 'telegram_message_separator1' ) . PHP_EOL;
     $t_separator2 = plugin_config_get( 'telegram_message_separator2' ) . PHP_EOL;
     $t_event_id   = (int)$p_event_row['id'];
 
-    $t_message = plugin_lang_get( $p_header_key ) . PHP_EOL;
+    $t_timezone = user_pref_get_pref( $p_user_id, 'timezone' );
+
+    if( is_blank( $t_timezone ) ) {
+        $t_timezone = config_get_global( 'default_timezone' );
+    }
+
+    date_set_timezone( $t_timezone );
+
+    $t_message = $p_header . PHP_EOL;
     $t_message .= $t_separator1;
     $t_message .= telegram_message_format_line( lang_get( 'email_project' ), project_get_name( (int)$p_event_row['project_id'], /* trigger_errors */ FALSE ) );
     $t_message .= $t_separator2;
@@ -1654,6 +1722,8 @@ function telegram_calendar_event_message_compose( array $p_event_row, $p_header_
     $t_message .= $t_separator1;
     $t_message .= telegram_calendar_event_view_url( $p_event_row ) . PHP_EOL;
     $t_message .= $t_separator1;
+
+    date_restore_timezone();
 
     return $t_message;
 }

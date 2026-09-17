@@ -362,6 +362,7 @@ $s_plugin_TelegramBot_wizard_required_missing = 'Responda primero a las pregunta
 $s_plugin_TelegramBot_event_creation_complete = 'El evento #%1$d ha sido creado.';
 $s_plugin_TelegramBot_event_message_created = 'Nuevo evento del calendario';
 $s_plugin_TelegramBot_event_message_updated = 'Un evento del calendario ha sido modificado';
+$s_plugin_TelegramBot_event_message_reminder = 'Recordatorio: el evento del calendario empieza dentro de %1$s';
 $s_plugin_TelegramBot_event_error_name = 'El nombre del evento no puede estar vacío.';
 $s_plugin_TelegramBot_event_error_description = 'La descripción no puede estar vacía, pulse «Omitir» para dejarla fuera.';
 $s_plugin_TelegramBot_event_error_time = 'Introduzca la hora en formato HH:MM, por ejemplo 09:30.';

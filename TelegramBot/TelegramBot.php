@@ -430,21 +430,23 @@ class TelegramBotPlugin extends MantisPlugin {
                                   //'EVENT_BUG_DELETED' => 'delete_realatationship_tgmessage',
         );
 
-        # EVENT_CALENDAR_EVENT_CREATED belongs to the Calendar plugin, and hooking an
-        # event nobody has declared raises a warning. The order the plugins are
-        # initialized in is not defined, so Calendar may still be waiting for its
-        # turn while this runs and its event may not be declared yet; the plugins
-        # are all registered before any of them is initialized, though, so the
-        # presence of Calendar itself is a reliable test.
-        # The event is declared here as well for the case this plugin comes first:
-        # event_declare() keeps the declaration made first and the type below is
-        # the one Calendar declares, so the two declarations cannot disagree.
-        # Without Calendar nothing ever signals the event and the callback simply
-        # never runs, which is why no dependency on Calendar is needed.
+        # The EVENT_CALENDAR_EVENT_* events belong to the Calendar plugin, and
+        # hooking an event nobody has declared raises a warning. The order the
+        # plugins are initialized in is not defined, so Calendar may still be
+        # waiting for its turn while this runs and its events may not be declared
+        # yet; the plugins are all registered before any of them is initialized,
+        # though, so the presence of Calendar itself is a reliable test.
+        # The events are declared here as well for the case this plugin comes
+        # first: event_declare() keeps the declaration made first and the type
+        # below is the one Calendar declares, so the declarations cannot disagree.
+        # Without Calendar nothing ever signals the events and the callbacks
+        # simply never run, which is why no dependency on Calendar is needed.
         if( plugin_is_registered( 'Calendar' ) ) {
             event_declare( 'EVENT_CALENDAR_EVENT_CREATED', EVENT_TYPE_EXECUTE );
+            event_declare( 'EVENT_CALENDAR_EVENT_UPDATED', EVENT_TYPE_EXECUTE );
 
             $t_hooks['EVENT_CALENDAR_EVENT_CREATED'] = 'telegram_calendar_event_created';
+            $t_hooks['EVENT_CALENDAR_EVENT_UPDATED'] = 'telegram_calendar_event_updated';
         }
 
         return $t_hooks;
@@ -465,7 +467,7 @@ class TelegramBotPlugin extends MantisPlugin {
     }
 
     /**
-     * Notify the members of a calendar event about its creation.
+     * Notify the circle of a calendar event about its creation.
      *
      * EVENT_CALENDAR_EVENT_CREATED is declared as EVENT_TYPE_EXECUTE and signalled
      * with a single parameter, so the callback receives the name of the event and
@@ -477,7 +479,23 @@ class TelegramBotPlugin extends MantisPlugin {
      */
     function telegram_calendar_event_created( $p_type_event, $p_event_id ) {
         plugin_log_event( sprintf( 'Calendar event #%d created', $p_event_id ) );
-        telegram_calendar_message_event_created( $p_event_id );
+        telegram_calendar_message_event( $p_event_id, 'created' );
+    }
+
+    /**
+     * Notify the circle of a calendar event about a change of it.
+     *
+     * EVENT_CALENDAR_EVENT_UPDATED is declared as EVENT_TYPE_EXECUTE and signalled
+     * with a single parameter, so the callback receives the name of the event and
+     * the identifier of the calendar event changed.
+     *
+     * @param string  $p_type_event Name of the signalled event.
+     * @param integer $p_event_id   Identifier of the changed calendar event.
+     * @return void
+     */
+    function telegram_calendar_event_updated( $p_type_event, $p_event_id ) {
+        plugin_log_event( sprintf( 'Calendar event #%d updated', $p_event_id ) );
+        telegram_calendar_message_event( $p_event_id, 'updated' );
     }
 
     function telegram_message_bug_added( $p_type_event, $p_issue, $p_issue_id ) {

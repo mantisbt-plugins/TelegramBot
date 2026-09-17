@@ -151,6 +151,7 @@ $s_plugin_TelegramBot_bug_creation_complete = 'Создана %1$s: ';
 $s_plugin_TelegramBot_history_issue_created = 'Задача создана через Telegram';
 $s_plugin_TelegramBot_history_note_added = 'Комментарий добавлен через Telegram';
 $s_plugin_TelegramBot_history_file_added = 'Вложение загружено через Telegram';
+$s_plugin_TelegramBot_history_event_created = 'Событие создано через Telegram';
 
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_new = 'Следующей задаче присвоено состояние НОВАЯ (повторно):';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_feedback = 'По следующей задаче от вас НУЖНА ОБРАТНАЯ СВЯЗЬ:';
@@ -355,6 +356,7 @@ $s_plugin_TelegramBot_event_menu_prompt = 'Всё заполнено, событ
 $s_plugin_TelegramBot_wizard_required_missing = 'Сначала ответьте на вопросы мастера.';
 $s_plugin_TelegramBot_event_creation_complete = 'Событие #%1$d создано.';
 $s_plugin_TelegramBot_event_message_created = 'Новое событие календаря';
+$s_plugin_TelegramBot_event_message_updated = 'Событие календаря изменено';
 $s_plugin_TelegramBot_event_error_name = 'Название события не может быть пустым.';
 $s_plugin_TelegramBot_event_error_time = 'Введите время в формате ЧЧ:ММ, например 09:30.';
 $s_plugin_TelegramBot_event_error_range = 'Событие должно заканчиваться позже, чем начинается.';

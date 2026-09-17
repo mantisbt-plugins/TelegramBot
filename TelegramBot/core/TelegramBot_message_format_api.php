@@ -85,10 +85,22 @@ function telegram_message_format_bugnote( $p_bugnote, $p_project_id, $p_show_tim
  */
 function telegraml_message_format_attribute( array $p_visible_bug_data, $p_attribute_id ) {
     if( array_key_exists( $p_attribute_id, $p_visible_bug_data ) ) {
-        return utf8_str_pad( lang_get( $p_attribute_id ) . ': ', plugin_config_get( 'telegram_message_padding_length' ), ' ', STR_PAD_RIGHT ) . $p_visible_bug_data[$p_attribute_id] . "\n";
+        return telegram_message_format_line( lang_get( $p_attribute_id ), $p_visible_bug_data[$p_attribute_id] );
 //        return lang_get( $p_attribute_id ) . ':' . PHP_EOL . plugin_config_get( 'telegram_message_separator2' ) . PHP_EOL . $p_visible_bug_data[$p_attribute_id] . PHP_EOL . plugin_config_get( 'telegram_message_separator2' ) . PHP_EOL;
     }
     return '';
+}
+
+/**
+ * One line of a notification: the label padded to the configured width, then
+ * the value, so the values of consecutive lines line up in a column.
+ *
+ * @param string $p_label Label of the line, without the colon.
+ * @param string $p_value Value of the line.
+ * @return string The line, newline included.
+ */
+function telegram_message_format_line( $p_label, $p_value ) {
+    return utf8_str_pad( $p_label . ': ', plugin_config_get( 'telegram_message_padding_length' ), ' ', STR_PAD_RIGHT ) . $p_value . "\n";
 }
 
 /**

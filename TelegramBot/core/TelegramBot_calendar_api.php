@@ -627,7 +627,7 @@ function telegram_event_draft_step_display( $p_step, array $p_draft ) {
                     continue;
                 }
 
-                $t_issues[] = lang_get( 'issue_id' ) . $t_bug_id . ': ' . bug_get_field( $t_bug_id, 'summary' );
+                $t_issues[] = telegram_event_issue_display( $t_bug_id );
             }
 
             # one issue per line, the summaries make a single line unreadable
@@ -648,6 +648,17 @@ function telegram_event_draft_step_display( $p_step, array $p_draft ) {
     }
 
     return (string)$t_value;
+}
+
+/**
+ * An issue of an event the way the card and the notifications name it.
+ *
+ * @param integer $p_bug_id Identifier of an existing issue.
+ * @return string
+ */
+function telegram_event_issue_display( $p_bug_id ) {
+
+    return lang_get( 'issue_id' ) . $p_bug_id . ': ' . bug_get_field( $p_bug_id, 'summary' );
 }
 
 /**
@@ -1575,7 +1586,7 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
 
         lang_push( user_pref_get_language( $t_user_id, (int)$t_event_row['project_id'] ) );
 
-        $t_text = telegram_calendar_event_message_compose( $t_event_row, 'event_message_' . $p_action );
+        $t_text = telegram_calendar_event_message_compose( $t_event_row, 'event_message_' . $p_action, $t_user_id );
 
         lang_pop();
 
@@ -1588,27 +1599,141 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
 /**
  * The text of the notification about an action on a calendar event.
  *
- * @param array  $p_event_row Row of the event, as event_get_row() returns it.
- * @param string $p_header_key Plugin lang key of the first line of the text.
+ * The text is laid out the way the notifications about the issues are: the
+ * same separators, the labels padded to the same column and the link to the
+ * event at the end, so both kinds of notifications read alike in the chat.
+ *
+ * The text is built for one recipient, as email_build_visible_bug_data() does
+ * it for the issues: the members are listed only when the recipient may see
+ * the member list, and of the linked issues only those the recipient may view.
+ *
+ * @param array   $p_event_row  Row of the event, as event_get_row() returns it.
+ * @param string  $p_header_key Plugin lang key of the first line of the text.
+ * @param integer $p_user_id    Recipient of the notification.
  * @return string
  */
-function telegram_calendar_event_message_compose( array $p_event_row, $p_header_key ) {
+function telegram_calendar_event_message_compose( array $p_event_row, $p_header_key, $p_user_id ) {
 
-    $t_lines = array();
+    $t_separator1 = plugin_config_get( 'telegram_message_separator1' ) . PHP_EOL;
+    $t_separator2 = plugin_config_get( 'telegram_message_separator2' ) . PHP_EOL;
+    $t_event_id   = (int)$p_event_row['id'];
 
-    $t_lines[] = plugin_lang_get( $p_header_key );
-    $t_lines[] = plugin_lang_get( 'event_name' ) . ': ' . $p_event_row['name'];
+    $t_message = plugin_lang_get( $p_header_key ) . PHP_EOL;
+    $t_message .= $t_separator1;
+    $t_message .= telegram_message_format_line( lang_get( 'email_project' ), project_get_name( (int)$p_event_row['project_id'], /* trigger_errors */ FALSE ) );
+    $t_message .= $t_separator2;
+    $t_message .= telegram_message_format_line( plugin_lang_get( 'event_name' ), $p_event_row['name'] );
 
     # the column is missing in the older Calendar versions and empty in most
-    # events, the line is shown only when there is something to show
+    # events, the block is shown only when there is something to show
     if( !empty( $p_event_row['description'] ) ) {
-        $t_lines[] = plugin_lang_get( 'event_description' ) . ': ' . $p_event_row['description'];
+        $t_message .= $t_separator2;
+        $t_message .= plugin_lang_get( 'event_description' ) . ':' . PHP_EOL . $p_event_row['description'] . PHP_EOL;
     }
 
-    $t_lines[] = lang_get( 'email_project' ) . ': ' . project_get_name( (int)$p_event_row['project_id'], /* trigger_errors */ FALSE );
-    $t_lines[] = plugin_lang_get( 'event_date_from' ) . ': ' . telegram_event_datetime_display( (int)$p_event_row['date_from'] );
-    $t_lines[] = plugin_lang_get( 'event_date_to' ) . ': ' . telegram_event_datetime_display( (int)$p_event_row['date_to'] );
-    $t_lines[] = plugin_lang_get( 'event_author' ) . ': ' . user_get_name( (int)$p_event_row['author_id'] );
+    $t_message .= $t_separator1;
+    $t_message .= telegram_message_format_line( plugin_lang_get( 'event_author' ), user_get_name( (int)$p_event_row['author_id'] ) );
 
-    return implode( PHP_EOL, $t_lines );
+    $t_members = telegram_calendar_event_members_display( $t_event_id, $p_user_id );
+
+    if( !is_blank( $t_members ) ) {
+        $t_message .= telegram_message_format_line( plugin_lang_get( 'event_members' ), $t_members );
+    }
+
+    $t_message .= $t_separator1;
+    $t_message .= telegram_message_format_line( plugin_lang_get( 'event_date_from' ), telegram_event_datetime_display( (int)$p_event_row['date_from'] ) );
+    $t_message .= telegram_message_format_line( plugin_lang_get( 'event_date_to' ), telegram_event_datetime_display( (int)$p_event_row['date_to'] ) );
+
+    $t_issues = telegram_calendar_event_issues_display( $t_event_id, $p_user_id );
+
+    if( !is_blank( $t_issues ) ) {
+        $t_message .= $t_separator1;
+        $t_message .= plugin_lang_get( 'event_bugs' ) . ':' . PHP_EOL . $t_issues . PHP_EOL;
+    }
+
+    $t_message .= $t_separator1;
+    $t_message .= telegram_calendar_event_view_url( $p_event_row ) . PHP_EOL;
+    $t_message .= $t_separator1;
+
+    return $t_message;
+}
+
+/**
+ * The members of a calendar event as the given user may see them.
+ *
+ * The member list of Calendar is guarded by its show_member_list_threshold,
+ * which event_get_members() checks against the current user - the one acting,
+ * while the notification goes to somebody else. The rule is applied to the
+ * recipient here, the way the visible data of an issue is built for the
+ * recipient of its notification.
+ *
+ * @param integer $p_event_id Event the members belong to.
+ * @param integer $p_user_id  User the list is shown to.
+ * @return string The names separated by commas, empty when there is nothing to show.
+ */
+function telegram_calendar_event_members_display( $p_event_id, $p_user_id ) {
+
+    plugin_push_current( 'Calendar' );
+
+    try {
+        if( !access_has_event_level( plugin_config_get( 'show_member_list_threshold' ), $p_event_id, $p_user_id ) ) {
+            return '';
+        }
+
+        $t_members = event_get_members( $p_event_id );
+    } finally {
+        plugin_pop_current();
+    }
+
+    $t_names = array();
+
+    foreach( $t_members as $t_member_id ) {
+        $t_names[] = user_get_name( (int)$t_member_id );
+    }
+
+    return implode( ', ', $t_names );
+}
+
+/**
+ * The issues linked to a calendar event as the given user may see them.
+ *
+ * @param integer $p_event_id Event the issues are linked to.
+ * @param integer $p_user_id  User the list is shown to.
+ * @return string An issue per line, each followed by the line of its link;
+ *                empty when there is nothing to show.
+ */
+function telegram_calendar_event_issues_display( $p_event_id, $p_user_id ) {
+
+    $t_issues = array();
+
+    foreach( telegram_calendar_call( 'event_get_attached_bugs_id', array( $p_event_id ) ) as $t_bug_id ) {
+        $t_bug_id = (int)$t_bug_id;
+
+        # a link may outlive its issue, and a deleted one has nothing to show
+        if( !bug_exists( $t_bug_id ) || !access_has_bug_level( config_get( 'view_bug_threshold' ), $t_bug_id, $p_user_id ) ) {
+            continue;
+        }
+
+        # the link is the one the notifications about the issues carry
+        $t_issues[] = telegram_event_issue_display( $t_bug_id ) . PHP_EOL . string_get_bug_view_url_with_fqdn( $t_bug_id );
+    }
+
+    # one issue per line, the summaries make a single line unreadable
+    return implode( PHP_EOL, $t_issues );
+}
+
+/**
+ * The link to the page of a calendar event.
+ *
+ * Built from the configured path of the installation the way Calendar builds
+ * the links of its own mails, so it holds in a notification sent from the
+ * polling script as well, where there is no request to take the host from.
+ *
+ * @param array $p_event_row Row of the event, as event_get_row() returns it.
+ * @return string
+ */
+function telegram_calendar_event_view_url( array $p_event_row ) {
+
+    return config_get_global( 'path' ) . plugin_page( 'view', /* redirect */ TRUE, 'Calendar' )
+            . '&event_id=' . (int)$p_event_row['id'] . '&date=' . (int)$p_event_row['date_from'];
 }

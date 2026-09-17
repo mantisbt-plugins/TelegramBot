@@ -2132,10 +2132,10 @@ function telegram_calendar_event_message_compose( array $p_event_row, $p_header,
  * The members of a calendar event as the given user may see them.
  *
  * The member list of Calendar is guarded by its show_member_list_threshold,
- * which event_get_members() checks against the current user - the one acting,
- * while the notification goes to somebody else. The rule is applied to the
- * recipient here, the way the visible data of an issue is built for the
- * recipient of its notification.
+ * which event_get_members() checks against the given user: the notification
+ * goes to somebody other than the one acting, and the cron has no acting
+ * user at all, so the recipient is passed explicitly, the way the visible
+ * data of an issue is built for the recipient of its notification.
  *
  * @param integer $p_event_id Event the members belong to.
  * @param integer $p_user_id  User the list is shown to.
@@ -2143,17 +2143,7 @@ function telegram_calendar_event_message_compose( array $p_event_row, $p_header,
  */
 function telegram_calendar_event_members_display( $p_event_id, $p_user_id ) {
 
-    plugin_push_current( 'Calendar' );
-
-    try {
-        if( !access_has_event_level( plugin_config_get( 'show_member_list_threshold' ), $p_event_id, $p_user_id ) ) {
-            return '';
-        }
-
-        $t_members = event_get_members( $p_event_id );
-    } finally {
-        plugin_pop_current();
-    }
+    $t_members = telegram_calendar_call( 'event_get_members', array( $p_event_id, $p_user_id ) );
 
     $t_names = array();
 

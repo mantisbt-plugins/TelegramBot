@@ -177,12 +177,13 @@ function telegram_event_draft_clear( $p_user_id = NULL ) {
 function telegram_event_draft_new() {
 
     return array(
-                              'project'   => '',
-                              'name'      => '',
-                              'date_from' => '',
-                              'date_to'   => '',
-                              'bug_ids'   => '',
-                              'members'   => '',
+                              'project'     => '',
+                              'name'        => '',
+                              'description' => '',
+                              'date_from'   => '',
+                              'date_to'     => '',
+                              'bug_ids'     => '',
+                              'members'     => '',
     );
 }
 
@@ -237,7 +238,7 @@ function telegram_event_busy_dialog_message() {
  */
 function telegram_event_draft_steps_get() {
 
-    return array( 'project', 'name', 'date_from', 'date_to', 'bug_ids', 'members' );
+    return array( 'project', 'name', 'description', 'date_from', 'date_to', 'bug_ids', 'members' );
 }
 
 /**
@@ -334,7 +335,7 @@ function telegram_event_draft_step_last_answered( array $p_draft ) {
 /**
  * Describe the event wizard for the navigation buttons of its cards.
  *
- * The steps of the wizard are known beforehand and there are six of them, so every
+ * The steps of the wizard are known beforehand and there are seven of them, so every
  * step back button is written by hand and reads as a sentence of the language of the
  * user, the way the mandatory steps of the issue wizard do.
  *
@@ -565,6 +566,9 @@ function telegram_event_draft_step_label( $p_step ) {
         case 'name':
             return plugin_lang_get( 'event_name' );
 
+        case 'description':
+            return plugin_lang_get( 'event_description' );
+
         case 'date_from':
             return plugin_lang_get( 'event_date_from' );
 
@@ -733,6 +737,15 @@ function telegram_event_draft_step_ask( $p_step, array $p_draft, &$p_question, $
 
         case 'name':
             $t_await = 'name';
+            break;
+
+        case 'description':
+            $t_await    = 'description';
+            $p_question = plugin_lang_get( 'event_description_prompt' );
+
+            keyboard_skip_button_add( $t_inline_keyboard, array(
+                                      TelegrambotActions::CREATE_EVENT_TAG => array( TelegrambotActions::SKIP_FIELD => 'description' )
+            ) );
             break;
 
         case 'date_from':
@@ -972,6 +985,8 @@ function telegram_event_draft_submit( array $p_draft ) {
 
     $t_request->project_id         = (int)$p_draft['project'];
     $t_request->name               = (string)$p_draft['name'];
+    # a skipped description holds null, the request wants an empty string
+    $t_request->description        = (string)$p_draft['description'];
     $t_request->user_id            = (int)$t_user_id;
     $t_request->date_from          = (int)$p_draft['date_from'];
     $t_request->date_to            = (int)$p_draft['date_to'];
@@ -1063,6 +1078,17 @@ function telegram_event_draft_text_answer( $p_text ) {
             }
 
             $t_draft['name'] = $t_text;
+            break;
+
+        case 'description':
+            # the field is optional, but a blank message is a slip rather than
+            # an answer: the skip button is the way to leave it out
+            if( is_blank( $t_text ) ) {
+                $t_error = plugin_lang_get( 'event_error_description' );
+                break;
+            }
+
+            $t_draft['description'] = $t_text;
             break;
 
         case 'date_from_time':
@@ -1572,7 +1598,13 @@ function telegram_calendar_event_message_compose( array $p_event_row, $p_header_
 
     $t_lines[] = plugin_lang_get( $p_header_key );
     $t_lines[] = plugin_lang_get( 'event_name' ) . ': ' . $p_event_row['name'];
+
+    # the column is missing in the older Calendar versions and empty in most
+    # events, the line is shown only when there is something to show
+    if( !empty( $p_event_row['description'] ) ) {
+        $t_lines[] = plugin_lang_get( 'event_description' ) . ': ' . $p_event_row['description'];
     }
+
     $t_lines[] = lang_get( 'email_project' ) . ': ' . project_get_name( (int)$p_event_row['project_id'], /* trigger_errors */ FALSE );
     $t_lines[] = plugin_lang_get( 'event_date_from' ) . ': ' . telegram_event_datetime_display( (int)$p_event_row['date_from'] );
     $t_lines[] = plugin_lang_get( 'event_date_to' ) . ': ' . telegram_event_datetime_display( (int)$p_event_row['date_to'] );

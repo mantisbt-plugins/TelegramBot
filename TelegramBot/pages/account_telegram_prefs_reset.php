@@ -58,6 +58,11 @@ plugin_config_delete( 'telegram_message_on_bugnote_min_severity', $f_user_id, AL
 plugin_config_delete( 'telegram_message_on_status_min_severity', $f_user_id, ALL_PROJECTS );
 plugin_config_delete( 'telegram_message_on_priority_min_severity', $f_user_id, ALL_PROJECTS );
 plugin_config_delete( 'telegram_message_notifications_verbose', $f_user_id, ALL_PROJECTS );
+plugin_config_delete( 'calendar_ics_attach', $f_user_id, ALL_PROJECTS );
+
+foreach( telegram_calendar_event_prefs() as $t_pref ) {
+    plugin_config_delete( $t_pref, $f_user_id, ALL_PROJECTS );
+}
 
 form_security_purge( 'account_telegram_prefs_reset' );
 

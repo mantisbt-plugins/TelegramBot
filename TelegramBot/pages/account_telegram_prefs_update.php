@@ -59,6 +59,20 @@ plugin_config_set( 'telegram_message_on_status_min_severity', gpc_get_int( 'tele
 plugin_config_set( 'telegram_message_on_priority_min_severity', gpc_get_int( 'telegram_message_on_priority_min_severity' ), $f_user_id, ALL_PROJECTS );
 plugin_config_set( 'telegram_message_included_all_bugnote_is', gpc_get_bool( 'telegram_message_included_all_bugnote_is' ) ? 1 : 0, $f_user_id, ALL_PROJECTS );
 
+# the choice is taken only while the file is offered: the checkbox is not shown otherwise
+if( telegram_calendar_available() ) {
+    foreach( telegram_calendar_event_prefs() as $t_pref ) {
+        if( !telegram_calendar_pref_offered( $t_pref ) ) {
+            continue;
+        }
+        plugin_config_set( $t_pref, gpc_get_bool( $t_pref ) ? ON : OFF, $f_user_id, ALL_PROJECTS );
+    }
+}
+
+if( telegram_calendar_ics_offered() ) {
+    plugin_config_set( 'calendar_ics_attach', gpc_get_bool( 'calendar_ics_attach' ) ? ON : OFF, $f_user_id, ALL_PROJECTS );
+}
+
 # Save user preference with regards to getting full issue details in notifications or not.
 $t_telegram_message_full_issue         = gpc_get_bool( 'telegram_message_full_issue' ) ? 1 : 0;
 $t_telegram_message_full_config_option = 'telegram_message_notifications_verbose';

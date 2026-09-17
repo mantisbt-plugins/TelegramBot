@@ -151,6 +151,7 @@ $s_plugin_TelegramBot_bug_creation_complete = 'Created %1$s: ';
 $s_plugin_TelegramBot_history_issue_created = 'Issue reported via Telegram';
 $s_plugin_TelegramBot_history_note_added = 'Note added via Telegram';
 $s_plugin_TelegramBot_history_file_added = 'Attachment uploaded via Telegram';
+$s_plugin_TelegramBot_history_event_created = 'Event created via Telegram';
 
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_new = 'The following issue is now in status NEW (again)';
 $s_plugin_TelegramBot_telegram_message_notification_title_for_status_bug_feedback = 'The following issue requires your FEEDBACK.';
@@ -355,6 +356,7 @@ $s_plugin_TelegramBot_event_menu_prompt = 'Everything is filled in, the event ca
 $s_plugin_TelegramBot_wizard_required_missing = 'Answer the questions of the wizard first.';
 $s_plugin_TelegramBot_event_creation_complete = 'Event #%1$d has been created.';
 $s_plugin_TelegramBot_event_message_created = 'A new calendar event';
+$s_plugin_TelegramBot_event_message_updated = 'A calendar event has been changed';
 $s_plugin_TelegramBot_event_error_name = 'The name of the event must not be empty.';
 $s_plugin_TelegramBot_event_error_time = 'Enter the time as HH:MM, for example 09:30.';
 $s_plugin_TelegramBot_event_error_range = 'The event must end later than it starts.';

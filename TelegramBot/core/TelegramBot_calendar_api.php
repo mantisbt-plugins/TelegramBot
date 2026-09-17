@@ -38,7 +38,6 @@ define( 'TELEGRAM_EVENT_TIME_ACTION', 'tm' );
 # Minutes offered by the time picker, any other minute is sent as a text
 define( 'TELEGRAM_EVENT_TIME_MINUTE_STEP', 5 );
 
-
 # Identifiers of the two dates within the callback data of the inline calendar,
 # kept to a single character because callback_data is limited to 64 bytes
 define( 'TELEGRAM_EVENT_DATE_FROM', 'f' );
@@ -997,6 +996,17 @@ function telegram_event_draft_submit( array $p_draft ) {
 
     plugin_log_event( sprintf( 'Calendar event #%d created from the chat', $t_event_id ) );
 
+    # mark the origin in the history of the event; the guard keeps the older
+    # Calendar versions working, which lack the plugin history facade. The
+    # event is already created, so a failure here must not fail the card.
+    if( function_exists( 'calendar_api_event_history_log' ) ) {
+        try {
+            calendar_api_event_history_log( $t_event_id, 'history_event_created' );
+        } catch( Mantis\Exceptions\MantisException $t_error ) {
+            plugin_log_event( sprintf( 'History of event #%d not written: %s', $t_event_id, $t_error->getMessage() ) );
+        }
+    }
+
     # the base name is passed explicitly: plugin_page() of the current plugin
     # would point the link at TelegramBot instead of Calendar
     $t_url = config_get_global( 'path' ) . plugin_page( 'view', /* redirect */ TRUE, 'Calendar' )
@@ -1489,17 +1499,27 @@ function telegram_event_date_step_get( $p_payload ) {
 }
 
 /**
- * Notify the members of a calendar event about its creation.
+ * Notify the circle of a calendar event about an action on it.
  *
- * The subscribers of EVENT_CALENDAR_EVENT_CREATED are called with this plugin
- * being the current one, so every function of Calendar is called on behalf of
+ * The circle is the very audience of the mails of the calendar, asked through
+ * calendar_api_event_notify_recipients(): the notification matrix of the
+ * project, the personal notify_event_* choices and the view threshold of the
+ * event are all applied by the calendar itself, so this plugin adds nothing
+ * but its own transport requirement - a linked Telegram account. Whether the
+ * acting user hears about the own action is a matrix decision too, which is
+ * why the current user is passed as the actor instead of being filtered here.
+ *
+ * The subscribers of the calendar events are called with this plugin being
+ * the current one, so every function of Calendar is called on behalf of
  * Calendar itself, otherwise its tables and settings would be looked up under
  * the name of this plugin.
  *
- * @param integer $p_event_id Identifier of the created event.
+ * @param integer $p_event_id Identifier of the event.
+ * @param string  $p_action   Row of the notification matrix, 'created' or
+ *                            'updated', see calendar_notify_actions().
  * @return void
  */
-function telegram_calendar_message_event_created( $p_event_id ) {
+function telegram_calendar_message_event( $p_event_id, $p_action ) {
 
     if( !telegram_calendar_available() || OFF == plugin_config_get( 'enable_telegram_message_notification' ) ) {
         return;
@@ -1511,57 +1531,48 @@ function telegram_calendar_message_event_created( $p_event_id ) {
         return;
     }
 
-    $t_members = telegram_calendar_call( 'event_get_members', array( (int)$p_event_id ) );
-
-    if( !is_array( $t_members ) || count( $t_members ) == 0 ) {
+    try {
+        $t_recipients = calendar_api_event_notify_recipients( (int)$p_event_id, $p_action, auth_get_current_user_id() );
+    } catch( \Mantis\Exceptions\ClientException $t_exception ) {
+        plugin_log_event( sprintf( 'Calendar event = #%d, %s: recipients unavailable: %s', (int)$p_event_id, $p_action, $t_exception->getMessage() ) );
         return;
     }
 
-    $t_author_id = (int)$t_event_row['author_id'];
+    foreach( $t_recipients as $t_user_id ) {
+        $t_user_id = (int)$t_user_id;
 
-    foreach( $t_members as $t_member_id ) {
-        $t_member_id = (int)$t_member_id;
-
-        # the notifications of the issues drop the user acting, this one drops
-        # the author of the event for the very same reason
-        if( $t_member_id == $t_author_id && OFF == plugin_config_get( 'telegram_message_receive_own' ) ) {
-            continue;
-        }
-
-        if( !user_exists( $t_member_id ) || !user_is_enabled( $t_member_id ) ) {
-            continue;
-        }
-
-        $t_telegram_user_id = telegram_user_get_id_by_user_id( $t_member_id );
+        $t_telegram_user_id = telegram_user_get_id_by_user_id( $t_user_id );
 
         if( $t_telegram_user_id == 0 ) {
             continue;
         }
 
-        lang_push( user_pref_get_language( $t_member_id, (int)$t_event_row['project_id'] ) );
+        lang_push( user_pref_get_language( $t_user_id, (int)$t_event_row['project_id'] ) );
 
-        $t_text = telegram_calendar_event_message_compose( $t_event_row );
+        $t_text = telegram_calendar_event_message_compose( $t_event_row, 'event_message_' . $p_action );
 
         lang_pop();
 
-        plugin_log_event( sprintf( 'Calendar event = #%d, add @U%d (member)', (int)$p_event_id, $t_member_id ) );
+        plugin_log_event( sprintf( 'Calendar event = #%d, %s, add @U%d', (int)$p_event_id, $p_action, $t_user_id ) );
 
         telegram_session_send_message( $t_telegram_user_id, array( 'text' => $t_text ) );
     }
 }
 
 /**
- * The text of the notification about a created calendar event.
+ * The text of the notification about an action on a calendar event.
  *
- * @param array $p_event_row Row of the event, as event_get_row() returns it.
+ * @param array  $p_event_row Row of the event, as event_get_row() returns it.
+ * @param string $p_header_key Plugin lang key of the first line of the text.
  * @return string
  */
-function telegram_calendar_event_message_compose( array $p_event_row ) {
+function telegram_calendar_event_message_compose( array $p_event_row, $p_header_key ) {
 
     $t_lines = array();
 
-    $t_lines[] = plugin_lang_get( 'event_message_created' );
+    $t_lines[] = plugin_lang_get( $p_header_key );
     $t_lines[] = plugin_lang_get( 'event_name' ) . ': ' . $p_event_row['name'];
+    }
     $t_lines[] = lang_get( 'email_project' ) . ': ' . project_get_name( (int)$p_event_row['project_id'], /* trigger_errors */ FALSE );
     $t_lines[] = plugin_lang_get( 'event_date_from' ) . ': ' . telegram_event_datetime_display( (int)$p_event_row['date_from'] );
     $t_lines[] = plugin_lang_get( 'event_date_to' ) . ': ' . telegram_event_datetime_display( (int)$p_event_row['date_to'] );

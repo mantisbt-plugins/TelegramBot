@@ -44,8 +44,42 @@ class RequestMantis extends Longman\TelegramBot\Request {
 
 }
 
+/**
+ * Hide the E_DEPRECATED notices raised inside api/vendor/.
+ *
+ * The pinned longman/telegram-bot cannot be upgraded past the PHP baseline of
+ * the plugin, and on a modern PHP the core error handler would print its
+ * notices inline on every page that talks to Telegram. Notices of the plugin
+ * itself still reach the core handler untouched.
+ *
+ * @return void
+ */
+function telegram_vendor_deprecations_suppress() {
+	static $s_installed = false;
+
+	if( $s_installed ) {
+		return;
+	}
+	$s_installed = true;
+
+	$t_vendor_dir = realpath( dirname( __FILE__ ) . '/../api/vendor' );
+	$t_previous   = null;
+
+	$t_previous = set_error_handler( function( $p_type, $p_error, $p_file, $p_line ) use ( &$t_previous, $t_vendor_dir ) {
+		if( ( $p_type & ( E_DEPRECATED | E_USER_DEPRECATED ) ) && strpos( $p_file, $t_vendor_dir ) === 0 ) {
+			return true;
+		}
+		if( $t_previous === null ) {
+			return false;
+		}
+		return call_user_func( $t_previous, $p_type, $p_error, $p_file, $p_line );
+	} );
+}
+
 function telegram_session_start() {
 	global $g_tg;
+
+	telegram_vendor_deprecations_suppress();
 
 	if( $g_tg == NULL && !is_blank( plugin_config_get( 'api_key' ) ) && !is_blank( plugin_config_get( 'bot_name' ) ) )  {
 		$g_tg = new \Longman\TelegramBot\Telegram( plugin_config_get( 'api_key' ), plugin_config_get( 'bot_name' ) );

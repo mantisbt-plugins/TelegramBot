@@ -2097,6 +2097,7 @@ function telegram_calendar_event_message_compose( array $p_event_row, $p_header,
     }
 
     $t_message .= $t_separator1;
+    $t_message .= telegram_message_format_line( plugin_lang_get( 'event_id' ), $t_event_id );
     $t_message .= telegram_message_format_line( plugin_lang_get( 'event_author' ), user_get_name( (int)$p_event_row['author_id'] ) );
 
     $t_members = telegram_calendar_event_members_display( $t_event_id, $p_user_id );

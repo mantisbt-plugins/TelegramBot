@@ -2999,7 +2999,7 @@ function telegramMsg_run_command( $t_command ) {
                 case 'start':
                         $t_data = [
                             'chat_id' => $t_command->getFrom()->getId(),
-                            'text' => telegram_message_first_text(),
+                            'text'    => telegram_user_info_text( auth_get_current_user_id() ) . PHP_EOL . telegram_message_first_text(),
                         ];
                         break;
 
@@ -3038,6 +3038,28 @@ function telegram_mantis_url_get() {
         }
 
         return config_get_global( 'path' );
+}
+
+/**
+ * The MantisBT account the telegram one is linked to, as the /start answer shows it.
+ *
+ * @param integer $p_user_id MantisBT user id.
+ * @return string
+ */
+function telegram_user_info_text( $p_user_id ) {
+
+        $t_default_project = (int)user_pref_get_pref( $p_user_id, 'default_project' );
+
+        $t_lines = array(
+                                plugin_lang_get( 'user_info_header' ),
+                                lang_get( 'username' ) . ': ' . user_get_username( $p_user_id ),
+                                lang_get( 'realname' ) . ': ' . user_get_realname( $p_user_id ),
+                                lang_get( 'email' ) . ': ' . user_get_email( $p_user_id ),
+                                lang_get( 'access_level' ) . ': ' . get_enum_element( 'access_levels', user_get_access_level( $p_user_id ) ),
+                                lang_get( 'default_project' ) . ': ' . ( ALL_PROJECTS == $t_default_project ? lang_get( 'all_projects' ) : project_get_name( $t_default_project ) ),
+        );
+
+        return implode( PHP_EOL, $t_lines ) . PHP_EOL;
 }
 
 /**

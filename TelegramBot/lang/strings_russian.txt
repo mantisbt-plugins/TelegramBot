@@ -395,3 +395,4 @@ $s_plugin_TelegramBot_event_draft_other_message = 'Черновик событи
 $s_plugin_TelegramBot_event_draft_busy_bug = 'Сейчас создаётся черновик задачи. Завершите или отмените его, прежде чем создавать событие.';
 $s_plugin_TelegramBot_event_draft_busy_status = 'Сейчас идёт смена статуса задачи. Завершите или отмените её, прежде чем создавать событие.';
 $s_plugin_TelegramBot_event_draft_busy_event = 'Сейчас создаётся черновик события. Завершите или отмените его, прежде чем создавать задачу.';
+$s_plugin_TelegramBot_user_info_header = 'Ваша учётная запись MantisBT:';

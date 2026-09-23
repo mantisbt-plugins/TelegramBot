@@ -373,6 +373,7 @@ $s_plugin_TelegramBot_event_replace_date_from = 'Reemplazar el inicio';
 $s_plugin_TelegramBot_event_replace_date_to = 'Reemplazar el fin';
 $s_plugin_TelegramBot_event_replace_bug_ids = 'Reemplazar las incidencias';
 $s_plugin_TelegramBot_event_replace_members = 'Reemplazar los participantes';
+$s_plugin_TelegramBot_event_id = 'ID del evento';
 $s_plugin_TelegramBot_event_author = 'Autor';
 $s_plugin_TelegramBot_event_bugs_prompt = 'Incidencias a las que se adjunta el evento: márquelas y pulse «Listo», o pulse «Omitir».';
 $s_plugin_TelegramBot_event_description_prompt = 'Descripción del evento: envíe el texto o pulse «Omitir».';

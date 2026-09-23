@@ -371,6 +371,7 @@ $s_plugin_TelegramBot_event_replace_date_from = 'Заменить начало';
 $s_plugin_TelegramBot_event_replace_date_to = 'Заменить окончание';
 $s_plugin_TelegramBot_event_replace_bug_ids = 'Заменить задачи';
 $s_plugin_TelegramBot_event_replace_members = 'Заменить участников';
+$s_plugin_TelegramBot_event_id = 'Номер события';
 $s_plugin_TelegramBot_event_author = 'Автор';
 $s_plugin_TelegramBot_event_bugs_prompt = 'Задачи, к которым привязано событие: отметьте нужные и нажмите «Готово» либо нажмите «Пропустить».';
 $s_plugin_TelegramBot_event_description_prompt = 'Описание события: отправьте текст либо нажмите «Пропустить».';

@@ -397,3 +397,4 @@ $s_plugin_TelegramBot_event_draft_other_message = 'Ya hay un borrador de evento 
 $s_plugin_TelegramBot_event_draft_busy_bug = 'Hay un borrador de incidencia en curso. Termínelo o cancélelo antes de crear un evento.';
 $s_plugin_TelegramBot_event_draft_busy_status = 'Hay un cambio de estado en curso. Termínelo o cancélelo antes de crear un evento.';
 $s_plugin_TelegramBot_event_draft_busy_event = 'Hay un borrador de evento en curso. Termínelo o cancélelo antes de informar de una incidencia.';
+$s_plugin_TelegramBot_user_info_header = 'Su cuenta de MantisBT:';

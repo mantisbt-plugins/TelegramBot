@@ -395,3 +395,4 @@ $s_plugin_TelegramBot_event_draft_other_message = 'An event draft is already in 
 $s_plugin_TelegramBot_event_draft_busy_bug = 'An issue draft is in progress. Finish it or cancel it before creating an event.';
 $s_plugin_TelegramBot_event_draft_busy_status = 'A status change is in progress. Finish it or cancel it before creating an event.';
 $s_plugin_TelegramBot_event_draft_busy_event = 'An event draft is in progress. Finish it or cancel it before reporting an issue.';
+$s_plugin_TelegramBot_user_info_header = 'Your MantisBT account:';

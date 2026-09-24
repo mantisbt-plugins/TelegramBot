@@ -983,6 +983,24 @@ function keyboard_event_create_button_add( $p_inline_keyboard ) {
 }
 
 /**
+ * Build a button under a notification about a calendar event.
+ *
+ * @param string $p_text   Label of the button.
+ * @param string $p_action Key of the action, TELEGRAM_EVENT_REPLY_*.
+ * @param array  $p_values Values of the action, see telegram_calendar_reply().
+ * @return array Button of Longman\TelegramBot\Entities\InlineKeyboard.
+ */
+function keyboard_event_reply_button( $p_text, $p_action, array $p_values ) {
+
+        return array(
+                              'text'          => $p_text,
+                              'callback_data' => json_encode( array(
+                                                        TelegrambotActions::EVENT_REPLY_TAG => array( $p_action => $p_values )
+                              ) )
+        );
+}
+
+/**
  * Build the paginated keyboard of the issues a calendar event is attached to.
  *
  * The list is built the way keyboard_event_members_get() builds the member list,

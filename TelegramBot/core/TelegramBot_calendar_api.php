@@ -55,6 +55,24 @@ define( 'TELEGRAM_EVENT_ISSUES_PER_PAGE', 10 );
 # Width of the name column of the events table of the Calendar plugin
 define( 'TELEGRAM_EVENT_NAME_LENGTH_MAX', 255 );
 
+# Minutes before the start a reminder may be put off to with the buttons
+# under it, 0 being the start itself
+define( 'TELEGRAM_EVENT_SNOOZE_MINUTES', array( 60, 30, 15, 10, 5, 0 ) );
+
+# Minutes before the start the reminders of an event may be picked for with
+# the buttons under a notification about it, Calendar takes a minute at least
+define( 'TELEGRAM_EVENT_REMINDER_MINUTES', array( 60, 30, 15, 10, 5 ) );
+
+# Minutes value telling the reminder is not put off
+define( 'TELEGRAM_EVENT_SNOOZE_NONE', -1 );
+
+# Keys of the payload of the buttons under an event notification, kept to a
+# single character because callback_data is limited to 64 bytes
+define( 'TELEGRAM_EVENT_REPLY_RSVP', 'r' );
+define( 'TELEGRAM_EVENT_REPLY_SNOOZE', 'z' );
+define( 'TELEGRAM_EVENT_REPLY_REMINDERS_OFF', 'o' );
+define( 'TELEGRAM_EVENT_REPLY_REMINDER', 'a' );
+
 /**
  * Whether the Calendar plugin is installed and initialized, and the
  * integration with it is switched on by the administrator.
@@ -1546,13 +1564,39 @@ function telegram_event_date_step_get( $p_payload ) {
 /**
  * Actions the notification matrix of the calendar events has a row for, in
  * the order they are shown. Only the actions this plugin announces: a row
- * nothing ever reads would be a promise on the settings page.
+ * nothing ever reads would be a promise on the settings page. The rows are
+ * the ones of the matrix of Calendar, so that the two matrices read alike.
  *
  * @return array
  */
 function telegram_calendar_notify_actions() {
 
-    return array( 'created', 'updated', 'deleted' );
+    return array( 'created', 'updated', 'deleted', 'member_added', 'member_removed', 'rsvp' );
+}
+
+/**
+ * Personal switch gating the notifications of the given action.
+ *
+ * Mapped the way Calendar maps its personal settings: joining an event is
+ * news of the kind of its creation, leaving it of the kind of its deletion,
+ * and a reply of a member is a change of the event.
+ *
+ * @param string $p_action Row of the matrix, see telegram_calendar_notify_actions().
+ * @return string Option name, one of telegram_calendar_event_prefs().
+ */
+function telegram_calendar_notify_action_pref( $p_action ) {
+
+    switch( $p_action ) {
+        case 'created':
+        case 'member_added':
+            return 'telegram_message_on_event_created';
+
+        case 'updated':
+        case 'rsvp':
+            return 'telegram_message_on_event_updated';
+    }
+
+    return 'telegram_message_on_event_deleted';
 }
 
 /**
@@ -1571,8 +1615,9 @@ function telegram_calendar_notify_targets() {
 
 /**
  * Personal switches of the calendar event notifications, in the order they
- * are shown on the account page: the rows of the matrix and the reminders,
- * whose recipients Calendar chooses on its own. Each one is a per-user option
+ * are shown on the account page: one per kind of news, see
+ * telegram_calendar_notify_action_pref(), and the reminders, whose
+ * recipients Calendar chooses on its own. Each one is a per-user option
  * of this plugin, declared among its defaults, read wherever a recipient is
  * chosen and written, reset and deleted by the account pages.
  *
@@ -1580,15 +1625,12 @@ function telegram_calendar_notify_targets() {
  */
 function telegram_calendar_event_prefs() {
 
-    $t_prefs = array();
-
-    foreach( telegram_calendar_notify_actions() as $t_action ) {
-        $t_prefs[] = 'telegram_message_on_event_' . $t_action;
-    }
-
-    $t_prefs[] = 'telegram_message_on_event_reminder';
-
-    return $t_prefs;
+    return array(
+                              'telegram_message_on_event_created',
+                              'telegram_message_on_event_updated',
+                              'telegram_message_on_event_deleted',
+                              'telegram_message_on_event_reminder',
+    );
 }
 
 /**
@@ -1695,12 +1737,13 @@ function telegram_calendar_notify_flags( $p_project_id = ALL_PROJECTS ) {
  * passed every check - the core signals of the issues are raised by
  * telegram_message_collect_recipients() in the same manner.
  *
- * @param array   $p_event_row Row of the event, as event_get_row() returns it.
- * @param string  $p_action    Row of the matrix, see telegram_calendar_notify_actions().
- * @param integer $p_actor_id  User whose action is announced.
+ * @param array        $p_event_row       Row of the event, as event_get_row() returns it.
+ * @param string       $p_action          Row of the matrix, see telegram_calendar_notify_actions().
+ * @param integer      $p_actor_id        User whose action is announced.
+ * @param integer|null $p_exclude_user_id User the action is about, who is told on their own.
  * @return array Recipients: user id => telegram user id.
  */
-function telegram_calendar_collect_recipients( array $p_event_row, $p_action, $p_actor_id ) {
+function telegram_calendar_collect_recipients( array $p_event_row, $p_action, $p_actor_id, $p_exclude_user_id = NULL ) {
 
     $t_event_id = (int)$p_event_row['id'];
 
@@ -1746,7 +1789,7 @@ function telegram_calendar_collect_recipients( array $p_event_row, $p_action, $p
         }
     }
 
-    $t_pref_field = 'telegram_message_on_event_' . $p_action;
+    $t_pref_field = telegram_calendar_notify_action_pref( $p_action );
 
     $t_recipients = array();
 
@@ -1762,8 +1805,19 @@ function telegram_calendar_collect_recipients( array $p_event_row, $p_action, $p
             continue;
         }
 
+        if( $p_exclude_user_id !== NULL && $t_user_id == (int)$p_exclude_user_id ) {
+            continue;
+        }
+
         if( OFF == plugin_config_get( $t_pref_field, NULL, FALSE, $t_user_id ) ) {
             plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (pref %s off)', $t_event_id, $t_user_id, $t_pref_field ) );
+            continue;
+        }
+
+        # the replies of others mean nothing to a user who does not take part
+        # in the replies, the rule Calendar applies to its mails
+        if( 'rsvp' == $p_action && !calendar_api_rsvp_enabled( $t_user_id ) ) {
+            plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (no replies)', $t_event_id, $t_user_id ) );
             continue;
         }
 
@@ -1853,6 +1907,10 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
 
         $t_text = telegram_calendar_event_message_compose( $t_event_row, plugin_lang_get( 'event_message_' . $p_action ), $t_user_id, /* link */ !$t_deleted );
 
+        # a moved event drops the replies given to it, so the invitation is
+        # answered anew under the notification about the change
+        $t_keyboard = $t_deleted ? NULL : telegram_calendar_event_keyboard( $t_event_row, $t_user_id );
+
         lang_pop();
 
         plugin_log_event( sprintf( 'Calendar event = #%d, %s, add @U%d', (int)$p_event_id, $p_action, $t_user_id ) );
@@ -1860,8 +1918,155 @@ function telegram_calendar_message_event( $p_event_id, $p_action ) {
         if( $t_deleted ) {
             telegram_session_send_message( $t_telegram_user_id, array( 'text' => $t_text ) );
         } else {
-            telegram_calendar_event_notification_send( (int)$p_event_id, (int)$t_event_row['project_id'], $t_user_id, $t_telegram_user_id, $t_text );
+            telegram_calendar_event_notification_send( (int)$p_event_id, (int)$t_event_row['project_id'], $t_user_id, $t_telegram_user_id, $t_text, $t_keyboard );
         }
+    }
+}
+
+/**
+ * Notify about a user joining or leaving the members of a calendar event.
+ *
+ * Laid out the way Calendar mails it: the user the change is about is told
+ * on their own - whoever made the change is not told about it - and the
+ * others are told by the row of the matrix, the user in question left out.
+ * The one who joins gets the invitation along with the buttons of the reply
+ * and the .ics file; the one who leaves gets neither the file nor the link,
+ * as the event is not theirs any more.
+ *
+ * @param integer $p_event_id Identifier of the event.
+ * @param integer $p_user_id  User who joined or left.
+ * @param string  $p_action   'member_added' or 'member_removed'.
+ * @param integer $p_actor_id User who made the change.
+ * @return void
+ */
+function telegram_calendar_message_member( $p_event_id, $p_user_id, $p_action, $p_actor_id ) {
+
+    if( !telegram_calendar_available() || OFF == plugin_config_get( 'enable_telegram_message_notification' ) ) {
+        return;
+    }
+
+    $t_event_row = telegram_calendar_call( 'event_get_row', array( (int)$p_event_id ) );
+
+    if( !is_array( $t_event_row ) ) {
+        return;
+    }
+
+    $t_added     = 'member_added' == $p_action;
+    $t_member_id = (int)$p_user_id;
+
+    if( telegram_calendar_member_notified( $t_event_row, $t_member_id, $p_action, $p_actor_id ) ) {
+        $t_telegram_user_id = telegram_user_get_id_by_user_id( $t_member_id );
+
+        lang_push( user_pref_get_language( $t_member_id, (int)$t_event_row['project_id'] ) );
+
+        $t_text     = telegram_calendar_event_message_compose( $t_event_row, plugin_lang_get( 'event_message_' . $p_action ), $t_member_id, /* link */ $t_added );
+        $t_keyboard = $t_added ? telegram_calendar_event_keyboard( $t_event_row, $t_member_id ) : NULL;
+
+        lang_pop();
+
+        plugin_log_event( sprintf( 'Calendar event = #%d, %s, add @U%d (the member)', (int)$p_event_id, $p_action, $t_member_id ) );
+
+        if( $t_added ) {
+            telegram_calendar_event_notification_send( (int)$p_event_id, (int)$t_event_row['project_id'], $t_member_id, $t_telegram_user_id, $t_text, $t_keyboard );
+        } else {
+            telegram_session_send_message( $t_telegram_user_id, array( 'text' => $t_text ) );
+        }
+    }
+
+    $t_member_name = user_get_name( $t_member_id );
+    $t_recipients  = telegram_calendar_collect_recipients( $t_event_row, $p_action, $p_actor_id, $t_member_id );
+
+    foreach( $t_recipients as $t_user_id => $t_telegram_user_id ) {
+
+        lang_push( user_pref_get_language( $t_user_id, (int)$t_event_row['project_id'] ) );
+
+        $t_header = sprintf( plugin_lang_get( 'event_message_' . $p_action . '_others' ), $t_member_name );
+        $t_text   = telegram_calendar_event_message_compose( $t_event_row, $t_header, $t_user_id );
+
+        lang_pop();
+
+        plugin_log_event( sprintf( 'Calendar event = #%d, %s of @U%d, add @U%d', (int)$p_event_id, $p_action, $t_member_id, $t_user_id ) );
+
+        telegram_session_send_message( $t_telegram_user_id, array( 'text' => $t_text ) );
+    }
+}
+
+/**
+ * Whether the user who joined or left an event is told about it.
+ *
+ * The counterpart of calendar_notify_member() of Calendar: no matrix cell
+ * decides it, the change concerns the user and nobody else, so only the
+ * user themselves may refuse the news - by the personal switch of its kind.
+ *
+ * @param array   $p_event_row Row of the event, as event_get_row() returns it.
+ * @param integer $p_user_id   User who joined or left.
+ * @param string  $p_action    'member_added' or 'member_removed'.
+ * @param integer $p_actor_id  User who made the change.
+ * @return boolean
+ */
+function telegram_calendar_member_notified( array $p_event_row, $p_user_id, $p_action, $p_actor_id ) {
+
+    if( $p_user_id <= 0 || !user_exists( $p_user_id ) || !user_is_enabled( $p_user_id ) ) {
+        return FALSE;
+    }
+
+    if( $p_user_id == (int)$p_actor_id ) {
+        return FALSE;
+    }
+
+    if( OFF == plugin_config_get( telegram_calendar_notify_action_pref( $p_action ), NULL, FALSE, $p_user_id ) ) {
+        return FALSE;
+    }
+
+    $t_view_threshold = telegram_calendar_call( 'plugin_config_get', array( 'view_event_threshold' ) );
+
+    if( !telegram_calendar_call( 'access_has_event_level', array( $t_view_threshold, (int)$p_event_row['id'], $p_user_id ) ) ) {
+        return FALSE;
+    }
+
+    return telegram_user_get_id_by_user_id( $p_user_id ) != 0;
+}
+
+/**
+ * Notify about a member replying whether they will take part in an event.
+ *
+ * The recipients are named by the 'rsvp' row of the matrix, the member who
+ * replied left out, and a reply of the author to their own event is
+ * announced to nobody - the rules Calendar applies to its mails.
+ *
+ * @param integer $p_event_id Identifier of the event.
+ * @param integer $p_user_id  Member who replied.
+ * @param integer $p_status   The reply, one of the CALENDAR_RSVP_* constants.
+ * @return void
+ */
+function telegram_calendar_message_rsvp( $p_event_id, $p_user_id, $p_status ) {
+
+    if( !telegram_calendar_available() || OFF == plugin_config_get( 'enable_telegram_message_notification' ) ) {
+        return;
+    }
+
+    $t_event_row = telegram_calendar_call( 'event_get_row', array( (int)$p_event_id ) );
+
+    if( !is_array( $t_event_row ) || (int)$p_user_id == (int)$t_event_row['author_id'] ) {
+        return;
+    }
+
+    $t_member_name = user_get_name( (int)$p_user_id );
+    $t_recipients  = telegram_calendar_collect_recipients( $t_event_row, 'rsvp', (int)$p_user_id, (int)$p_user_id );
+
+    foreach( $t_recipients as $t_user_id => $t_telegram_user_id ) {
+
+        lang_push( user_pref_get_language( $t_user_id, (int)$t_event_row['project_id'] ) );
+
+        $t_header = sprintf( plugin_lang_get( 'event_message_rsvp' ), $t_member_name,
+                             plugin_lang_get( 'event_rsvp_status_' . telegram_calendar_rsvp_name( $p_status ) ) );
+        $t_text   = telegram_calendar_event_message_compose( $t_event_row, $t_header, $t_user_id );
+
+        lang_pop();
+
+        plugin_log_event( sprintf( 'Calendar event = #%d, rsvp of @U%d, add @U%d', (int)$p_event_id, (int)$p_user_id, $t_user_id ) );
+
+        telegram_session_send_message( $t_telegram_user_id, array( 'text' => $t_text ) );
     }
 }
 
@@ -1934,12 +2139,21 @@ function telegram_calendar_ics_wanted( $p_user_id, $p_project_id ) {
  * @param integer $p_user_id          Recipient of the notification.
  * @param integer $p_telegram_user_id Telegram account of the recipient.
  * @param string  $p_text             Text of the notification.
+ * @param Longman\TelegramBot\Entities\InlineKeyboard|null $p_keyboard Buttons
+ *                                    going with the text, null for none.
  * @return void
  */
-function telegram_calendar_event_notification_send( $p_event_id, $p_project_id, $p_user_id, $p_telegram_user_id, $p_text ) {
+function telegram_calendar_event_notification_send( $p_event_id, $p_project_id, $p_user_id, $p_telegram_user_id, $p_text, $p_keyboard = NULL ) {
+
+    # the buttons go with the text, wherever the text ends up
+    $t_text_data = array( 'text' => $p_text );
+
+    if( $p_keyboard !== NULL ) {
+        $t_text_data['reply_markup'] = $p_keyboard;
+    }
 
     if( !telegram_calendar_ics_wanted( $p_user_id, $p_project_id ) ) {
-        telegram_session_send_message( $p_telegram_user_id, array( 'text' => $p_text ) );
+        telegram_session_send_message( $p_telegram_user_id, $t_text_data );
         return;
     }
 
@@ -1947,7 +2161,7 @@ function telegram_calendar_event_notification_send( $p_event_id, $p_project_id, 
         $t_ics = calendar_api_event_ics( (int)$p_event_id, (int)$p_user_id );
     } catch( \Mantis\Exceptions\ClientException $t_exception ) {
         plugin_log_event( sprintf( 'Calendar event = #%d, ics for @U%d unavailable: %s', (int)$p_event_id, (int)$p_user_id, $t_exception->getMessage() ) );
-        telegram_session_send_message( $p_telegram_user_id, array( 'text' => $p_text ) );
+        telegram_session_send_message( $p_telegram_user_id, $t_text_data );
         return;
     }
 
@@ -1955,8 +2169,12 @@ function telegram_calendar_event_notification_send( $p_event_id, $p_project_id, 
 
     if( mb_strlen( $p_text, 'UTF-8' ) <= TELEGRAM_CAPTION_LENGTH_MAX ) {
         $t_data['caption'] = $p_text;
+
+        if( $p_keyboard !== NULL ) {
+            $t_data['reply_markup'] = $p_keyboard;
+        }
     } else {
-        $t_results = telegram_session_send_message( $p_telegram_user_id, array( 'text' => $p_text ) );
+        $t_results = telegram_session_send_message( $p_telegram_user_id, $t_text_data );
         $t_last    = end( $t_results );
 
         if( $t_last instanceof \Longman\TelegramBot\Entities\ServerResponse && $t_last->isOk() ) {
@@ -2024,28 +2242,518 @@ function telegram_calendar_message_reminder( $p_event_id, $p_occurrence, $p_user
         return;
     }
 
+    # a reminder put off past the start by Calendar itself - its own pages
+    # allow that - comes with a negative offset, and nothing is reminded of
+    # in the chat once the event is on
+    if( (int)$p_offset < 0 ) {
+        plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (reminder after the start)', (int)$p_event_id, (int)$p_user_id ) );
+        return;
+    }
+
+    # Calendar cannot take back a reminder put off before the reminders were
+    # switched off under it, so the one coming anyway is not repeated here
+    $t_state = telegram_calendar_user_reminders_state( (int)$p_event_id, (int)$p_user_id );
+
+    if( $t_state !== NULL && $t_state['off'] ) {
+        plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (reminders switched off)', (int)$p_event_id, (int)$p_user_id ) );
+        return;
+    }
+
     $t_event_row = telegram_calendar_call( 'event_get_row', array( (int)$p_event_id ) );
 
     if( !is_array( $t_event_row ) ) {
         return;
     }
 
-    $t_event_row['date_to']   = (int)$p_occurrence + (int)$t_event_row['date_to'] - (int)$t_event_row['date_from'];
-    $t_event_row['date_from'] = (int)$p_occurrence;
+    # the buttons are built against the stored row: the end of the occurrence
+    # is computed out of it, which the row moved to the occurrence breaks
+    $t_occurrence_row              = $t_event_row;
+    $t_occurrence_row['date_to']   = telegram_calendar_occurrence_end( $t_event_row, (int)$p_occurrence );
+    $t_occurrence_row['date_from'] = (int)$p_occurrence;
 
     lang_push( user_pref_get_language( (int)$p_user_id, (int)$t_event_row['project_id'] ) );
 
-    # the offset is worded by Calendar, in the units it was entered in
-    $t_header = sprintf( plugin_lang_get( 'event_message_reminder' ),
-                         telegram_calendar_call( 'calendar_reminder_format_offset', array( (int)$p_offset ) ) );
-
-    $t_text = telegram_calendar_event_message_compose( $t_event_row, $t_header, (int)$p_user_id );
+    $t_text     = telegram_calendar_event_message_compose( $t_occurrence_row, telegram_calendar_reminder_header( (int)$p_offset ), (int)$p_user_id );
+    $t_keyboard = telegram_calendar_event_keyboard( $t_event_row, (int)$p_user_id, (int)$p_occurrence );
 
     lang_pop();
 
     plugin_log_event( sprintf( 'Calendar event = #%d, reminder at %s, add @U%d', (int)$p_event_id, date( 'c', (int)$p_occurrence ), (int)$p_user_id ) );
 
-    telegram_session_send_message( $t_telegram_user_id, array( 'text' => $t_text ) );
+    $t_data = array( 'text' => $t_text );
+
+    if( $t_keyboard !== NULL ) {
+        $t_data['reply_markup'] = $t_keyboard;
+    }
+
+    telegram_session_send_message( $t_telegram_user_id, $t_data );
+}
+
+/**
+ * The first line of a reminder.
+ *
+ * A reminder put off to the start of the occurrence has no distance left,
+ * so it says the event starts instead of counting down to it.
+ *
+ * @param integer $p_offset Seconds before the start.
+ * @return string
+ */
+function telegram_calendar_reminder_header( $p_offset ) {
+
+    if( $p_offset == 0 ) {
+        return plugin_lang_get( 'event_message_reminder_now' );
+    }
+
+    # the distance is worded by Calendar, in the units it was entered in
+    return sprintf( plugin_lang_get( 'event_message_reminder' ),
+                    telegram_calendar_call( 'calendar_reminder_format_offset', array( (int)$p_offset ) ) );
+}
+
+/**
+ * The moment an occurrence of an event ends.
+ *
+ * A single event keeps the end of its only occurrence in date_to, a series
+ * keeps the length of one occurrence in duration - date_to of a series is
+ * where the series itself stops.
+ *
+ * @param array   $p_event_row  Row of the event, as event_get_row() returns it.
+ * @param integer $p_occurrence Timestamp the occurrence starts at.
+ * @return integer
+ */
+function telegram_calendar_occurrence_end( array $p_event_row, $p_occurrence ) {
+
+    $t_duration = isset( $p_event_row['duration'] ) ? (int)$p_event_row['duration'] : 0;
+
+    if( $t_duration > 0 ) {
+        return (int)$p_occurrence + $t_duration;
+    }
+
+    return (int)$p_occurrence + (int)$p_event_row['date_to'] - (int)$p_event_row['date_from'];
+}
+
+/**
+ * The reminders of the user about the event, as far as the buttons under a
+ * notification can tell and change them.
+ *
+ * The switch turns off what the user is reminded of by removing every
+ * offset, which leaves a personal set that is empty; it turns back on by
+ * dropping that set. Reminders that are off for any other reason - switched
+ * off for the instance or in the account of the user - are not the business
+ * of the buttons, and neither are those of a user who is not reminded about
+ * the event at all.
+ *
+ * @param integer $p_event_id Identifier of the event.
+ * @param integer $p_user_id  User the reminders are for.
+ * @return array|null array( 'off' => whether the switch is off, 'offsets' =>
+ *                    seconds before the start, 'held' => why the reminders
+ *                    are held back, see calendar_api_event_reminders() ),
+ *                    null when there are no buttons.
+ */
+function telegram_calendar_user_reminders_state( $p_event_id, $p_user_id ) {
+
+    try {
+        $t_reminders = calendar_api_event_reminders( (int)$p_event_id, (int)$p_user_id );
+    } catch( \Mantis\Exceptions\ClientException $t_exception ) {
+        return NULL;
+    }
+
+    if( !$t_reminders['enabled'] || !$t_reminders['is_recipient'] || $t_reminders['opted_out'] ) {
+        return NULL;
+    }
+
+    return array(
+                              'off'     => empty( $t_reminders['offsets'] ) && 'personal' == $t_reminders['source'] && $t_reminders['held'] === NULL,
+                              'offsets' => $t_reminders['offsets'],
+                              'held'    => $t_reminders['held'],
+    );
+}
+
+/**
+ * The moment a reminder put off to the given minutes before the start goes out at.
+ *
+ * @param integer $p_occurrence Timestamp the occurrence starts at.
+ * @param integer $p_minutes    Minutes before the start, 0 for the start itself.
+ * @return integer Unix timestamp.
+ */
+function telegram_calendar_snooze_fire_at( $p_occurrence, $p_minutes ) {
+
+    return (int)$p_occurrence - (int)$p_minutes * 60;
+}
+
+/**
+ * The name of a reply the lang strings are keyed by.
+ *
+ * @param integer $p_status One of the CALENDAR_RSVP_* constants.
+ * @return string
+ */
+function telegram_calendar_rsvp_name( $p_status ) {
+
+    switch( (int)$p_status ) {
+        case CALENDAR_RSVP_ACCEPTED:
+            return 'accepted';
+
+        case CALENDAR_RSVP_TENTATIVE:
+            return 'tentative';
+
+        case CALENDAR_RSVP_DECLINED:
+            return 'declined';
+    }
+
+    return 'none';
+}
+
+/**
+ * The reply of a user to the invitation to an event, null when the user is
+ * not invited: not a member, the author of the event, or somebody who does
+ * not take part in the replies, unless asked to disregard that.
+ *
+ * @param array   $p_event_row      Row of the event, as event_get_row() returns it.
+ * @param integer $p_user_id        User asked about.
+ * @param boolean $p_while_disabled Whether the reply is told even while the
+ *                                  user does not take part in the replies.
+ * @return integer|null One of the CALENDAR_RSVP_* constants.
+ */
+function telegram_calendar_rsvp_status( array $p_event_row, $p_user_id, $p_while_disabled = FALSE ) {
+
+    # the author is marked as taking part by the creation itself, the replies
+    # are the business of the invited ones
+    if( (int)$p_user_id == (int)$p_event_row['author_id'] ) {
+        return NULL;
+    }
+
+    if( !$p_while_disabled && !calendar_api_rsvp_enabled( (int)$p_user_id ) ) {
+        return NULL;
+    }
+
+    try {
+        $t_statuses = calendar_api_event_member_statuses( (int)$p_event_row['id'] );
+    } catch( \Mantis\Exceptions\ClientException $t_exception ) {
+        return NULL;
+    }
+
+    return array_key_exists( (int)$p_user_id, $t_statuses ) ? (int)$t_statuses[(int)$p_user_id] : NULL;
+}
+
+/**
+ * The buttons under a notification about an event: under an invitation the
+ * reply to it and the reminders of the event, under a reminder nothing but
+ * the ways to put the reminder off.
+ *
+ * The reply given and the moment the reminder is put off to are marked on
+ * their buttons, so the buttons show the state and let it be changed. Every
+ * button carries the whole state of the message - the occurrence of the
+ * reminder and the minutes it is put off to - since Calendar tells neither
+ * back, and a press on any of them draws the buttons anew out of it.
+ *
+ * A reminder can be put off only to a moment before the start, and not at
+ * all by a member who declined - such a member is not reminded any more.
+ *
+ * Every button carries array( event, value, occurrence, snoozed ), the value
+ * being the reply, the minutes or nothing, see telegram_calendar_reply().
+ *
+ * @param array   $p_event_row  Row of the event, as event_get_row() returns it.
+ * @param integer $p_user_id    Recipient of the notification.
+ * @param integer $p_occurrence Start of the occurrence a reminder is about, 0 for no reminder.
+ * @param boolean $p_keep_rsvp  Whether the buttons of the reply stay while the
+ *                              user does not take part in the replies: a
+ *                              reply refused for that is pressed again once
+ *                              the replies are switched on.
+ * @param integer $p_snoozed    Minutes before the start the reminder is put
+ *                              off to, TELEGRAM_EVENT_SNOOZE_NONE for none.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard|null Null when there is no button.
+ */
+function telegram_calendar_event_keyboard( array $p_event_row, $p_user_id, $p_occurrence = 0, $p_keep_rsvp = FALSE, $p_snoozed = TELEGRAM_EVENT_SNOOZE_NONE ) {
+
+    $t_event_id = (int)$p_event_row['id'];
+    $t_status   = telegram_calendar_rsvp_status( $p_event_row, $p_user_id, $p_keep_rsvp );
+    $t_rows     = array();
+
+    # a reminder only lets its time be changed, the reply belongs to the invitation
+    if( $t_status !== NULL && $p_occurrence == 0 ) {
+        $t_row = array();
+
+        foreach( array( CALENDAR_RSVP_ACCEPTED, CALENDAR_RSVP_TENTATIVE, CALENDAR_RSVP_DECLINED ) as $t_reply ) {
+            $t_label = plugin_lang_get( 'event_rsvp_button_' . telegram_calendar_rsvp_name( $t_reply ) );
+
+            if( $t_reply == $t_status ) {
+                $t_label = plugin_lang_get( 'event_rsvp_chosen_mark' ) . $t_label;
+            }
+
+            $t_row[] = keyboard_event_reply_button( $t_label, TELEGRAM_EVENT_REPLY_RSVP, array( $t_event_id, $t_reply, (int)$p_occurrence, (int)$p_snoozed ) );
+        }
+
+        $t_rows[] = $t_row;
+    }
+
+    # a reminder is put off to a number of minutes before the start - nothing
+    # is reminded of once the event is on - and only the moments still ahead
+    # are offered
+    # an invitation offers its reminders once it is accepted, even if only
+    # tentatively: an unanswered one is still to be decided on, a declined
+    # one takes no reminder at all. The author and a user who does not take
+    # part in the replies have nothing to answer and get the reminders at once.
+    $t_invited = $p_occurrence == 0 && $t_status === CALENDAR_RSVP_NONE;
+
+    $t_reminders = NULL;
+
+    if( $p_occurrence == 0 && $t_status !== CALENDAR_RSVP_DECLINED && !$t_invited ) {
+        $t_reminders = telegram_calendar_user_reminders_state( $t_event_id, $p_user_id );
+    }
+
+    # under a notification the user picks the reminders of the event: every
+    # button switches one offset of the personal set, the ones that apply are
+    # marked; a single event is not reminded of at a moment already gone
+    if( $p_occurrence == 0 && $t_reminders !== NULL && $t_reminders['held'] !== 'declined' ) {
+        $t_buttons = array();
+
+        foreach( TELEGRAM_EVENT_REMINDER_MINUTES as $t_minutes ) {
+            if( is_blank( $p_event_row['recurrence_pattern'] )
+                    && (int)$p_event_row['date_from'] - $t_minutes * 60 <= time() ) {
+                continue;
+            }
+
+            $t_label = sprintf( plugin_lang_get( 'event_snooze_button' ), $t_minutes );
+
+            if( in_array( $t_minutes * 60, $t_reminders['offsets'] ) ) {
+                $t_label = plugin_lang_get( 'event_rsvp_chosen_mark' ) . $t_label;
+            }
+
+            $t_buttons[] = keyboard_event_reply_button( $t_label, TELEGRAM_EVENT_REPLY_REMINDER,
+                                                        array( $t_event_id, $t_minutes, 0, (int)$p_snoozed ) );
+        }
+
+        foreach( array_chunk( $t_buttons, 3 ) as $t_row ) {
+            $t_rows[] = $t_row;
+        }
+    }
+
+    if( $p_occurrence > 0 && $t_status !== CALENDAR_RSVP_DECLINED ) {
+        $t_buttons = array();
+
+        foreach( TELEGRAM_EVENT_SNOOZE_MINUTES as $t_minutes ) {
+            if( telegram_calendar_snooze_fire_at( $p_occurrence, $t_minutes ) <= time() ) {
+                continue;
+            }
+
+            $t_label = sprintf( plugin_lang_get( 'event_snooze_button' ), $t_minutes );
+
+            if( $t_minutes == $p_snoozed ) {
+                $t_label = plugin_lang_get( 'event_rsvp_chosen_mark' ) . $t_label;
+            }
+
+            $t_buttons[] = keyboard_event_reply_button( $t_label, TELEGRAM_EVENT_REPLY_SNOOZE,
+                                                        array( $t_event_id, $t_minutes, (int)$p_occurrence, (int)$p_snoozed ) );
+        }
+
+        foreach( array_chunk( $t_buttons, 3 ) as $t_row ) {
+            $t_rows[] = $t_row;
+        }
+    }
+
+    # the reminders still to come about the event are switched off, and on
+    # again with the same button
+    if( $t_reminders !== NULL && ( $t_reminders['off'] || !empty( $t_reminders['offsets'] ) ) ) {
+        $t_label = plugin_lang_get( 'event_reminders_off_button' );
+
+        if( $t_reminders['off'] ) {
+            $t_label = plugin_lang_get( 'event_rsvp_chosen_mark' ) . $t_label;
+        }
+
+        $t_rows[] = array( keyboard_event_reply_button( $t_label, TELEGRAM_EVENT_REPLY_REMINDERS_OFF,
+                                                        array( $t_event_id, 0, (int)$p_occurrence, (int)$p_snoozed ) ) );
+    }
+
+    if( empty( $t_rows ) ) {
+        return NULL;
+    }
+
+    $t_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    foreach( $t_rows as $t_row ) {
+        call_user_func_array( array( $t_keyboard, 'addRow' ), $t_row );
+    }
+
+    return $t_keyboard;
+}
+
+/**
+ * Process a press on a button under a notification about an event: a reply
+ * to the invitation or a reminder put off.
+ *
+ * The press acts on behalf of the user pressing - the payload names the
+ * event, never the user - and Calendar checks every rule itself; a refusal
+ * is shown as an alert. The buttons are redrawn to the new state: the reply
+ * given and the moment the reminder is put off to are marked, and the
+ * reminders switched off take the buttons about them away.
+ *
+ * @param array $p_payload Payload of the button pressed.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard|null Buttons to put under
+ *         the message, null when they stay as they are.
+ */
+function telegram_calendar_reply( $p_payload ) {
+
+    $t_no_buttons = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
+
+    if( !telegram_calendar_available() ) {
+        telegram_callback_alert_set( plugin_lang_get( 'event_calendar_missing' ) );
+
+        return $t_no_buttons;
+    }
+
+    $t_action = is_array( $p_payload ) ? key( $p_payload ) : NULL;
+    $t_values = $t_action === NULL ? NULL : $p_payload[$t_action];
+
+    if( !is_array( $t_values ) || count( $t_values ) != 4 ) {
+        return NULL;
+    }
+
+    list( $t_event_id, $t_value, $t_occurrence, $t_snoozed ) = array_map( 'intval', array_values( $t_values ) );
+
+    # the event may be deleted long after the buttons were drawn, and the row
+    # of a missing event is an error of Calendar rather than an answer
+    $t_event_row = telegram_calendar_call( 'event_cache_row', array( $t_event_id, /* trigger_errors */ FALSE ) );
+
+    if( !is_array( $t_event_row ) ) {
+        telegram_callback_alert_set( plugin_lang_get( 'event_reply_gone' ) );
+
+        return $t_no_buttons;
+    }
+
+    $t_user_id       = (int)auth_get_current_user_id();
+    $t_settings_link = FALSE;
+
+    try {
+        switch( $t_action ) {
+            case TELEGRAM_EVENT_REPLY_RSVP:
+                # the buttons outlive the choice they were drawn under, and the
+                # refusal of Calendar would only say the access is denied
+                if( !calendar_api_rsvp_enabled( $t_user_id ) ) {
+                    telegram_callback_alert_set( plugin_lang_get( 'event_rsvp_disabled' ) );
+                    $t_settings_link = TRUE;
+                    break;
+                }
+
+                calendar_api_event_member_status_set( $t_event_id, $t_user_id, $t_value );
+                break;
+
+            case TELEGRAM_EVENT_REPLY_SNOOZE:
+                $t_fire_at = telegram_calendar_snooze_fire_at( $t_occurrence, $t_value );
+
+                # said plainly here, Calendar would refuse it with an invalid
+                # value of a field the user has never seen; the buttons are
+                # drawn anew by the time of the press
+                if( $t_fire_at <= time() ) {
+                    telegram_callback_alert_set( plugin_lang_get( 'event_snooze_passed' ) );
+                    break;
+                }
+
+                # a reminder is put off by a user who wants to be reminded, so
+                # the reminders switched off under it are switched on again -
+                # a put off reminder of a user who has them off is not sent
+                $t_state = telegram_calendar_user_reminders_state( $t_event_id, $t_user_id );
+
+                if( $t_state !== NULL && $t_state['off'] ) {
+                    calendar_api_event_reminder_reset( $t_event_id, $t_user_id );
+                }
+
+                # one put off reminder per occurrence, a second press moves it
+                calendar_api_event_reminder_snooze( $t_event_id, $t_occurrence, $t_user_id, $t_fire_at );
+
+                $t_snoozed = $t_value;
+
+                telegram_callback_alert_set( sprintf( plugin_lang_get( 'event_snooze_done' ),
+                                                      telegram_calendar_user_time_display( $t_fire_at, $t_user_id ) ) );
+                break;
+
+            case TELEGRAM_EVENT_REPLY_REMINDER:
+                $t_state = telegram_calendar_user_reminders_state( $t_event_id, $t_user_id );
+
+                if( $t_state === NULL ) {
+                    break;
+                }
+
+                # a picked offset of the personal set goes, any other joins it;
+                # Calendar keeps the limits of the set and lifts the hold of a
+                # user who has not replied yet
+                if( in_array( $t_value * 60, $t_state['offsets'] ) ) {
+                    calendar_api_event_reminder_remove( $t_event_id, $t_user_id, $t_value * 60 );
+                } else {
+                    calendar_api_event_reminder_add( $t_event_id, $t_user_id, $t_value * 60 );
+                }
+                break;
+
+            case TELEGRAM_EVENT_REPLY_REMINDERS_OFF:
+                $t_state = telegram_calendar_user_reminders_state( $t_event_id, $t_user_id );
+
+                if( $t_state === NULL ) {
+                    break;
+                }
+
+                # the switch is off: the set of the event, or the defaults of
+                # the user, apply again
+                if( $t_state['off'] ) {
+                    calendar_api_event_reminder_reset( $t_event_id, $t_user_id );
+                    telegram_callback_alert_set( plugin_lang_get( 'event_reminders_on_done' ) );
+                    break;
+                }
+
+                # every offset of the user goes, which leaves them a set of
+                # their own that is empty - not the set of the event again
+                foreach( $t_state['offsets'] as $t_offset ) {
+                    calendar_api_event_reminder_remove( $t_event_id, $t_user_id, (int)$t_offset );
+                }
+
+                # the reminder put off before is not sent to a user who has the
+                # reminders off, see telegram_calendar_message_reminder()
+                $t_snoozed = TELEGRAM_EVENT_SNOOZE_NONE;
+
+                telegram_callback_alert_set( plugin_lang_get( 'event_reminders_off_done' ) );
+                break;
+
+            default:
+                return NULL;
+        }
+    } catch( \Mantis\Exceptions\ClientException $t_exception ) {
+        plugin_log_event( sprintf( 'Calendar event = #%d, %s of @U%d refused: %s', $t_event_id, $t_action, $t_user_id, $t_exception->getMessage() ) );
+        telegram_callback_alert_set( $t_exception->getMessage() );
+    }
+
+    $t_keyboard = telegram_calendar_event_keyboard( $t_event_row, $t_user_id, $t_occurrence, /* keep_rsvp */ $t_settings_link, $t_snoozed );
+
+    if( $t_keyboard === NULL ) {
+        $t_keyboard = $t_no_buttons;
+    }
+
+    # an alert shows no links, so the way to the switch of the replies is a
+    # button under the message instead
+    if( $t_settings_link ) {
+        $t_keyboard->addRow( array(
+                                  'text' => plugin_lang_get( 'event_rsvp_settings_button' ),
+                                  'url'  => config_get_global( 'path' ) . plugin_page( 'reminders_page', /* redirect */ TRUE, 'Calendar' ),
+        ) );
+    }
+
+    return $t_keyboard;
+}
+
+/**
+ * A moment the way the given user reads it, in the timezone of the user.
+ *
+ * @param integer $p_timestamp Unix timestamp.
+ * @param integer $p_user_id   User the moment is shown to.
+ * @return string
+ */
+function telegram_calendar_user_time_display( $p_timestamp, $p_user_id ) {
+
+    $t_timezone = user_pref_get_pref( $p_user_id, 'timezone' );
+
+    date_set_timezone( is_blank( $t_timezone ) ? config_get_global( 'default_timezone' ) : $t_timezone );
+
+    $t_text = telegram_event_datetime_display( $p_timestamp );
+
+    date_restore_timezone();
+
+    return $t_text;
 }
 
 /**
@@ -2098,7 +2806,7 @@ function telegram_calendar_event_message_compose( array $p_event_row, $p_header,
 
     $t_message .= $t_separator1;
     $t_message .= telegram_message_format_line( plugin_lang_get( 'event_id' ), $t_event_id );
-    $t_message .= telegram_message_format_line( plugin_lang_get( 'event_author' ), user_get_name( (int)$p_event_row['author_id'] ) );
+    $t_message .= telegram_message_format_line( plugin_lang_get( 'event_author' ),user_get_name( (int)$p_event_row['author_id'] ) );
 
     $t_members = telegram_calendar_event_members_display( $t_event_id, $p_user_id );
 

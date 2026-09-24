@@ -286,9 +286,14 @@ class TelegramBotPlugin extends MantisPlugin {
                                   # of the Calendar plugin itself. Overridden per project on the
                                   # notifications page, see telegram_calendar_notify_flags()
                                   'calendar_notify_flags'                       => array(
-                                                            'created' => array( 'author' => ON, 'members' => ON, 'actor' => OFF ),
-                                                            'updated' => array( 'author' => ON, 'members' => ON, 'actor' => OFF ),
-                                                            'deleted' => array( 'author' => ON, 'members' => ON, 'actor' => OFF ),
+                                                            'created'        => array( 'author' => ON, 'members' => ON, 'actor' => OFF ),
+                                                            'updated'        => array( 'author' => ON, 'members' => ON, 'actor' => OFF ),
+                                                            'deleted'        => array( 'author' => ON, 'members' => ON, 'actor' => OFF ),
+                                                            # the user joining or leaving is told on their own,
+                                                            # these rows name the others told about it
+                                                            'member_added'   => array( 'author' => OFF, 'members' => OFF, 'actor' => OFF ),
+                                                            'member_removed' => array( 'author' => OFF, 'members' => OFF, 'actor' => OFF ),
+                                                            'rsvp'           => array( 'author' => ON, 'members' => OFF, 'actor' => OFF ),
                                   ),
                                   # whether the reminders of Calendar are repeated in Telegram at
                                   # all; the reminders have no matrix row, their recipients are
@@ -482,11 +487,17 @@ class TelegramBotPlugin extends MantisPlugin {
             event_declare( 'EVENT_CALENDAR_EVENT_UPDATED', EVENT_TYPE_EXECUTE );
             event_declare( 'EVENT_CALENDAR_EVENT_DELETED', EVENT_TYPE_EXECUTE );
             event_declare( 'EVENT_CALENDAR_EVENT_REMINDER', EVENT_TYPE_EXECUTE );
+            event_declare( 'EVENT_CALENDAR_EVENT_MEMBER_ADDED', EVENT_TYPE_EXECUTE );
+            event_declare( 'EVENT_CALENDAR_EVENT_MEMBER_REMOVED', EVENT_TYPE_EXECUTE );
+            event_declare( 'EVENT_CALENDAR_EVENT_RSVP', EVENT_TYPE_EXECUTE );
 
-            $t_hooks['EVENT_CALENDAR_EVENT_CREATED']  = 'telegram_calendar_event_created';
-            $t_hooks['EVENT_CALENDAR_EVENT_UPDATED']  = 'telegram_calendar_event_updated';
-            $t_hooks['EVENT_CALENDAR_EVENT_DELETED']  = 'telegram_calendar_event_deleted';
-            $t_hooks['EVENT_CALENDAR_EVENT_REMINDER'] = 'telegram_calendar_event_reminder';
+            $t_hooks['EVENT_CALENDAR_EVENT_CREATED']        = 'telegram_calendar_event_created';
+            $t_hooks['EVENT_CALENDAR_EVENT_UPDATED']        = 'telegram_calendar_event_updated';
+            $t_hooks['EVENT_CALENDAR_EVENT_DELETED']        = 'telegram_calendar_event_deleted';
+            $t_hooks['EVENT_CALENDAR_EVENT_REMINDER']       = 'telegram_calendar_event_reminder';
+            $t_hooks['EVENT_CALENDAR_EVENT_MEMBER_ADDED']   = 'telegram_calendar_event_member_added';
+            $t_hooks['EVENT_CALENDAR_EVENT_MEMBER_REMOVED'] = 'telegram_calendar_event_member_removed';
+            $t_hooks['EVENT_CALENDAR_EVENT_RSVP']           = 'telegram_calendar_event_rsvp';
         }
 
         return $t_hooks;
@@ -571,6 +582,51 @@ class TelegramBotPlugin extends MantisPlugin {
      */
     function telegram_calendar_event_reminder( $p_type_event, $p_event_id, $p_occurrence, $p_user_id, $p_offset ) {
         telegram_calendar_message_reminder( $p_event_id, $p_occurrence, $p_user_id, $p_offset );
+    }
+
+    /**
+     * Notify about a user added to the members of an existing calendar event.
+     *
+     * @param string  $p_type_event Name of the signalled event.
+     * @param integer $p_event_id   Identifier of the calendar event.
+     * @param integer $p_user_id    User added.
+     * @param integer $p_actor_id   User who added them.
+     * @return void
+     */
+    function telegram_calendar_event_member_added( $p_type_event, $p_event_id, $p_user_id, $p_actor_id ) {
+        plugin_log_event( sprintf( 'Calendar event #%d, member @U%d added', $p_event_id, $p_user_id ) );
+        telegram_calendar_message_member( $p_event_id, $p_user_id, 'member_added', $p_actor_id );
+    }
+
+    /**
+     * Notify about a user removed from the members of an existing calendar event.
+     *
+     * @param string  $p_type_event Name of the signalled event.
+     * @param integer $p_event_id   Identifier of the calendar event.
+     * @param integer $p_user_id    User removed.
+     * @param integer $p_actor_id   User who removed them.
+     * @return void
+     */
+    function telegram_calendar_event_member_removed( $p_type_event, $p_event_id, $p_user_id, $p_actor_id ) {
+        plugin_log_event( sprintf( 'Calendar event #%d, member @U%d removed', $p_event_id, $p_user_id ) );
+        telegram_calendar_message_member( $p_event_id, $p_user_id, 'member_removed', $p_actor_id );
+    }
+
+    /**
+     * Notify about a member replying whether they will take part in a calendar event.
+     *
+     * EVENT_CALENDAR_EVENT_RSVP is signalled for a changed reply only, on every
+     * path recording one - the pages of Calendar and the buttons of this bot.
+     *
+     * @param string  $p_type_event Name of the signalled event.
+     * @param integer $p_event_id   Identifier of the calendar event.
+     * @param integer $p_user_id    Member who replied.
+     * @param integer $p_status     The reply, one of the CALENDAR_RSVP_* constants.
+     * @return void
+     */
+    function telegram_calendar_event_rsvp( $p_type_event, $p_event_id, $p_user_id, $p_status ) {
+        plugin_log_event( sprintf( 'Calendar event #%d, reply of @U%d: %d', $p_event_id, $p_user_id, $p_status ) );
+        telegram_calendar_message_rsvp( $p_event_id, $p_user_id, $p_status );
     }
 
     function telegram_message_bug_added( $p_type_event, $p_issue, $p_issue_id ) {

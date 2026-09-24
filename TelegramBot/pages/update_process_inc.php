@@ -309,6 +309,19 @@ try {
                             $t_result = Request::editMessageText( $t_data );
                             break;
 
+                        case TelegrambotActions::EVENT_REPLY_TAG:
+                            //Only the buttons are redrawn: the message may be the caption of the .ics file
+                            $t_keyboard = telegram_calendar_reply( $t_data[TelegrambotActions::EVENT_REPLY_TAG] );
+
+                            if( $t_keyboard !== NULL ) {
+                                $t_result = Request::editMessageReplyMarkup( [
+                                                          'chat_id'      => $t_update_content->getMessage()->getChat()->getId(),
+                                                          'message_id'   => $t_update_content->getMessage()->getMessageId(),
+                                                          'reply_markup' => $t_keyboard,
+                                ] );
+                            }
+                            break;
+
                         case TelegrambotActions::STOP_EVENT_TAG:
                             //The draft is dropped by the card driving it only: a press on another
                             //message would take away the draft being filled in somewhere else

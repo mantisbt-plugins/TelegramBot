@@ -2250,15 +2250,6 @@ function telegram_calendar_message_reminder( $p_event_id, $p_occurrence, $p_user
         return;
     }
 
-    # Calendar cannot take back a reminder put off before the reminders were
-    # switched off under it, so the one coming anyway is not repeated here
-    $t_state = telegram_calendar_user_reminders_state( (int)$p_event_id, (int)$p_user_id );
-
-    if( $t_state !== NULL && $t_state['off'] ) {
-        plugin_log_event( sprintf( 'Calendar event = #%d, drop @U%d (reminders switched off)', (int)$p_event_id, (int)$p_user_id ) );
-        return;
-    }
-
     $t_event_row = telegram_calendar_call( 'event_get_row', array( (int)$p_event_id ) );
 
     if( !is_array( $t_event_row ) ) {
@@ -2649,7 +2640,7 @@ function telegram_calendar_reply( $p_payload ) {
 
                 # a reminder is put off by a user who wants to be reminded, so
                 # the reminders switched off under it are switched on again -
-                # a put off reminder of a user who has them off is not sent
+                # Calendar drops a put off reminder of a user who has them off
                 $t_state = telegram_calendar_user_reminders_state( $t_event_id, $t_user_id );
 
                 if( $t_state !== NULL && $t_state['off'] ) {
@@ -2703,8 +2694,8 @@ function telegram_calendar_reply( $p_payload ) {
                     calendar_api_event_reminder_remove( $t_event_id, $t_user_id, (int)$t_offset );
                 }
 
-                # the reminder put off before is not sent to a user who has the
-                # reminders off, see telegram_calendar_message_reminder()
+                # the reminder put off before goes along: Calendar drops a put
+                # off reminder of a user who has the reminders off
                 $t_snoozed = TELEGRAM_EVENT_SNOOZE_NONE;
 
                 telegram_callback_alert_set( plugin_lang_get( 'event_reminders_off_done' ) );

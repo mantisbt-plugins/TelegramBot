@@ -98,6 +98,9 @@ class TelegrambotActions {
         const END_EVENT_MEMBER          = 'eem';
         # Create the event out of the draft as it is
         const CREATE_EVENT              = 'cre';
+        # Buttons under a notification about an event: the reply to the
+        # invitation and the reminder put off, see telegram_calendar_reply()
+        const EVENT_REPLY_TAG           = 'evr';
 
         private $text = array();
         private $buttons;

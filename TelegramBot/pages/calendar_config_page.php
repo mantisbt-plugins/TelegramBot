@@ -211,7 +211,7 @@ if( ALL_PROJECTS == $t_project_id ) {
                                 <tbody>
                                     <?php foreach( telegram_calendar_notify_actions() as $t_action ) { ?>
                                         <tr>
-                                            <td><?php echo plugin_lang_get( 'telegram_message_on_event_' . $t_action ) ?></td>
+                                            <td><?php echo plugin_lang_get( 'calendar_notify_row_' . $t_action ) ?></td>
                                             <?php foreach( telegram_calendar_notify_targets() as $t_target ) { ?>
                                                 <td class="<?php echo telegram_calendar_notify_cell_class( $t_action, $t_target ) ?>">
                                                     <?php echo telegram_calendar_notify_cell( $t_action, $t_target ) ?>

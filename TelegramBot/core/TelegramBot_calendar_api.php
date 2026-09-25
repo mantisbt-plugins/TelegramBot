@@ -2427,8 +2427,8 @@ function telegram_calendar_rsvp_status( array $p_event_row, $p_user_id, $p_while
 
 /**
  * The buttons under a notification about an event: under an invitation the
- * reply to it and the reminders of the event, under a reminder nothing but
- * the ways to put the reminder off.
+ * reply to it and the reminders of the event, under a reminder the ways to
+ * put the reminder off; both carry the switch of the reminders.
  *
  * The reply given and the moment the reminder is put off to are marked on
  * their buttons, so the buttons show the state and let it be changed. Every
@@ -2487,7 +2487,7 @@ function telegram_calendar_event_keyboard( array $p_event_row, $p_user_id, $p_oc
 
     $t_reminders = NULL;
 
-    if( $p_occurrence == 0 && $t_status !== CALENDAR_RSVP_DECLINED && !$t_invited ) {
+    if( $t_status !== CALENDAR_RSVP_DECLINED && !$t_invited ) {
         $t_reminders = telegram_calendar_user_reminders_state( $t_event_id, $p_user_id );
     }
 

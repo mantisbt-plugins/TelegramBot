@@ -5,6 +5,9 @@ on:
     types:
       - published
 
+permissions:
+  contents: write
+
 jobs:
   build-and-package:
     name: Build and Package
@@ -13,7 +16,7 @@ jobs:
     steps:
     # 1. Cloning the repository
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # 2. Install PHP and Composer
     # The PHP version is the minimum required by the oldest supported MantisBT
@@ -38,11 +41,6 @@ jobs:
 
     # 5. Uploading the archive to the release
     - name: Upload to Release
-      uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./TelegramBot-${{ github.event.release.tag_name }}.zip
-        asset_name: TelegramBot-${{ github.event.release.tag_name }}.zip
-        asset_content_type: application/zip
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release upload "${{ github.event.release.tag_name }}" "TelegramBot-${{ github.event.release.tag_name }}.zip" --repo "${{ github.repository }}"

@@ -38,6 +38,11 @@ Features
     - inline navigation: go back to any answered step, skip any optional field;
     - an inline calendar for the date fields with the month, year and twelve year views;
     - required fields and value formats are validated right in the dialog.
+- Update an issue from the chat: pick it by project and filter, then change its status the way the status change page of MantisBT does (v. >= 2.0);
+- Integration with the [Calendar](https://github.com/mantisbt-plugins/Calendar) plugin, version 3.0.0 or higher (v. >= 2.0):
+    - create calendar events from the chat;
+    - notifications about the events created, changed and deleted, the members added and removed, and the replies to the invitations, optionally with the event file (.ics) attached;
+    - reply to an invitation, choose the reminders and put off a reminder with the buttons under the notification.
 
 Download
 --------
@@ -170,6 +175,27 @@ accounts; the message opens with a header naming the sender, in the language of 
 <!-- SCREENSHOT: the "Send message" page with projects, a message and files chosen -->
 <!-- SCREENSHOT: the broadcast message as it looks in the chat -->
 
+Calendar plugin integration
+---------------------------
+
+With the [Calendar](https://github.com/mantisbt-plugins/Calendar) plugin of version 3.0.0 or higher
+installed, the plugin pages get the *Calendar plugin integration* tab. The integration is off by
+default; once it is switched on there:
+
+- the action list of the bot offers **Create an event** - a dialog asking for the project, the
+  name, the description, the dates, the linked issues and the members, with the same inline
+  calendar as the issue dialog. The access levels of Calendar apply as they do on its own pages;
+- the bot notifies about the events the same way it does about issues, whether the event was
+  changed from the chat or from the Calendar pages. Who is notified of what is set by a matrix on
+  the same tab, globally or per project, and every user may switch each kind of notification off on
+  his *My Account -> Telegram settings* page;
+- the event file (.ics) may go along with the notifications: never, for everybody unless a user
+  switches it off, or only for those who switch it on;
+- the reminders of Calendar are repeated in the chat, and the buttons under a notification answer
+  the invitation, pick the reminders or put off the one just received.
+
+An older Calendar is treated as absent: the tab and the **Create an event** action are not shown.
+
 Supported Versions
 ------------------
 
@@ -181,6 +207,7 @@ Supported Versions
 - The plugin declares no PHP version of its own: the minimum is the one required by the MantisBT
   release it runs on - PHP 7.2.5 for MantisBT 2.26.x and PHP 7.4.0 for 2.27.0 and higher. Tested
   up to PHP 8.4;
+- The Calendar plugin is optional; the integration with it requires Calendar 3.0.0 or higher;
 - The Webhook mode requires MantisBT itself to be reachable from the Internet over HTTPS, with a
   certificate from a trusted CA or a self-signed one uploaded on the settings page. The Script
   mode needs no certificate of its own and no inbound access: the plugin talks to

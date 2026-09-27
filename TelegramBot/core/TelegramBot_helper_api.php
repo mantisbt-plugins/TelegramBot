@@ -338,9 +338,9 @@ function telegram_draft_submit( array $p_bug_data_draft ) {
         $t_text .= PHP_EOL;
         $t_text .= '=======================================';
         $t_text .= PHP_EOL;
-        $t_text .= sprintf( plugin_lang_get( 'bug_creation_complete' ), lang_get( 'bug' ) ) . $t_issue_id;
+        $t_text .= telegram_html( sprintf( plugin_lang_get( 'bug_creation_complete' ), lang_get( 'bug' ) ) . $t_issue_id );
         $t_text .= PHP_EOL;
-        $t_text .= string_get_bug_view_url_with_fqdn( $t_issue_id );
+        $t_text .= telegram_html( string_get_bug_view_url_with_fqdn( $t_issue_id ) );
     } catch( Mantis\Exceptions\MantisException $t_error ) {
 
         $t_params = $t_error->getParams();
@@ -356,7 +356,7 @@ function telegram_draft_submit( array $p_bug_data_draft ) {
             call_user_func_array( 'error_parameters', $t_params );
         }
 
-        $t_text = error_string( $t_error->getCode() );
+        $t_text = telegram_html( error_string( $t_error->getCode() ) );
     }
 
     plugin_config_delete( 'bug_data_draft', $t_user_id );
@@ -369,8 +369,7 @@ function telegram_draft_submit( array $p_bug_data_draft ) {
     return array(
                               'chat_id'    => $t_chat_id,
                               'message_id' => $t_message_id,
-                              'text'       => $t_text,
-    );
+    ) + telegram_card_message( $t_text );
 }
 
 /**
@@ -845,7 +844,7 @@ function telegram_draft_step_display( $p_step, array $p_bug_data_draft ) {
  * the same way no matter how the card has been redrawn.
  *
  * @param array $p_bug_data_draft Issue draft.
- * @return string Answered part of the draft card.
+ * @return string HTML of the answered part of the draft card.
  */
 function telegram_draft_card_text_rebuild( array $p_bug_data_draft ) {
 
@@ -868,7 +867,7 @@ function telegram_draft_card_text_rebuild( array $p_bug_data_draft ) {
             $t_display .= ' ' . plugin_lang_get( 'default_mark' );
         }
 
-        $t_lines[] = telegram_draft_step_label( $t_step ) . ': ' . $t_display;
+        $t_lines[] = telegram_card_field( telegram_draft_step_label( $t_step ), $t_display );
     }
 
     return implode( PHP_EOL, $t_lines );
@@ -943,7 +942,7 @@ function telegram_draft_wizard_descriptor( array $p_bug_data_draft ) {
  * @param array  $p_bug_data_draft Issue draft.
  * @param string $p_suffix         Question of the wizard, or the prompt of its menu.
  * @param string $p_error          Message about the answer being rejected.
- * @return string Text of the draft card.
+ * @return string HTML of the draft card.
  */
 function telegram_draft_card_compose( array $p_bug_data_draft, $p_suffix = '', $p_error = '' ) {
 
@@ -1646,11 +1645,9 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
             #The answers are drawn out of the draft, the question is shown under them.
             #A rejected keyboard answer is reported by a pop-up instead.
             $t_data_send = [
-                                      'chat_id'      => $t_orgl_chat_id,
-                                      'message_id'   => $t_callback_msg_id,
-                                      'text'         => telegram_draft_card_compose( $t_bug_data_draft, $t_suffix ),
-                                      'reply_markup' => $t_inline_keyboard,
-            ];
+                                      'chat_id'    => $t_orgl_chat_id,
+                                      'message_id' => $t_callback_msg_id,
+            ] + telegram_card_message( telegram_draft_card_compose( $t_bug_data_draft, $t_suffix ), $t_inline_keyboard );
             break;
 
         default :
@@ -1767,19 +1764,63 @@ function telegram_action_line( $p_action_tag ) {
             return '';
     }
 
-    return plugin_lang_get( 'action_label' ) . ': ' . $t_action;
+    return telegram_card_field( plugin_lang_get( 'action_label' ), $t_action );
+}
+
+/**
+ * Escape a plain text for a dialog card. The cards are sent with the HTML parse
+ * mode, which refuses the whole message over a single unescaped character of the
+ * markup.
+ *
+ * @param string $p_text Plain text.
+ * @return string HTML of the card.
+ */
+function telegram_html( $p_text ) {
+    return htmlspecialchars( (string)$p_text, ENT_NOQUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+}
+
+/**
+ * A line of a dialog card: the label of a field in bold and its value.
+ *
+ * @param string $p_label Label of the field.
+ * @param string $p_value Value of the field.
+ * @return string HTML of the card.
+ */
+function telegram_card_field( $p_label, $p_value ) {
+    return '<b>' . telegram_html( $p_label . ':' ) . '</b> ' . telegram_html( $p_value );
+}
+
+/**
+ * The data of a message showing a dialog card, the only place the parse mode of
+ * the cards is set.
+ *
+ * @param string                                          $p_text         HTML of the card.
+ * @param Longman\TelegramBot\Entities\InlineKeyboard|null $p_reply_markup Keyboard of the card.
+ * @return array Data of the message to send.
+ */
+function telegram_card_message( $p_text, $p_reply_markup = NULL ) {
+    $t_data = array(
+                              'text'       => $p_text,
+                              'parse_mode' => 'HTML',
+    );
+
+    if( $p_reply_markup !== NULL ) {
+        $t_data['reply_markup'] = $p_reply_markup;
+    }
+
+    return $t_data;
 }
 
 /**
  * Put the prompt telling the user what to do now under the context lines of a
  * dialog card, separated the way the draft card separates its question.
  *
- * @param string $p_context Context lines of the card.
- * @param string $p_prompt  Prompt of the current step.
- * @return string
+ * @param string $p_context HTML of the context lines of the card.
+ * @param string $p_prompt  Plain text of the prompt of the current step.
+ * @return string HTML of the card.
  */
 function telegram_card_prompt_append( $p_context, $p_prompt ) {
-    return $p_context . PHP_EOL . plugin_lang_get( 'card_separator' ) . PHP_EOL . $p_prompt;
+    return $p_context . PHP_EOL . telegram_html( plugin_lang_get( 'card_separator' ) . PHP_EOL . $p_prompt );
 }
 
 /**
@@ -1787,10 +1828,10 @@ function telegram_card_prompt_append( $p_context, $p_prompt ) {
  * issue view page of the core is titled.
  *
  * @param BugData $p_bug A valid bug object.
- * @return string
+ * @return string HTML of the card.
  */
 function telegram_bug_line( BugData $p_bug ) {
-    return lang_get( 'issue_id' ) . $p_bug->id . ': ' . $p_bug->summary;
+    return telegram_card_field( lang_get( 'issue_id' ) . $p_bug->id, $p_bug->summary );
 }
 
 /**
@@ -1821,7 +1862,7 @@ function telegram_bug_select_filter_line() {
             return '';
     }
 
-    return plugin_lang_get( 'filter_label' ) . ': ' . $t_name;
+    return telegram_card_field( plugin_lang_get( 'filter_label' ), $t_name );
 }
 
 /**
@@ -1846,7 +1887,7 @@ function telegram_bug_select_context( $p_action_tag, $p_with_filter = TRUE ) {
         $t_project_name .= ' ' . plugin_lang_get( 'default_mark' );
     }
 
-    $t_lines[] = lang_get( 'email_project' ) . ': ' . $t_project_name;
+    $t_lines[] = telegram_card_field( lang_get( 'email_project' ), $t_project_name );
 
     if( $p_with_filter ) {
         $t_filter_line = telegram_bug_select_filter_line();
@@ -1908,10 +1949,10 @@ function telegram_bug_select_step( $p_current_action, $p_action_tag ) {
     }
 
     if( $t_command[0] == 'get_projects' ) {
-        return [
-                                  'text'         => telegram_card_prompt_append( telegram_action_line( $p_action_tag ), lang_get( 'select_project_button' ) ),
-                                  'reply_markup' => keyboard_bug_select_projects_get( $p_action_tag, (int)$p_current_action['get_projects']['page'] ),
-        ];
+        return telegram_card_message(
+                                  telegram_card_prompt_append( telegram_action_line( $p_action_tag ), lang_get( 'select_project_button' ) ),
+                                  keyboard_bug_select_projects_get( $p_action_tag, (int)$p_current_action['get_projects']['page'] )
+        );
     }
 
     if( $t_command[0] == 'sprj' ) {
@@ -1925,12 +1966,12 @@ function telegram_bug_select_step( $p_current_action, $p_action_tag ) {
         # The filter is being picked anew, the one of the previous walk is gone
         plugin_config_delete( 'bug_select_filter', $t_user_id );
 
-        return [
-                                  'text'         => telegram_card_prompt_append(
+        return telegram_card_message(
+                                  telegram_card_prompt_append(
                                           telegram_bug_select_context( $p_action_tag, FALSE ),
                                           plugin_lang_get( 'bug_section_select' ) ),
-                                  'reply_markup' => telegram_bot_get_keyboard_default_filter( $p_action_tag ),
-        ];
+                                  telegram_bot_get_keyboard_default_filter( $p_action_tag )
+        );
     }
 
     # The list below is narrowed down to the project picked above, the picked
@@ -1966,12 +2007,12 @@ function telegram_bug_select_step( $p_current_action, $p_action_tag ) {
 
     $t_inline_keyboard = keyboard_bugs_get( $t_custom_filter, $p_current_action['get_bugs'][$t_command_get_bugs[0]]['page'], $p_action_tag, $t_command_get_bugs[0] );
 
-    return [
-                              'text'         => telegram_card_prompt_append(
+    return telegram_card_message(
+                              telegram_card_prompt_append(
                                       telegram_bug_select_context( $p_action_tag ),
                                       plugin_lang_get( 'bug_select' ) ),
-                              'reply_markup' => $t_inline_keyboard,
-    ];
+                              $t_inline_keyboard
+    );
 }
 
 /**
@@ -2002,12 +2043,12 @@ function telegram_update_bug( $p_current_action ) {
             $t_bug_id = (int)$p_current_action['set_bug'];
             $t_bug    = bug_get( $t_bug_id );
 
-            $t_data_send = [
-                                      'text'         => telegram_card_prompt_append(
+            $t_data_send = telegram_card_message(
+                                      telegram_card_prompt_append(
                                               telegram_bug_select_context( TelegrambotActions::UPDATE_BUG_TAG ) . PHP_EOL . telegram_bug_line( $t_bug ),
                                               plugin_lang_get( 'action_select' ) ),
-                                      'reply_markup' => keyboard_bug_actions_get( $t_bug ),
-            ];
+                                      keyboard_bug_actions_get( $t_bug )
+            );
             break;
 
         default:
@@ -2347,7 +2388,7 @@ function telegram_status_change_pending_step( array $p_draft ) {
  * @param array  $p_draft    Draft of the dialog.
  * @param string $p_question Question the card ends with.
  * @param string $p_error    Error shown before the question.
- * @return string
+ * @return string HTML of the card.
  */
 function telegram_status_change_card_compose( $p_draft, $p_question = '', $p_error = '' ) {
     $t_bug = bug_get( (int)$p_draft['bug_id'] );
@@ -2355,30 +2396,30 @@ function telegram_status_change_card_compose( $p_draft, $p_question = '', $p_err
     $t_lines   = array();
     $t_lines[] = telegram_bug_select_context( TelegrambotActions::CHANGE_STATUS_TAG );
     $t_lines[] = telegram_bug_line( $t_bug );
-    $t_lines[] = telegram_status_change_process_string( (int)$p_draft['new_status'], '_bug_title' );
+    $t_lines[] = telegram_html( telegram_status_change_process_string( (int)$p_draft['new_status'], '_bug_title' ) );
 
     if( $p_draft['resolution'] !== '' && $p_draft['resolution'] !== null ) {
-        $t_lines[] = lang_get( 'resolution' ) . ': ' . get_enum_element( 'resolution', (int)$p_draft['resolution'] );
+        $t_lines[] = telegram_card_field( lang_get( 'resolution' ), get_enum_element( 'resolution', (int)$p_draft['resolution'] ) );
     }
 
     if( $p_draft['duplicate_id'] !== '' && $p_draft['duplicate_id'] !== null ) {
-        $t_lines[] = lang_get( 'duplicate_id' ) . ': ' . $p_draft['duplicate_id'];
+        $t_lines[] = telegram_card_field( lang_get( 'duplicate_id' ), $p_draft['duplicate_id'] );
     }
 
     if( $p_draft['handler'] !== '' && $p_draft['handler'] !== null ) {
-        $t_lines[] = lang_get( 'assigned_to' ) . ': ' . user_get_name( (int)$p_draft['handler'] );
+        $t_lines[] = telegram_card_field( lang_get( 'assigned_to' ), user_get_name( (int)$p_draft['handler'] ) );
     }
 
     if( $p_draft['fixed_in_version'] !== '' && $p_draft['fixed_in_version'] !== null ) {
-        $t_lines[] = lang_get( 'fixed_in_version' ) . ': ' . $p_draft['fixed_in_version'];
+        $t_lines[] = telegram_card_field( lang_get( 'fixed_in_version' ), $p_draft['fixed_in_version'] );
     }
 
     if( $p_draft['bugnote'] !== '' && $p_draft['bugnote'] !== null ) {
-        $t_lines[] = lang_get( 'bugnote' ) . ': ' . $p_draft['bugnote'];
+        $t_lines[] = telegram_card_field( lang_get( 'bugnote' ), $p_draft['bugnote'] );
     }
 
     if( isset( $p_draft['warning'] ) && $p_draft['warning'] != '' ) {
-        $t_lines[] = '⚠ ' . $p_draft['warning'];
+        $t_lines[] = telegram_html( '⚠ ' . $p_draft['warning'] );
     }
 
     $t_prompt = array();
@@ -2461,10 +2502,7 @@ function telegram_status_change_step_ask( $p_step, $p_draft, BugData $p_bug, $p_
 
     keyboard_status_change_buttons_add( $t_inline_keyboard, $p_draft, $p_bug );
 
-    return array(
-                              'text'         => telegram_status_change_card_compose( $p_draft, $t_question, $p_error ),
-                              'reply_markup' => $t_inline_keyboard,
-    );
+    return telegram_card_message( telegram_status_change_card_compose( $p_draft, $t_question, $p_error ), $t_inline_keyboard );
 }
 
 /**
@@ -2495,10 +2533,7 @@ function telegram_status_change_ask_next_step( $p_draft ) {
     keyboard_status_change_apply_button_add( $t_inline_keyboard, (int)$p_draft['new_status'] );
     keyboard_status_change_buttons_add( $t_inline_keyboard, $p_draft, $t_bug );
 
-    return array(
-                              'text'         => telegram_status_change_card_compose( $p_draft, plugin_lang_get( 'status_change_menu_prompt' ) ),
-                              'reply_markup' => $t_inline_keyboard,
-    );
+    return telegram_card_message( telegram_status_change_card_compose( $p_draft, plugin_lang_get( 'status_change_menu_prompt' ) ), $t_inline_keyboard );
 }
 
 /**
@@ -2645,12 +2680,12 @@ function telegram_change_status( $p_current_action, $p_callback_query = NULL ) {
             $t_bug_id = (int)$p_current_action['set_bug'];
             $t_bug    = bug_get( $t_bug_id );
 
-            $t_data_send = [
-                                      'text'         => telegram_card_prompt_append(
+            $t_data_send = telegram_card_message(
+                                      telegram_card_prompt_append(
                                               telegram_bug_select_context( TelegrambotActions::CHANGE_STATUS_TAG ) . PHP_EOL . telegram_bug_line( $t_bug ),
                                               '❓ ' . lang_get( 'status' ) ),
-                                      'reply_markup' => keyboard_buttons_bug_change_status( $t_bug ),
-            ];
+                                      keyboard_buttons_bug_change_status( $t_bug )
+            );
             break;
 
         case TelegrambotActions::SET_BUG_STATUS:

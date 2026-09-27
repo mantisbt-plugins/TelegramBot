@@ -310,6 +310,11 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'event_draft_chat_id'                         => '',
                                   'event_draft_message_id'                      => '',
                                   'event_draft_current_field'                   => '',
+                                  # per-user state of the status change dialog, see TelegramBot_helper_api.php
+                                  'status_change_draft'                         => '',
+                                  'status_change_draft_chat_id'                 => '',
+                                  'status_change_draft_message_id'              => '',
+                                  'status_change_draft_await'                   => '',
                                   # per-user "count:window_start" of wrong PIN code guesses
                                   'pin_code_attempts'                           => '',
                                   # wrong PIN code guesses allowed within one lockout window:

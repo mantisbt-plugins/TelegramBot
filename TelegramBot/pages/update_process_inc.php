@@ -209,11 +209,9 @@ try {
                                     keyboard_draft_buttons_add( $t_inline_keyboard, $t_bug_data_draft );
 
                                     $t_data_send = [
-                                        'chat_id'      => plugin_config_get( 'bug_data_draft_chat_id', NULL, FALSE, $t_user_id ),
-                                        'message_id'   => plugin_config_get( 'bug_data_draft_message_id', NULL, FALSE, $t_user_id ),
-                                        'text'         => telegram_draft_card_compose( $t_bug_data_draft, $t_next['suffix'], $t_error_text ),
-                                        'reply_markup' => $t_inline_keyboard,
-                                    ];
+                                        'chat_id'    => plugin_config_get( 'bug_data_draft_chat_id', NULL, FALSE, $t_user_id ),
+                                        'message_id' => plugin_config_get( 'bug_data_draft_message_id', NULL, FALSE, $t_user_id ),
+                                    ] + telegram_card_message( telegram_draft_card_compose( $t_bug_data_draft, $t_next['suffix'], $t_error_text ), $t_inline_keyboard );
                                 }
 
                                 $t_result = Longman\TelegramBot\Request::editMessageText( $t_data_send );

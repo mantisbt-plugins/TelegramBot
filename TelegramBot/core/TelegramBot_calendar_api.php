@@ -899,10 +899,11 @@ function telegram_event_time_question_get( array $p_draft, $p_step, $p_error = '
 
     keyboard_event_buttons_add( $t_inline_keyboard, $p_draft );
 
+    # the day comes from the calendar as Y-n-j, it is shown the way the card shows dates
     $t_question = sprintf(
                               plugin_lang_get( 'event_time_prompt' ),
                               telegram_event_draft_step_label( $p_step ),
-                              (string)$p_draft[$p_step . '_day']
+                              date( 'Y-m-d', strtotime( (string)$p_draft[$p_step . '_day'] ) )
     );
 
     return array(
@@ -1316,8 +1317,20 @@ function telegram_event_report( $p_current_action, Longman\TelegramBot\Entities\
                 break;
             }
 
+            $t_day = reset( $p_current_action[TelegrambotActions::SET_EVENT_DATE] );
+
+            # an end day before the start day is refused right away: the time
+            # asked next only offers the hours of the day picked, so the day
+            # could not be changed any more without taking back the start
+            if( $t_step == 'date_to'
+                    && !is_blank( (string)$t_draft['date_from'] )
+                    && strtotime( $t_day ) < strtotime( date( 'Y-m-d', (int)$t_draft['date_from'] ) ) ) {
+                $t_error = plugin_lang_get( 'event_error_range' );
+                break;
+            }
+
             # the day is only half of the answer, the time is asked as a text
-            $t_draft[$t_step . '_day'] = reset( $p_current_action[TelegrambotActions::SET_EVENT_DATE] );
+            $t_draft[$t_step . '_day'] = $t_day;
             telegram_event_draft_set( $t_draft );
 
             $t_data_send               = telegram_event_time_question_get( $t_draft, $t_step );

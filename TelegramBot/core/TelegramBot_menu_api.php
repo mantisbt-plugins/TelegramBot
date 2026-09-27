@@ -23,7 +23,7 @@ function telegrambot_print_menu_config( $p_page = '' ) {
 	);
 
 	# the tab belongs to the Calendar plugin: without it nothing reads the settings
-	if( plugin_is_registered( 'Calendar' ) ) {
+	if( telegram_calendar_supported() ) {
 		$t_pages[] = 'calendar_config_page';
 	}
 

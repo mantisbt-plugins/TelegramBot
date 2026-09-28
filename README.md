@@ -234,3 +234,18 @@ Supported Versions
   release it runs on - PHP 7.2.5 for MantisBT 2.26.x and PHP 7.4.0 for 2.27.0 and higher. Tested
   up to PHP 8.4;
 - The Calendar plugin is optional; the integration with it requires Calendar 3.0.0 or higher.
+
+
+Donate
+--------------
+All work on this plugin consists of many hours of coding during our free time, to provide you with a Telegram bot
+that is easy to use. If you enjoy using this plugin and would like to say thank you, donations are a great
+way to show your support.
+
+Donations are invested back into the project 👍
+
+Thank you for keeping this project alive 🙏
+
+Available methods:
+1. TGFFBC28Wo27aQ24L4ku6y3Egbe12Jhv1k (USDT TRC20)
+2. 1PxyVPeYhRUtt5Mg1t3xSmFtHSYf2CabLR (BTC)

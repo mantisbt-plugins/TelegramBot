@@ -65,12 +65,6 @@ How to install
 7. Click TelegramBot link
 8. Follow the instructions.
 
-The archive attached to a release already contains the dependencies. When installing from the
-source code instead, run `composer install` in the root of the repository: the dependencies are
-not kept in git. Do not pass `--no-scripts` - after the install composer removes the files of the
-dependencies the plugin never loads (utility scripts, tests, SQL dumps), which would otherwise be
-reachable from the web inside the plugins folder.
-
 Getting updates: Webhook or Script
 ----------------------------------
 

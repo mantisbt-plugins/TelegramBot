@@ -35,6 +35,8 @@ Features
 - Guided issue creation covering every field of the report form (v. >= 2.0):
     - custom fields of all MantisBT types, including the ones defined by third party cfdef files;
     - the required fields are asked first, then the issue can be created right away or the optional fields filled in;
+    - the monitors of the new issue, when `monitors` is listed in `$g_bug_report_page_fields`, the way the report page of MantisBT does it;
+    - long lists of users (handler, monitors) are shown page by page;
     - inline navigation: go back to any answered step, skip any optional field;
     - an inline calendar for the date fields with the month, year and twelve year views;
     - required fields and value formats are validated right in the dialog.

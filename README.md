@@ -44,6 +44,9 @@ Features
     - notifications about the events created, changed and deleted, the members added and removed, and the replies to the invitations, optionally with the event file (.ics) attached;
     - reply to an invitation, choose the reminders and put off a reminder with the buttons under the notification.
 
+The bot works in private chats only: messages and button presses coming from groups and channels
+are ignored, since the menus and the lists of issues are personal.
+
 Download
 --------
 Please download the stable version.
@@ -62,6 +65,12 @@ How to install
 7. Click TelegramBot link
 8. Follow the instructions.
 
+The archive attached to a release already contains the dependencies. When installing from the
+source code instead, run `composer install` in the root of the repository: the dependencies are
+not kept in git. Do not pass `--no-scripts` - after the install composer removes the files of the
+dependencies the plugin never loads (utility scripts, tests, SQL dumps), which would otherwise be
+reachable from the web inside the plugins folder.
+
 Getting updates: Webhook or Script
 ----------------------------------
 
@@ -73,6 +82,13 @@ reachable from the Internet over HTTPS. The certificate may be either issued by 
 self-signed: in the latter case upload the public certificate (`.pem`, `.crt`, `.cer`) on the
 settings page, and the plugin passes it to Telegram when installing the webhook. Updates arrive
 instantly and nothing has to be scheduled.
+
+The webhook URL carries no credentials: on installing the webhook the plugin generates a random
+secret, Telegram sends it back in the `X-Telegram-Bot-Api-Secret-Token` header of every update,
+and a request without the right secret is refused. A webhook installed by a 1.x version of the
+plugin still has the bot token in its URL, where it ends up in the web server logs; it keeps
+working after the update, with a warning on the settings page, until the settings are saved -
+saving them reinstalls the webhook with a secret.
 
 **Script** (long polling) - MantisBT asks Telegram for updates itself, over an outgoing HTTPS
 connection only - no certificate of your own is involved. Use it when publishing MantisBT on the
@@ -104,6 +120,13 @@ from the request, and the bot puts it into the links it sends. Set `$g_path` in 
 or fill the URL field on the settings page if MantisBT is published under a different name for
 external users.
 
+**Connection debug mode** (settings page) writes the whole exchange with Telegram, messages of the
+users included, to the file given in **Path to log file**. Only a `.log` or `.txt` file in an
+existing directory outside the web root is accepted, and a file created by the plugin is readable
+by its owner only. Files received from Telegram are downloaded to a directory of their own inside
+the temporary directory of the system, readable by the web server user only, and removed as soon
+as they are attached to the issue.
+
 Linking accounts: Link or PIN code
 ----------------------------------
 
@@ -118,6 +141,11 @@ confirms the binding in one tap. This requires MantisBT to be reachable from the
 runs on, usually a phone - which rules the method out for an instance published on the local
 network only.
 
+The link is good for one use within 15 minutes, and a new invitation cancels the previous one.
+The confirmation page names the Telegram account about to be linked and the MantisBT account it
+will act for; answering **No** cancels the link. A link received from somebody else must never be
+confirmed: the Telegram account of its sender would then work in the bot on your behalf.
+
 **PIN code** - the bot shows a 4-digit code in the chat, and the user enters it on the *Telegram
 binding* page of his MantisBT account (*My Account -> Telegram binding*). Nothing has to be opened
 from the phone, so this is the method for an instance that is not published to the Internet. The
@@ -129,8 +157,10 @@ that has just expired makes the bot send a fresh one to the chat by itself.
 
 **Link and PIN code** - the invitation carries both, and the user takes whichever works for him.
 
-Whichever method is chosen, a chat already linked to another MantisBT account is never relinked
-silently: the owner of that chat releases it himself with the `/stop` command. The invitation is
+Whichever method is chosen, a binding is never replaced silently: a chat already linked to
+another MantisBT account is released by its owner with the `/stop` command, and a MantisBT account
+already linked to a Telegram account is unlinked on its *Telegram binding* page before another
+one can be linked. The invitation is
 deleted from the chat as soon as the accounts are linked, so an unused code does not stay on
 screen; when the PIN code method is active, an invitation link sent earlier leads to a page saying
 so instead of binding anything.

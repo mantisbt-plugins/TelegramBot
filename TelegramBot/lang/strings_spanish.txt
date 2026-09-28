@@ -429,3 +429,17 @@ $s_plugin_TelegramBot_event_draft_busy_status = 'Hay un cambio de estado en curs
 $s_plugin_TelegramBot_event_draft_busy_event = 'Hay un borrador de evento en curso. Termínelo o cancélelo antes de informar de una incidencia.';
 
 $s_plugin_TelegramBot_user_info_header = 'Su cuenta de MantisBT:';
+
+$s_plugin_TelegramBot_webhook_secret_token_missing = 'El webhook aún no tiene token secreto. Un webhook instalado por una versión anterior del plugin lleva el token del bot en su URL, donde acaba en los registros del servidor web: guarde la configuración para reinstalarlo.';
+$s_plugin_TelegramBot_user_relationship_confirm_title = '¿Vincular una cuenta de Telegram a su cuenta de MantisBT?';
+$s_plugin_TelegramBot_user_relationship_confirm_telegram = 'Cuenta de Telegram';
+$s_plugin_TelegramBot_user_relationship_confirm_mantis = 'Cuenta de MantisBT';
+$s_plugin_TelegramBot_user_relationship_confirm_effect = 'Una vez vinculada, esta cuenta de Telegram actuará en el bot en su nombre: creará incidencias, añadirá notas y recibirá sus notificaciones.';
+$s_plugin_TelegramBot_user_relationship_confirm_warning = 'Si no pidió este enlace al bot usted mismo, pulse NO.';
+$s_plugin_TelegramBot_user_relationship_declined = 'La cuenta de Telegram no se ha vinculado y el enlace ya no funciona. Para vincular su propio Telegram, envíe cualquier mensaje al bot y siga el nuevo enlace.';
+$s_plugin_TelegramBot_ERROR_TG_ACCOUNT_ALREADY_ASSOCIATED = 'SU CUENTA YA ESTÁ ENLAZADA CON OTRA CUENTA DE TELEGRAM. DESENLÁCELA PRIMERO EN LA PÁGINA DE TELEGRAM DE LAS PREFERENCIAS DE SU CUENTA.';
+$s_plugin_TelegramBot_ERROR_TG_REGISTRATION_LINK_INVALID = 'EL ENLACE NO ES VÁLIDO, YA SE USÓ O HA CADUCADO. ENVÍE CUALQUIER MENSAJE AL BOT PARA OBTENER UNO NUEVO.';
+$s_plugin_TelegramBot_error_file_download = 'No se pudo recibir el archivo de Telegram, intente enviarlo de nuevo.';
+$s_plugin_TelegramBot_ERROR_DEBUG_LOG_PATH_NOT_ALLOWED = 'LA RUTA DEL REGISTRO DE DEPURACIÓN NO ESTÁ PERMITIDA: SOLO SE ADMITE UN ARCHIVO .LOG O .TXT EN UN DIRECTORIO EXISTENTE FUERA DE LA RAÍZ WEB.';
+
+$s_plugin_TelegramBot_value_not_offered = 'Este valor ya no está disponible para usted, elija uno de los ofrecidos.';

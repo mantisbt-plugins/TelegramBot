@@ -33,31 +33,71 @@ function telegram_bot_associated_all_users_get() {
     return $t_row;
 }
 
-function telegram_bot_user_mapping_add( $p_user_id, $p_telegram_user_id ) {
+/**
+ * Make sure the MantisBT user and the telegram user may be bound to each other.
+ *
+ * A binding is never replaced silently: whoever holds the old one would lose it without
+ * a word, and a forged request would take over the account. Either side bound elsewhere
+ * has to be released first - the account on its Telegram preferences page, the chat by
+ * the /stop command. Only a binding left behind by a deleted MantisBT user is dropped
+ * here, nobody is left to release it.
+ *
+ * @param integer $p_user_id          MantisBT user id.
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @return boolean True when exactly this binding already exists.
+ */
+function telegram_bot_user_mapping_ensure_allowed( $p_user_id, $p_telegram_user_id ) {
 
     $t_user_id          = (int) $p_user_id;
     $t_telegram_user_id = (int) $p_telegram_user_id;
 
+    $t_bound_telegram_user_id = telegram_user_get_id_by_user_id( $t_user_id );
+    $t_bound_user_id          = user_get_id_by_telegram_user_id( $t_telegram_user_id );
+
+    if( $t_bound_telegram_user_id == $t_telegram_user_id && $t_bound_user_id == $t_user_id ) {
+        return true;
+    }
+
+    if( $t_bound_telegram_user_id != 0 ) {
+        plugin_log_event( 'Registration Error! Mantisbt user ' . user_get_username( $t_user_id ) . ' is already mapped to telegram user id#' . $t_bound_telegram_user_id . ', telegram user id#' . $t_telegram_user_id . ' is refused' );
+        plugin_error( 'ERROR_TG_ACCOUNT_ALREADY_ASSOCIATED', ERROR );
+    }
+
+    if( $t_bound_user_id != 0 ) {
+        if( user_exists( $t_bound_user_id ) ) {
+            plugin_log_event( 'Registration Error! Telegram user id#' . $t_telegram_user_id . ' is already mapped to mantisbt user ' . user_get_username( $t_bound_user_id ) );
+            plugin_error( 'ERROR_TG_USER_ALREADY_ASSOCIATED', ERROR );
+        }
+
+        telegram_bot_user_mapping_delete( $t_bound_user_id );
+    }
+
+    return false;
+}
+
+/**
+ * Bind the MantisBT user to the telegram user. Refused when either of them is bound
+ * elsewhere, see telegram_bot_user_mapping_ensure_allowed().
+ *
+ * @param integer $p_user_id          MantisBT user id.
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @return boolean
+ */
+function telegram_bot_user_mapping_add( $p_user_id, $p_telegram_user_id ) {
+
+    if( telegram_bot_user_mapping_ensure_allowed( $p_user_id, $p_telegram_user_id ) ) {
+        return true;
+    }
+
     $t_user_relationship_table = plugin_table( 'user_relationship' );
 
-    $t_telegram_user_is_associated = telegram_user_is_associated_mantis_user( $p_telegram_user_id );
-    $t_mantis_user_is_associated   = user_is_associated_with_telegram( $t_user_id );
+    db_param_push();
 
-    if( $t_telegram_user_is_associated ) {
-        $t_query    = "UPDATE $t_user_relationship_table SET mantis_user_id = " . db_param() . " WHERE telegram_user_id = " . db_param();
-        $t_db_param = array( $t_user_id, $t_telegram_user_id );
-    } else if( $t_mantis_user_is_associated ) {
-        $t_query    = "UPDATE $t_user_relationship_table SET telegram_user_id = " . db_param() . " WHERE mantis_user_id = " . db_param();
-        $t_db_param = array( $t_telegram_user_id, $t_user_id );
-    } else {
-        $t_query    = "INSERT INTO $t_user_relationship_table
+    $t_query = "INSERT INTO $t_user_relationship_table
                                                 ( mantis_user_id, telegram_user_id )
                                               VALUES
                                                 ( " . db_param() . ',' . db_param() . ')';
-        $t_db_param = array( $t_user_id, $t_telegram_user_id );
-    }
-
-    db_query( $t_query, $t_db_param );
+    db_query( $t_query, array( (int) $p_user_id, (int) $p_telegram_user_id ) );
 
     return true;
 }
@@ -281,6 +321,12 @@ function telegram_pin_code_get( $p_telegram_user_id ) {
 /**
  * Pick a PIN code no other registration is using.
  *
+ * A state row outlives its code by far, so an expired code is still held by its
+ * row: the owner may type it once more and must not bind a chat of somebody else
+ * by it. Such a code is given out again only when the valid codes and the held
+ * ones leave nothing else - otherwise anybody with enough telegram accounts could
+ * use the whole range up for the two days the rows are kept.
+ *
  * @return integer PIN code.
  */
 function telegram_pin_code_free_get() {
@@ -289,21 +335,29 @@ function telegram_pin_code_free_get() {
 
     db_param_push();
 
-    $t_query  = "SELECT pin_code FROM $t_pin_codes_table";
+    $t_query  = "SELECT pin_code, timestamp FROM $t_pin_codes_table";
     $t_result = db_query( $t_query );
 
+    $t_valid_since  = db_now() - TELEGRAM_PIN_CODE_TTL;
+    $t_codes_valid  = array();
     $t_codes_in_use = array();
     while( $t_row = db_fetch_array( $t_result ) ) {
         $t_codes_in_use[(int) $t_row['pin_code']] = true;
+
+        if( (int) $t_row['timestamp'] >= $t_valid_since ) {
+            $t_codes_valid[(int) $t_row['pin_code']] = true;
+        }
     }
 
     # 9000 possible codes against the few registrations running at the same time:
     # a free code is found on the first attempts, the limit only guards the loop.
     # random_int(): the code is a secret, so a CSPRNG - mt_rand() is predictable
-    for( $i = 0; $i < 100; $i++ ) {
-        $t_candidate = random_int( 1000, 9999 );
-        if( !isset( $t_codes_in_use[$t_candidate] ) ) {
-            return $t_candidate;
+    foreach( array( $t_codes_in_use, $t_codes_valid ) as $t_codes_taken ) {
+        for( $i = 0; $i < 100; $i++ ) {
+            $t_candidate = random_int( 1000, 9999 );
+            if( !isset( $t_codes_taken[$t_candidate] ) ) {
+                return $t_candidate;
+            }
         }
     }
 
@@ -471,6 +525,99 @@ function telegram_expired_pin_code_telegram_user_get( $p_pin_code ) {
     }
 
     return (int) $t_row['telegram_user_id'];
+}
+
+/**
+ * Issue a new one-time token for the registration link of the telegram user. It
+ * replaces any token issued before, so only the link of the latest invitation works.
+ *
+ * Only the SHA-256 of the token is stored: the link is the one place the token itself
+ * exists. The name of the telegram account goes along, so that the confirmation page
+ * tells the MantisBT user which chat he is about to bind.
+ *
+ * The registration state row must exist, see telegram_pin_code_get().
+ *
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @param string  $p_telegram_name    Name of the telegram account, may be empty.
+ * @return string Token to put into the link.
+ */
+function telegram_registration_link_token_issue( $p_telegram_user_id, $p_telegram_name ) {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    $t_token = bin2hex( random_bytes( 16 ) );
+
+    # The table is created with the 3-byte utf8 charset on MySQL: a 4-byte character
+    # (an emoji in the name) would fail the query and with it the whole invitation
+    $t_name = preg_replace( '/[\x{10000}-\x{10FFFF}]/u', '', (string) $p_telegram_name );
+    $t_name = mb_substr( trim( (string) $t_name ), 0, 255 );
+
+    db_param_push();
+
+    $t_query = "UPDATE $t_pin_codes_table
+			SET link_token=" . db_param() . ', link_timestamp=' . db_param() . ', telegram_name=' . db_param() . '
+			WHERE telegram_user_id=' . db_param();
+    db_query( $t_query, array( hash( 'sha256', $t_token ), db_now(), $t_name, $p_telegram_user_id ) );
+
+    return $t_token;
+}
+
+/**
+ * Check the token of a registration link.
+ *
+ * @param integer $p_telegram_user_id Telegram user id from the link.
+ * @param string  $p_token            Token from the link.
+ * @return string|false Name of the telegram account the link was issued to, false
+ *                      when the token is unknown, used, replaced or expired.
+ */
+function telegram_registration_link_token_check( $p_telegram_user_id, $p_token ) {
+
+    if( is_blank( $p_token ) || (int) $p_telegram_user_id == 0 ) {
+        return false;
+    }
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    db_param_push();
+
+    $t_query  = "SELECT link_token, link_timestamp, telegram_name
+			FROM $t_pin_codes_table
+			WHERE telegram_user_id=" . db_param();
+    $t_result = db_query( $t_query, array( (int) $p_telegram_user_id ) );
+
+    $t_row = db_fetch_array( $t_result );
+
+    if( $t_row === false || is_blank( $t_row['link_token'] ) ) {
+        return false;
+    }
+
+    if( (int) $t_row['link_timestamp'] < db_now() - TELEGRAM_REGISTRATION_LINK_TTL ) {
+        return false;
+    }
+
+    if( !hash_equals( (string) $t_row['link_token'], hash( 'sha256', (string) $p_token ) ) ) {
+        return false;
+    }
+
+    return (string) $t_row['telegram_name'];
+}
+
+/**
+ * Burn the token of the registration link, leaving the rest of the state in place.
+ *
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @return void
+ */
+function telegram_registration_link_token_burn( $p_telegram_user_id ) {
+
+    $t_pin_codes_table = plugin_table( 'pin_codes' );
+
+    db_param_push();
+
+    $t_query = "UPDATE $t_pin_codes_table
+			SET link_token=" . db_param() . ', link_timestamp=' . db_param() . '
+			WHERE telegram_user_id=' . db_param();
+    db_query( $t_query, array( '', 0, (int) $p_telegram_user_id ) );
 }
 
 /**

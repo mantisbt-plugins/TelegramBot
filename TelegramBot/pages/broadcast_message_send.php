@@ -133,7 +133,7 @@ foreach( $t_mantis_user_list as $t_user ) {
 			}
 		} catch( Exception $t_error ) {
 			$t_user_ok = false;
-			plugin_log_event( 'ERROR! Broadcast sendDocument to ' . $t_telegram_user_id . ' failed: ' . $t_error->getMessage() );
+			plugin_log_event( 'ERROR! Broadcast sendDocument to ' . $t_telegram_user_id . ' failed: ' . telegram_token_mask( $t_error->getMessage() ) );
 		}
 	}
 

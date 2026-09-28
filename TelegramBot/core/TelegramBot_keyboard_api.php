@@ -203,7 +203,8 @@ function keyboard_get_menu_operations() {
 function keyboard_bug_actions_get( BugData $p_bug ) {
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
-    if( access_has_bug_level( config_get( 'update_bug_status_threshold' ), $p_bug->id ) || telegram_bug_reporter_can_close( $p_bug ) ) {
+    # The operation is offered when there is a status to move the issue to
+    if( count( telegram_status_change_options_get( $p_bug ) ) > 0 ) {
 
         $t_inline_keyboard->addRow( [
                                   'text'          => lang_get( 'bug_status_to_button' ),
@@ -560,12 +561,15 @@ function keyboard_handler_get( $p_project_id, $p_action_tag = TelegrambotActions
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
     $p_user_id      = 0;
-    $p_access       = config_get( 'handle_bug_threshold' );
     $t_current_user = auth_get_current_user_id();
 
     if( null === $p_project_id ) {
         $p_project_id = helper_get_current_project();
     }
+
+    # The threshold of the project the issue belongs to, the one bug_update.php
+    # checks the new handler against
+    $p_access = config_get( 'handle_bug_threshold', null, null, (int)$p_project_id );
 
     if( $p_project_id === ALL_PROJECTS ) {
         $t_projects = user_get_accessible_projects( $t_current_user );
@@ -637,7 +641,12 @@ function keyboard_status_get( $p_project_id ) {
 
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
-    $t_resolution_options = get_status_option_list( access_get_project_level( $p_project_id ), config_get( 'bug_submit_status' ), true, ON == config_get( 'allow_reporter_close' ), $p_project_id );
+    $t_resolution_options = get_status_option_list(
+                              access_get_project_level( $p_project_id ),
+                              config_get( 'bug_submit_status', null, null, $p_project_id ),
+                              true,
+                              ON == config_get( 'allow_reporter_close', null, null, $p_project_id ),
+                              $p_project_id );
 
     foreach( $t_resolution_options as $t_key => $t_value ) {
 
@@ -683,29 +692,17 @@ function keyboard_status_change_buttons_add( $p_inline_keyboard, array $p_draft,
  */
 function keyboard_buttons_bug_change_status( BugData $p_bug ) {
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-    $t_current_access  = access_get_project_level( $p_bug->project_id );
 
-    $t_allow_close = telegram_bug_reporter_can_close( $p_bug );
-
-    # User must have rights to change status to use these buttons
-    if( access_has_bug_level( config_get( 'update_bug_status_threshold' ), $p_bug->id ) || $t_allow_close ) {
-
-        $t_enum_list = get_status_option_list( $t_current_access, $p_bug->status, false, $t_allow_close, $p_bug->project_id );
-
-        # resort the list into ascending order after noting the key from the first element (the default)
-        ksort( $t_enum_list );
-
-        foreach( $t_enum_list as $t_key => $t_val ) {
-            $t_inline_keyboard->addRow( [
-                                      'text'          => $t_val,
-                                      'callback_data' => json_encode( array(
-                                                                TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SET_BUG_STATUS => array(
-                                                                                          'id' => $p_bug->id,
-                                                                                          's'  => $t_key
-                                                                ) )
-                                      ) )
-            ] );
-        }
+    foreach( telegram_status_change_options_get( $p_bug ) as $t_key => $t_val ) {
+        $t_inline_keyboard->addRow( [
+                                  'text'          => $t_val,
+                                  'callback_data' => json_encode( array(
+                                                            TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SET_BUG_STATUS => array(
+                                                                                      'id' => $p_bug->id,
+                                                                                      's'  => $t_key
+                                                            ) )
+                                  ) )
+        ] );
     }
 
     $t_inline_keyboard->addRow( [
@@ -1132,4 +1129,62 @@ function keyboard_event_members_get( array $p_candidates, array $p_selected, $p_
         ] );
 
         return $t_inline_keyboard;
+}
+/**
+ * Whether the keyboard carries a button with the given callback data.
+ *
+ * Telegram does not vouch for the callback data and an old button keeps working
+ * after the rights or the state it was drawn for have changed, so an answer is
+ * taken only when the keyboard the server would offer now holds the very button.
+ * The values are compared as strings: the buttons carry the identifiers the way
+ * the database returns them, as integers or as numeric strings.
+ *
+ * @param Longman\TelegramBot\Entities\InlineKeyboard $p_inline_keyboard Keyboard offered to the user.
+ * @param array $p_callback_data Decoded callback data of the button pressed.
+ * @return boolean
+ */
+function keyboard_offers( $p_inline_keyboard, array $p_callback_data ) {
+
+        $t_expected = keyboard_callback_data_normalize( $p_callback_data );
+
+        foreach( (array)$p_inline_keyboard->getProperty( 'inline_keyboard', array() ) as $t_row ) {
+                foreach( (array)$t_row as $t_button ) {
+                        $t_data = json_decode( (string)$t_button->getProperty( 'callback_data', '' ), TRUE );
+
+                        if( is_array( $t_data ) && keyboard_callback_data_normalize( $t_data ) === $t_expected ) {
+                                return TRUE;
+                        }
+                }
+        }
+
+        return FALSE;
+}
+
+/**
+ * Bring decoded callback data to a form comparable with ===: the integers and
+ * the strings turn into strings, the keys are sorted, anything else ( a float, a
+ * boolean, null ) keeps its type and never matches a value of a button.
+ *
+ * @param mixed $p_data Decoded callback data.
+ * @return mixed
+ */
+function keyboard_callback_data_normalize( $p_data ) {
+
+        if( is_array( $p_data ) ) {
+                $t_result = array();
+
+                foreach( $p_data as $t_key => $t_value ) {
+                        $t_result[$t_key] = keyboard_callback_data_normalize( $t_value );
+                }
+
+                ksort( $t_result, SORT_STRING );
+
+                return $t_result;
+        }
+
+        if( is_int( $p_data ) || is_string( $p_data ) ) {
+                return (string)$p_data;
+        }
+
+        return $p_data;
 }

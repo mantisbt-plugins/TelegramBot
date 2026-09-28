@@ -32,7 +32,7 @@ class RequestMantis extends Longman\TelegramBot\Request {
             try {
                 $response[] = self::send( 'sendMessage', $data );
             } catch( Exception $t_error ) {
-                plugin_log_event( 'ERROR! "' . $t_error->getMessage() );
+                plugin_log_event( 'ERROR! ' . telegram_token_mask( $t_error->getMessage() ) );
             }
 
             //Prepare the next message
@@ -114,6 +114,72 @@ function telegram_session_start() {
 	}
 }
 
+/**
+ * Install the webhook with a fresh secret token.
+ *
+ * The URL carries no credentials: Telegram sends the secret back in the
+ * X-Telegram-Bot-Api-Secret-Token header, so it never reaches the access logs.
+ * The secret is stored only after Telegram accepted it, otherwise the
+ * installed webhook and the stored secret would disagree.
+ *
+ * @return \Longman\TelegramBot\Entities\ServerResponse Response of setWebhook.
+ * @throws \Longman\TelegramBot\Exception\TelegramException
+ */
+function telegram_webhook_install() {
+	$t_secret = bin2hex( random_bytes( 32 ) );
+	$t_data   = array(
+		'url'          => config_get_global( 'path' ) . plugin_page( 'hook', TRUE ),
+		'secret_token' => $t_secret,
+	);
+
+	if( plugin_config_get( 'use_cert' ) == ON ) {
+		# the handle must stay referenced until setWebhook(): closing it deletes the file;
+		# Request turns a local path in 'certificate' into a multipart upload by itself
+		$t_cert_file = tmpfile();
+		fwrite( $t_cert_file, plugin_config_get( 'bot_cert' ) );
+
+		$t_data['certificate'] = stream_get_meta_data( $t_cert_file )['uri'];
+	}
+
+	telegram_session_start();
+	$t_response = Request::setWebhook( $t_data );
+
+	if( $t_response->isOk() ) {
+		plugin_config_set( 'webhook_secret_token', $t_secret );
+	}
+
+	return $t_response;
+}
+
+/**
+ * Check that a webhook request comes from Telegram.
+ *
+ * A webhook installed before the secret token existed still carries the bot
+ * token in its URL; it is accepted only until the webhook is reinstalled, since
+ * from then on the secret is stored and the legacy URL stops working.
+ *
+ * @return boolean True if the request is authentic.
+ */
+function telegram_webhook_request_is_authentic() {
+	$t_secret = (string)plugin_config_get( 'webhook_secret_token' );
+
+	# hash_equals: a strict constant-time comparison, the loose one is open to type
+	# juggling and leaks the position of the first wrong byte through the timing
+	if( !is_blank( $t_secret ) ) {
+		$t_header = isset( $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ) ? (string)$_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] : '';
+		return hash_equals( $t_secret, $t_header );
+	}
+
+	$t_api_key = (string)plugin_config_get( 'api_key' );
+	$t_token   = gpc_get_string( 'token', '' );
+	if( is_blank( $t_api_key ) || is_blank( $t_token ) || !hash_equals( $t_api_key, $t_token ) ) {
+		return false;
+	}
+
+	plugin_log_event( 'WARNING! Webhook with the bot token in its URL, reinstall it on the plugin settings page.' );
+	return true;
+}
+
 function telegram_session_send_message( $p_telegram_user_id, $p_data ) {
 //    telegram_session_start();
 
@@ -171,6 +237,32 @@ function auth_ensure_telegram_user_authenticated( $p_telegram_user_id, $p_telegr
     }
 }
 
+/**
+ * Return the name of a telegram account as Telegram shows it: first and last name
+ * followed by @username. Asked from Telegram rather than taken from the update, so
+ * that every caller of user_telegram_signup() gets it the same way.
+ *
+ * @param integer $p_telegram_user_id Telegram user id.
+ * @return string Name, empty when Telegram does not answer.
+ */
+function telegram_user_display_name_get( $p_telegram_user_id ) {
+
+    $t_response = Request::getChat( array( 'chat_id' => $p_telegram_user_id ) );
+
+    if( !$t_response->isOk() ) {
+        return '';
+    }
+
+    $t_chat  = $t_response->getResult();
+    $t_parts = array( trim( $t_chat->getFirstName() . ' ' . $t_chat->getLastName() ) );
+
+    if( !is_blank( $t_chat->getUsername() ) ) {
+        $t_parts[] = '@' . $t_chat->getUsername();
+    }
+
+    return trim( implode( ' ', $t_parts ) );
+}
+
 function user_telegram_signup( $p_telegram_user_id ) {
 
     //We correctly form the url, depending on which method of receiving updates from the telegram server is selected.
@@ -191,10 +283,15 @@ function user_telegram_signup( $p_telegram_user_id ) {
     # The link binds the account with one tap, but only works when MantisBT is reachable
     # from the phone; the PIN code is typed by the user in his account preferences instead
     if( $t_registration_method != TELEGRAM_REGISTRATION_PIN ) {
+        # The telegram user id is public, so the link also carries a one-time secret:
+        # without it anybody could send a MantisBT user a link with his own id and get
+        # his chat bound to that account by one careless click
+        $t_token = telegram_registration_link_token_issue( $p_telegram_user_id, telegram_user_display_name_get( $p_telegram_user_id ) );
+
         $t_signup_keyboard = new \Longman\TelegramBot\Entities\InlineKeyboard( array() );
         $t_signup_keyboard->addRow( [
                               'text' => plugin_lang_get( 'registration_button_text' ),
-                              'url'  => $t_url . plugin_page( 'registred', TRUE ) . '&telegram_user_id=' . $p_telegram_user_id
+                              'url'  => $t_url . plugin_page( 'registred', TRUE ) . '&telegram_user_id=' . $p_telegram_user_id . '&token=' . $t_token
         ] );
 
         $data_signup['reply_markup'] = $t_signup_keyboard;

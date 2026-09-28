@@ -26,15 +26,31 @@ use Longman\TelegramBot\Request;
 # sender and the batch goes on. The fatal errors of the core are signalled with
 # trigger_error() and would stop the process, so they are turned into exceptions
 # for the time of the loop.
-global $g_telegram_previous_error_handler;
+global $g_telegram_previous_error_handler, $g_lang_overrides, $g_project_override, $g_cache_current_project,
+       $g_error_parameters, $g_skip_sending_bugnote, $g_telegram_callback_alert;
 
 $g_telegram_previous_error_handler = set_error_handler( 'telegram_update_error_handler' );
+
+# Languages pushed while an update is processed are dropped back to this depth
+$t_lang_depth = count( $g_lang_overrides );
 
 try {
 
     foreach ( $t_results as $t_result ) {
 
         $t_update_content = NULL;
+
+        # The long polling runs many updates of different users in one process: the
+        # context an update has left behind must not reach the next one
+        $g_project_override        = null;
+        $g_cache_current_project   = null;
+        $g_error_parameters        = array();
+        $g_skip_sending_bugnote    = FALSE;
+        $g_telegram_callback_alert = array();
+
+        while( count( $g_lang_overrides ) > $t_lang_depth ) {
+            lang_pop();
+        }
 
         try {
 
@@ -43,6 +59,16 @@ try {
             if( $t_update_content == null ) {
                 //An update carrying nothing to act on is dropped, the batch goes on
                 plugin_log_event( 'ERROR! Bad request. The update carries no content.' );
+                continue;
+            }
+
+            //Only private chats are served: in a group the menus and the lists of issues
+            //would be shown to every member. Such an update is dropped silently, a press
+            //on a button is answered to take the spinner off it
+            if( !telegram_update_is_private( $t_update_content ) ) {
+                if( $t_update_content instanceof CallbackQuery ) {
+                    $t_update_content->answer();
+                }
                 continue;
             }
 
@@ -377,10 +403,8 @@ try {
             }
 
         } catch( Throwable $t_exception ) {
-            //The update is given up on, the sender is told about it and the rest of the batch is processed
-            plugin_log_event( 'ERROR! ' . get_class( $t_exception ) . ': ' . $t_exception->getMessage()
-                    . ' in ' . $t_exception->getFile() . ':' . $t_exception->getLine() );
-
+            //The update is given up on, the sender is told about it and the rest of the batch
+            //is processed; the error is logged there, with the token of the bot masked
             telegram_update_error_notify( $t_update_content, $t_exception );
 
             continue;

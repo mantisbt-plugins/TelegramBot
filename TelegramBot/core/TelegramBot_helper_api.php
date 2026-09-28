@@ -88,9 +88,10 @@ function helper_ensure_telegram_bot_registred_confirmed( $p_message ) {
     echo '<div class="col-md-12 col-xs-12">';
     echo '<div class="space-10"></div>';
     echo '<div class="alert alert-warning center">';
-    echo '<p class="bigger-110">';
+    # The message is markup of its own ( headings, tables ), a paragraph cannot hold it
+    echo '<div class="bigger-110">';
     echo "\n" . $p_message . "\n";
-    echo '</p>';
+    echo '</div>';
     echo '<div class="space-10"></div>';
 
     echo '<form method="post" class="center" action="">' . "\n";
@@ -148,7 +149,7 @@ function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(),
         $t_payload = array(
                                   'text'          => $p_text,
                                   'view_state'    => array(
-                                                            'id' => VS_PUBLIC
+                                                            'id' => telegram_bugnote_view_state_get( $p_bug_id )
                                   ),
                                   'time_tracking' => array(
                                                             'duration' => $p_duration
@@ -172,6 +173,142 @@ function bugnote_add_from_telegram( $p_bug_id, $p_text = '', $p_files = array(),
 
         return (int)$t_noteId['id'];
     }
+}
+
+/**
+ * The view status of a note added from the chat, the one the note form of the
+ * core would submit: bugnote_add_inc.php offers the private flag, preset to
+ * "default_bugnote_view_status", only to the users allowed to set it, the note
+ * of everyone else is public.
+ *
+ * @param integer $p_bug_id Issue the note is added to.
+ * @return integer VS_PUBLIC or VS_PRIVATE.
+ */
+function telegram_bugnote_view_state_get( $p_bug_id ) {
+    $t_project_id = bug_get_field( $p_bug_id, 'project_id' );
+
+    if( VS_PRIVATE == config_get( 'default_bugnote_view_status', null, null, $t_project_id )
+            && access_has_bug_level( config_get( 'set_view_status_threshold', null, null, $t_project_id ), $p_bug_id ) ) {
+        return VS_PRIVATE;
+    }
+
+    return VS_PUBLIC;
+}
+
+/**
+ * Point the thresholds of the core read without a project at the given one, the
+ * way the pages of the core override the current project with the project of the
+ * issue they show.
+ *
+ * @param integer $p_project_id Project the configuration is read for.
+ * @return integer|null Override in effect before, for telegram_project_override_restore().
+ */
+function telegram_project_override_set( $p_project_id ) {
+    global $g_project_override;
+
+    $t_previous         = $g_project_override;
+    $g_project_override = (int)$p_project_id;
+
+    return $t_previous;
+}
+
+/**
+ * Put back the project override replaced by telegram_project_override_set().
+ *
+ * @param integer|null $p_previous Override returned by telegram_project_override_set().
+ * @return void
+ */
+function telegram_project_override_restore( $p_previous ) {
+    global $g_project_override;
+
+    $g_project_override = $p_previous;
+}
+
+/**
+ * The check view.php of the core runs before showing an issue. Telegram does
+ * not vouch for the callback data and an old button keeps working after the
+ * rights are taken away, so an issue named by a button is checked the way an
+ * issue named by a web form is.
+ *
+ * @param integer $p_bug_id Issue identifier.
+ * @return string Error text, empty when the current user may view the issue.
+ */
+function telegram_bug_view_error( $p_bug_id ) {
+    $t_bug_id = is_numeric( $p_bug_id ) ? (int)$p_bug_id : 0;
+
+    if( $t_bug_id <= 0 || !bug_exists( $t_bug_id ) ) {
+        error_parameters( $t_bug_id );
+
+        return error_string( ERROR_BUG_NOT_FOUND );
+    }
+
+    $t_project_id = bug_get_field( $t_bug_id, 'project_id' );
+
+    if( !access_has_bug_level( config_get( 'view_bug_threshold', null, null, $t_project_id ), $t_bug_id ) ) {
+        return error_string( ERROR_ACCESS_DENIED );
+    }
+
+    return '';
+}
+
+/**
+ * The checks the note form of the core runs before a note is added: the issue
+ * is visible, it is not read-only and the user may add notes to it.
+ *
+ * @param integer $p_bug_id Issue identifier.
+ * @return string Error text, empty when the current user may add a note.
+ */
+function telegram_bugnote_add_error( $p_bug_id ) {
+    $t_error = telegram_bug_view_error( $p_bug_id );
+
+    if( $t_error != '' ) {
+        return $t_error;
+    }
+
+    $t_bug_id = (int)$p_bug_id;
+
+    if( bug_is_readonly( $t_bug_id ) ) {
+        error_parameters( $t_bug_id );
+
+        return error_string( ERROR_BUG_READ_ONLY_ACTION_DENIED );
+    }
+
+    $t_project_id = bug_get_field( $t_bug_id, 'project_id' );
+
+    if( !access_has_bug_level( config_get( 'add_bugnote_threshold', null, null, $t_project_id ), $t_bug_id ) ) {
+        return error_string( ERROR_ACCESS_DENIED );
+    }
+
+    return '';
+}
+
+/**
+ * Whether the project is one of those the project lists of the bot offer the
+ * current user: an enabled project the user has access to, a subproject included.
+ *
+ * @param integer $p_project_id Project identifier.
+ * @return boolean
+ */
+function telegram_project_is_accessible( $p_project_id ) {
+    if( !is_numeric( $p_project_id ) ) {
+        return FALSE;
+    }
+
+    $t_project_ids = array_map( 'intval', user_get_all_accessible_projects( auth_get_current_user_id() ) );
+
+    return in_array( (int)$p_project_id, $t_project_ids, TRUE );
+}
+
+/**
+ * Whether the current user may report an issue into the project, the check
+ * bug_report_page.php of the core runs on the project picked.
+ *
+ * @param integer $p_project_id Project identifier.
+ * @return boolean
+ */
+function telegram_project_can_report( $p_project_id ) {
+    return telegram_project_is_accessible( $p_project_id )
+            && access_has_project_level( config_get( 'report_bug_threshold', null, null, (int)$p_project_id ), (int)$p_project_id );
 }
 
 /**
@@ -256,19 +393,14 @@ function telegram_update_error_handler( $p_type, $p_error, $p_file, $p_line ) {
 function telegram_update_error_notify( $p_update_content, $p_exception ) {
 
     # The update is dropped, so the log is the only place the error is left in
-    plugin_log_event( sprintf( 'ERROR! The update was dropped: %s, code %d, %s at %s:%d',
+    plugin_log_event( telegram_token_mask( sprintf( 'ERROR! The update was dropped: %s, code %d, %s at %s:%d',
                               get_class( $p_exception ),
                               $p_exception->getCode(),
                               $p_exception->getMessage(),
                               $p_exception->getFile(),
-                              $p_exception->getLine() ) );
+                              $p_exception->getLine() ) ) );
 
-    # An error of the core carries its code, its text is the one the web interface shows
-    if( $p_exception instanceof ErrorException && $p_exception->getCode() > 0 ) {
-        $t_text = error_string( (int)$p_exception->getCode() );
-    } else {
-        $t_text = plugin_lang_get( 'error_update_processing' ) . ' ' . $p_exception->getMessage();
-    }
+    $t_text = telegram_exception_user_text( $p_exception );
 
     try {
         if( $p_update_content instanceof \Longman\TelegramBot\Entities\CallbackQuery ) {
@@ -288,8 +420,110 @@ function telegram_update_error_notify( $p_update_content, $p_exception ) {
             ) );
         }
     } catch( Throwable $t_exception ) {
-        plugin_log_event( 'ERROR! The error notification was not sent: ' . $t_exception->getMessage() );
+        plugin_log_event( 'ERROR! The error notification was not sent: ' . telegram_token_mask( $t_exception->getMessage() ) );
     }
+}
+
+/**
+ * Text of an error safe to be shown to the user.
+ *
+ * The message of an exception never goes to the chat: an error of the network
+ * quotes the URL of the request, and that URL carries the token of the bot; other
+ * messages disclose paths and internals of the server. Only the text of a known
+ * error of the core is shown, the rest gets a general text, the details are left
+ * to the log.
+ *
+ * @param Throwable $p_exception Error the processing has died on.
+ * @return string Text for the user.
+ */
+function telegram_exception_user_text( $p_exception ) {
+    $t_code = (int)$p_exception->getCode();
+
+    # plugin_error() raises the name of the error rather than a number, its text
+    # is a string of the plugin registered by errors(), free of any detail
+    if( $p_exception instanceof ErrorException
+            && strpos( $p_exception->getMessage(), 'plugin_TelegramBot_' ) === 0
+            && array_key_exists( $p_exception->getMessage(), lang_get( 'MANTIS_ERROR' ) ) ) {
+        return telegram_token_mask( error_string( $p_exception->getMessage() ) );
+    }
+
+    if( $t_code > 0 ) {
+        # A core error raised with trigger_error(): the text is the one the web
+        # interface shows, its parameters are the ones the core has set for it
+        if( $p_exception instanceof ErrorException ) {
+            return telegram_token_mask( error_string( $t_code ) );
+        }
+
+        # The parameters of a core exception come from the exception itself, so
+        # only a text taking none of them is shown
+        if( $p_exception instanceof Mantis\Exceptions\MantisException ) {
+            $t_errors = lang_get( 'MANTIS_ERROR' );
+
+            if( isset( $t_errors[$t_code] ) && strpos( $t_errors[$t_code], '%' ) === FALSE ) {
+                return $t_errors[$t_code];
+            }
+        }
+    }
+
+    return plugin_lang_get( 'error_update_processing' );
+}
+
+/**
+ * Hide the token of the bot in a text going to a log or to a page.
+ *
+ * Every request to Telegram carries the token in its URL, and an error of the
+ * network (a timeout of curl, a refused proxy) quotes that URL in its message.
+ * The shape of a token is masked as well, so that a token replaced in the
+ * settings since the text was produced does not get through either.
+ *
+ * @param string $p_text Text that may carry the token.
+ * @return string The text with the token replaced by a marker.
+ */
+function telegram_token_mask( $p_text ) {
+    $t_mask  = '<bot-token>';
+    $t_text  = (string)$p_text;
+    $t_token = (string)plugin_config_get( 'api_key', '' );
+
+    if( $t_token != '' ) {
+        $t_text = str_replace( array( $t_token, rawurlencode( $t_token ) ), $t_mask, $t_text );
+    }
+
+    return preg_replace( '/\d+(:|%3A)[A-Za-z0-9_-]{30,}/i', $t_mask, $t_text );
+}
+
+/**
+ * Whether the update has come from a private chat with the bot.
+ *
+ * The menus, the drafts and the lists of issues are personal: in a group they
+ * would be shown to every member of it. An update carrying no chat at all is
+ * left to the dispatcher, except for a press on a button of an inline message,
+ * which the plugin never sends.
+ *
+ * @param object $p_update_content Content of the update being processed.
+ * @return boolean TRUE when the update may be processed.
+ */
+function telegram_update_is_private( $p_update_content ) {
+    if( $p_update_content instanceof \Longman\TelegramBot\Entities\CallbackQuery ) {
+        $t_message = $p_update_content->getMessage();
+
+        return $t_message !== NULL && $t_message->getChat() !== NULL && $t_message->getChat()->isPrivateChat();
+    }
+
+    $t_chat = $p_update_content->getChat();
+
+    return !( $t_chat instanceof \Longman\TelegramBot\Entities\Chat ) || $t_chat->isPrivateChat();
+}
+
+/**
+ * Log a failed download of a file from Telegram and give the text for the user.
+ *
+ * @param Throwable $p_exception Error the download has failed with.
+ * @return string Text for the user, free of the details of the error.
+ */
+function telegram_file_download_error( $p_exception ) {
+    plugin_log_event( 'ERROR! File download failed: ' . telegram_token_mask( $p_exception->getMessage() ) );
+
+    return plugin_lang_get( 'error_file_download' );
 }
 
 /**
@@ -527,7 +761,7 @@ function telegram_draft_step_is_applicable( $p_step, array $p_bug_data_draft ) {
 
         case 'due_date':
             return array_key_exists( 'due_date', $p_bug_data_draft )
-                    && access_has_project_level( config_get( 'due_date_update_threshold' ), $t_project_id, $t_user_id );
+                    && access_has_project_level( config_get( 'due_date_update_threshold', null, null, $t_project_id ), $t_project_id, $t_user_id );
 
         case 'product_version':
             return array_key_exists( 'product_version', $p_bug_data_draft )
@@ -536,11 +770,11 @@ function telegram_draft_step_is_applicable( $p_step, array $p_bug_data_draft ) {
         case 'target_version':
             return array_key_exists( 'target_version', $p_bug_data_draft )
                     && version_should_show_product_version( $t_project_id )
-                    && access_has_project_level( config_get( 'roadmap_update_threshold' ) );
+                    && access_has_project_level( config_get( 'roadmap_update_threshold', null, null, $t_project_id ), $t_project_id, $t_user_id );
 
         case 'handler':
             return array_key_exists( 'handler', $p_bug_data_draft )
-                    && access_has_project_level( config_get( 'update_bug_assign_threshold' ) );
+                    && access_has_project_level( config_get( 'update_bug_assign_threshold', null, null, $t_project_id ), $t_project_id, $t_user_id );
     }
 
     return array_key_exists( $p_step, $p_bug_data_draft );
@@ -992,6 +1226,58 @@ function telegram_draft_step_ask( $p_step, array &$p_bug_data_draft, &$p_suffix,
         return telegram_custom_field_ask_next( $p_bug_data_draft, $p_suffix, $p_page, $p_required_only );
     }
 
+    $t_inline_keyboard = telegram_draft_step_keyboard_get( $p_step, $p_bug_data_draft );
+
+    $p_suffix = telegram_draft_step_label( $p_step ) . ': ';
+
+    # The answer of a text field is sent as a message, the answer of the remaining
+    # fields comes from the keyboard
+    $t_field_to_save = in_array( $p_step, array( 'steps_to_reproduce', 'additional_info' ), TRUE ) ? $p_step : '';
+
+    plugin_config_set( 'bug_data_draft_current_field_to_save', $t_field_to_save, $t_user_id );
+
+    return $t_inline_keyboard;
+}
+
+/**
+ * Whether the answer carried by a button of the issue draft wizard is one the
+ * wizard offers the user now. Telegram does not vouch for the callback data and
+ * an old button keeps working after the rights or the draft have changed, so the
+ * keyboard of the question is built anew and has to hold the very button. A
+ * rejected answer is reported by a pop-up.
+ *
+ * @param string $p_step           Step of the wizard.
+ * @param string $p_action         Action of the button, TelegrambotActions::SET_*.
+ * @param mixed  $p_payload        Payload of the action.
+ * @param array  $p_bug_data_draft Issue draft.
+ * @return boolean
+ */
+function telegram_draft_answer_check( $p_step, $p_action, $p_payload, array $p_bug_data_draft ) {
+
+    if( telegram_draft_step_is_applicable( $p_step, $p_bug_data_draft )
+            && keyboard_offers(
+                              telegram_draft_step_keyboard_get( $p_step, $p_bug_data_draft ),
+                              array( TelegrambotActions::REPORT_BUG_TAG => array( $p_action => $p_payload ) )
+            ) ) {
+        return TRUE;
+    }
+
+    telegram_callback_alert_set( plugin_lang_get( 'value_not_offered' ) );
+
+    return FALSE;
+}
+
+/**
+ * Build the keyboard of a question of the issue draft wizard, the custom fields
+ * excluded: the answers the wizard offers are exactly the buttons of it.
+ *
+ * @param string $p_step           Step of the wizard.
+ * @param array  $p_bug_data_draft Issue draft.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
+ */
+function telegram_draft_step_keyboard_get( $p_step, array $p_bug_data_draft ) {
+
+    $t_user_id         = auth_get_current_user_id();
     $t_project_id      = array_key_exists( 'project', $p_bug_data_draft ) ? $p_bug_data_draft['project'] : '';
     $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
@@ -1031,7 +1317,7 @@ function telegram_draft_step_ask( $p_step, array &$p_bug_data_draft, &$p_suffix,
         case 'product_version':
             $t_product_version_released_mask = VERSION_RELEASED;
 
-            if( access_has_project_level( config_get( 'report_issues_for_unreleased_versions_threshold' ) ) ) {
+            if( access_has_project_level( config_get( 'report_issues_for_unreleased_versions_threshold', null, null, $t_project_id ), $t_project_id, $t_user_id ) ) {
                 $t_product_version_released_mask = VERSION_ALL;
             }
 
@@ -1076,14 +1362,6 @@ function telegram_draft_step_ask( $p_step, array &$p_bug_data_draft, &$p_suffix,
             keyboard_skip_button_add( $t_inline_keyboard, array( TelegrambotActions::REPORT_BUG_TAG => array( TelegrambotActions::SKIP_FIELD => $p_step ) ) );
             break;
     }
-
-    $p_suffix = telegram_draft_step_label( $p_step ) . ': ';
-
-    # The answer of a text field is sent as a message, the answer of the remaining
-    # fields comes from the keyboard
-    $t_field_to_save = in_array( $p_step, array( 'steps_to_reproduce', 'additional_info' ), TRUE ) ? $p_step : '';
-
-    plugin_config_set( 'bug_data_draft_current_field_to_save', $t_field_to_save, $t_user_id );
 
     return $t_inline_keyboard;
 }
@@ -1312,23 +1590,11 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                                           'action'  => 'upload_document'
                 ];
                 $t_rttt             = Longman\TelegramBot\Request::sendChatAction( $t_data_send_action );
-                try {
-                    Longman\TelegramBot\Request::downloadFile( $t_file );
-                } catch( Longman\TelegramBot\Exception\TelegramException $e ) {
-                    $t_data_send       = [
-                                              'chat_id'    => $t_orgl_chat_id,
-                                              'message_id' => $t_callback_msg_id,
-                                              'text'       => $e->getMessage()
-                    ];
-                    $t_upload_is_error = TRUE;
-                    break;
-                }
-                $t_file_path = plugin_config_get( 'download_path' ) . $t_file->getFilePath();
-
+                # The file is downloaded by telegram_bug_add(): a download kept for
+                # the whole dialog would outlive an abandoned draft in the temp directory
                 $t_bug_data_draft['attachments'] = [
-                                          'browser_upload' => [ 0 => FALSE ],
-                                          'tmp_name'       => [ 0 => $t_file_path ],
-                                          'name'           => [ 0 => $t_file_name ]
+                                          'file_id' => $t_file_orgl->getFileId(),
+                                          'name'    => $t_file_name
                 ];
             }
 
@@ -1350,17 +1616,25 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                     # On the wizard entry the report goes straight into the default
                     # project of the user, the way the web report page does. Leafing
                     # through the project list honors the requested project instead.
+                    # The default project the user may not report into any more is
+                    # left for the list, the one of the profile is not checked by the core
                     $t_default_project = user_pref_get_pref( auth_get_current_user_id(), 'default_project' );
-                    if( $t_draft_is_new && ALL_PROJECTS == $t_project_id && ALL_PROJECTS != $t_default_project ) {
+                    if( $t_draft_is_new && ALL_PROJECTS == $t_project_id && ALL_PROJECTS != $t_default_project
+                            && telegram_project_can_report( $t_default_project ) ) {
                         $p_current_action = array();
                         $p_current_action[TelegrambotActions::SET_PROJECT]['id'] = $t_default_project;
                         # The card labels the project of the profile as the default one
                         $p_current_action[TelegrambotActions::SET_PROJECT]['default'] = 1;
                     } else {
+                        # Only the subprojects of a project offered to the user are listed
+                        if( !telegram_project_is_accessible( $t_project_id ) ) {
+                            $t_project_id = ALL_PROJECTS;
+                        }
+
                         $t_inline_keyboard = keyboard_projects_get(
-                                                        $p_current_action[TelegrambotActions::GET_PROJECT]['id'],
-                                                        $p_current_action[TelegrambotActions::GET_PROJECT]['p'],
-                                                        $p_current_action[TelegrambotActions::GET_PROJECT]['fp']
+                                                        $t_project_id,
+                                                        max( 1, (int)$p_current_action[TelegrambotActions::GET_PROJECT]['p'] ),
+                                                        max( 1, (int)$p_current_action[TelegrambotActions::GET_PROJECT]['fp'] )
                                                         );
                         # Leafing through the list answers nothing, the question stays as it is
                         $t_suffix          = telegram_draft_step_label( 'project' ) . ': ';
@@ -1368,7 +1642,16 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                     }
 
                 case TelegrambotActions::SET_PROJECT:
-                    $t_bug_data_draft['project']            = $p_current_action[TelegrambotActions::SET_PROJECT]['id'];
+                    # The project list offers every accessible project, the report
+                    # page of the core lets the user report into some of them only
+                    if( !telegram_project_can_report( $p_current_action[TelegrambotActions::SET_PROJECT]['id'] ) ) {
+                        telegram_callback_alert_set( plugin_lang_get( 'value_not_offered' ) );
+
+                        $t_ask_next = TRUE;
+                        break;
+                    }
+
+                    $t_bug_data_draft['project']            = (int)$p_current_action[TelegrambotActions::SET_PROJECT]['id'];
                     $t_bug_data_draft['project_is_default'] = !empty( $p_current_action[TelegrambotActions::SET_PROJECT]['default'] );
                     plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
 
@@ -1377,7 +1660,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
 //CATEGORY
                 case TelegrambotActions::SET_CATEGORY:
-                    if( telegram_draft_step_is_applicable( 'category', $t_bug_data_draft ) ) {
+                    if( telegram_draft_answer_check( 'category', $t_action, $p_current_action[$t_action], $t_bug_data_draft ) ) {
                         $t_bug_data_draft['category'] = $p_current_action[TelegrambotActions::SET_CATEGORY]['id'];
 
                         plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
@@ -1397,7 +1680,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                     # an "s" prefix, see keyboard_enum_string_get()
                     $t_step = substr( $t_action, 1 );
 
-                    if( telegram_draft_step_is_applicable( $t_step, $t_bug_data_draft ) ) {
+                    if( telegram_draft_answer_check( $t_step, $t_action, $p_current_action[$t_action], $t_bug_data_draft ) ) {
                         $t_bug_data_draft[$t_step] = $p_current_action[$t_action]['id'];
 
                         plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
@@ -1438,7 +1721,11 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
                     break;
 
                 case TelegrambotActions::SET_DUE_DATE:
-                    if( telegram_draft_step_is_applicable( 'due_date', $t_bug_data_draft ) ) {
+                    # Any day of the calendar is a valid answer, the way the date
+                    # picker of the report page takes any date
+                    if( telegram_draft_step_is_applicable( 'due_date', $t_bug_data_draft )
+                            && isset( $p_current_action[TelegrambotActions::SET_DUE_DATE][0] )
+                            && is_string( $p_current_action[TelegrambotActions::SET_DUE_DATE][0] ) ) {
                         $t_bug_data_draft['due_date'] = date_strtotime( $p_current_action[TelegrambotActions::SET_DUE_DATE][0] );
 
                         plugin_config_set( 'bug_data_draft', json_encode( $t_bug_data_draft ), auth_get_current_user_id() );
@@ -1451,7 +1738,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 //Implemented only the choice of platform from the available list.
 //TODO: Implement the ability to select options by severity and/or manually fill in with arbitrary data ( config_get( 'allow_freetext_in_profile_fields' ) == OFF )
                 case TelegrambotActions::SET_PROFILE:
-                    if( telegram_draft_step_is_applicable( 'profile', $t_bug_data_draft ) ) {
+                    if( telegram_draft_answer_check( 'profile', $t_action, $p_current_action[$t_action], $t_bug_data_draft ) ) {
                         if( $p_current_action[TelegrambotActions::SET_PROFILE]['id'] == TelegrambotActions::SKIP_VALUE ) {
                             #NULL marks the step as skipped, so the back button can return to it
                             $t_bug_data_draft['profile'] = null;
@@ -1467,7 +1754,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 
 //$t_show_product_version
                 case TelegrambotActions::SET_PRODUCT_VERSION:
-                    if( telegram_draft_step_is_applicable( 'product_version', $t_bug_data_draft ) ) {
+                    if( telegram_draft_answer_check( 'product_version', $t_action, $p_current_action[$t_action], $t_bug_data_draft ) ) {
                         if( $p_current_action[TelegrambotActions::SET_PRODUCT_VERSION]['version'] == TelegrambotActions::SKIP_VALUE ) {
                             #NULL marks the step as skipped, so the back button can return to it
                             $t_bug_data_draft['product_version'] = null;
@@ -1484,7 +1771,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 //TODO: $t_show_product_build Text area
 //HANDLER
                 case TelegrambotActions::SET_HANDLER:
-                    if( telegram_draft_step_is_applicable( 'handler', $t_bug_data_draft ) ) {
+                    if( telegram_draft_answer_check( 'handler', $t_action, $p_current_action[$t_action], $t_bug_data_draft ) ) {
                         if( $p_current_action[TelegrambotActions::SET_HANDLER]['id'] === 0 ) {
                             #NULL marks the step as skipped, so the back button can return to it
                             $t_bug_data_draft['handler'] = null;
@@ -1501,7 +1788,7 @@ function telegram_bug_report( $p_current_action, Longman\TelegramBot\Entities\Ca
 //TODO: $t_show_monitors (new element)
 //TARGET_VERSION
                 case TelegrambotActions::SET_TARGET_VERSION:
-                    if( telegram_draft_step_is_applicable( 'target_version', $t_bug_data_draft ) ) {
+                    if( telegram_draft_answer_check( 'target_version', $t_action, $p_current_action[$t_action], $t_bug_data_draft ) ) {
                         if( $p_current_action[TelegrambotActions::SET_TARGET_VERSION]['version'] == TelegrambotActions::SKIP_VALUE ) {
                             #NULL marks the step as skipped, so the back button can return to it
                             $t_bug_data_draft['target_version'] = null;
@@ -1911,8 +2198,54 @@ function telegram_bug_select_context( $p_action_tag, $p_with_filter = TRUE ) {
  */
 function telegram_bug_reporter_can_close( BugData $p_bug ) {
     return bug_is_user_reporter( $p_bug->id, auth_get_current_user_id() )
-            && access_has_bug_level( config_get( 'report_bug_threshold' ), $p_bug->id )
-            && ON == config_get( 'allow_reporter_close' );
+            && access_has_bug_level( config_get( 'report_bug_threshold', null, null, $p_bug->project_id ), $p_bug->id )
+            && ON == config_get( 'allow_reporter_close', null, null, $p_bug->project_id );
+}
+
+/**
+ * The statuses the current user may move the issue to, the way the view page of
+ * the core offers them: the status list to the users passing
+ * "update_bug_status_threshold", the close and reopen buttons to the reporter
+ * allowed to close or reopen the own issue. The status keyboard is built out of
+ * this list and a status coming back from a button has to belong to it.
+ *
+ * @param BugData $p_bug A valid bug object.
+ * @return array Labels of the statuses indexed by the status, in ascending order.
+ */
+function telegram_status_change_options_get( BugData $p_bug ) {
+    $t_project_id = $p_bug->project_id;
+
+    if( access_has_bug_level( config_get( 'update_bug_status_threshold', null, null, $t_project_id ), $p_bug->id ) ) {
+        $t_enum_list = get_status_option_list(
+                                  access_get_project_level( $t_project_id ),
+                                  $p_bug->status,
+                                  false,
+                                  telegram_bug_reporter_can_close( $p_bug ),
+                                  $t_project_id );
+
+        ksort( $t_enum_list );
+
+        return $t_enum_list;
+    }
+
+    $t_enum_list = array();
+    $t_user_id   = auth_get_current_user_id();
+
+    if( bug_is_user_reporter( $p_bug->id, $t_user_id ) ) {
+        if( access_can_reopen_bug( $p_bug, $t_user_id ) ) {
+            $t_reopen = config_get( 'bug_reopen_status', null, null, $t_project_id );
+            $t_enum_list[$t_reopen] = get_enum_element( 'status', $t_reopen );
+        }
+
+        if( access_can_close_bug( $p_bug, $t_user_id ) ) {
+            $t_closed = config_get( 'bug_closed_status_threshold', null, null, $t_project_id );
+            $t_enum_list[$t_closed] = get_enum_element( 'status', $t_closed );
+        }
+    }
+
+    ksort( $t_enum_list );
+
+    return $t_enum_list;
 }
 
 /**
@@ -1956,7 +2289,20 @@ function telegram_bug_select_step( $p_current_action, $p_action_tag ) {
     }
 
     if( $t_command[0] == 'sprj' ) {
-        plugin_config_set( 'bug_select_project', (int)$p_current_action['sprj']['id'], $t_user_id );
+        $t_project_id = $p_current_action['sprj']['id'];
+
+        # Only a project of the list may narrow the issues down, the name of any
+        # other one must not show up on the card
+        if( ALL_PROJECTS != $t_project_id && !telegram_project_is_accessible( $t_project_id ) ) {
+            telegram_callback_alert_set( plugin_lang_get( 'value_not_offered' ) );
+
+            return telegram_card_message(
+                                      telegram_card_prompt_append( telegram_action_line( $p_action_tag ), lang_get( 'select_project_button' ) ),
+                                      keyboard_bug_select_projects_get( $p_action_tag, 1 )
+            );
+        }
+
+        plugin_config_set( 'bug_select_project', (int)$t_project_id, $t_user_id );
         plugin_config_set( 'bug_select_project_is_default', 0, $t_user_id );
 
         $t_command[0] = 'get_default_category';
@@ -1978,7 +2324,13 @@ function telegram_bug_select_step( $p_current_action, $p_action_tag ) {
     # filter is kept for the cards of the later steps
     $t_project_id = (int)plugin_config_get( 'bug_select_project', ALL_PROJECTS, FALSE, $t_user_id );
 
-    $t_command_get_bugs = array_keys( $p_current_action['get_bugs'] );
+    $t_command_get_bugs = is_array( $p_current_action['get_bugs'] ) ? array_keys( $p_current_action['get_bugs'] ) : array();
+
+    # Only the sections of the section list are known, anything else starts the flow over
+    if( empty( $t_command_get_bugs )
+            || !in_array( $t_command_get_bugs[0], array( 'assigned', 'monitored', 'reported', 'use_query' ), TRUE ) ) {
+        return telegram_bug_select_step( array( 'start' => '' ), $p_action_tag );
+    }
 
     plugin_config_set( 'bug_select_filter', $t_command_get_bugs[0], $t_user_id );
 
@@ -2005,7 +2357,9 @@ function telegram_bug_select_step( $p_current_action, $p_action_tag ) {
             break;
     }
 
-    $t_inline_keyboard = keyboard_bugs_get( $t_custom_filter, $p_current_action['get_bugs'][$t_command_get_bugs[0]]['page'], $p_action_tag, $t_command_get_bugs[0] );
+    $t_page = isset( $p_current_action['get_bugs'][$t_command_get_bugs[0]]['page'] ) ? (int)$p_current_action['get_bugs'][$t_command_get_bugs[0]]['page'] : 1;
+
+    $t_inline_keyboard = keyboard_bugs_get( $t_custom_filter, max( 1, $t_page ), $p_action_tag, $t_command_get_bugs[0] );
 
     return telegram_card_message(
                               telegram_card_prompt_append(
@@ -2040,15 +2394,29 @@ function telegram_update_bug( $p_current_action ) {
             break;
 
         case 'set_bug':
+            # The card shows the summary of the issue, the way view.php would
+            $t_error = telegram_bug_view_error( $p_current_action['set_bug'] );
+
+            if( $t_error != '' ) {
+                $t_data_send = array( 'text' => $t_error );
+                break;
+            }
+
             $t_bug_id = (int)$p_current_action['set_bug'];
             $t_bug    = bug_get( $t_bug_id );
 
-            $t_data_send = telegram_card_message(
-                                      telegram_card_prompt_append(
-                                              telegram_bug_select_context( TelegrambotActions::UPDATE_BUG_TAG ) . PHP_EOL . telegram_bug_line( $t_bug ),
-                                              plugin_lang_get( 'action_select' ) ),
-                                      keyboard_bug_actions_get( $t_bug )
-            );
+            $t_project_override = telegram_project_override_set( $t_bug->project_id );
+
+            try {
+                $t_data_send = telegram_card_message(
+                                          telegram_card_prompt_append(
+                                                  telegram_bug_select_context( TelegrambotActions::UPDATE_BUG_TAG ) . PHP_EOL . telegram_bug_line( $t_bug ),
+                                                  plugin_lang_get( 'action_select' ) ),
+                                          keyboard_bug_actions_get( $t_bug )
+                );
+            } finally {
+                telegram_project_override_restore( $t_project_override );
+            }
             break;
 
         default:
@@ -2141,7 +2509,9 @@ function telegram_status_change_content_descriptor( $p_message ) {
 
 /**
  * The access checks bug_change_status_page.php of the core does before drawing
- * the form.
+ * the form and the ones bug_update.php does on the status it gets. The status
+ * comes from callback data Telegram does not vouch for, so it has to be one the
+ * status keyboard offers the user now.
  *
  * @param BugData $p_bug        A valid bug object.
  * @param integer $p_new_status Status the issue is moved to.
@@ -2154,7 +2524,41 @@ function telegram_status_change_entry_check( BugData $p_bug, $p_new_status, &$p_
     $t_resolved   = config_get( 'bug_resolved_status_threshold', null, null, $t_project_id );
     $t_closed     = config_get( 'bug_closed_status_threshold', null, null, $t_project_id );
     $t_user_id    = auth_get_current_user_id();
+    $p_new_status = (int)$p_new_status;
 
+    if( !array_key_exists( $p_new_status, telegram_status_change_options_get( $p_bug ) ) ) {
+        return error_string( ERROR_ACCESS_DENIED );
+    }
+
+    # bug_update.php: the reporter closing or reopening the own issue is let
+    # through, anyone else needs the threshold of the status update, and only a
+    # close or a reopen may touch a read-only issue
+    $t_close_issue  = $p_bug->status < $t_closed && $p_new_status >= $t_closed;
+    $t_reopen_issue = $p_bug->status >= $t_resolved && $p_new_status <= $t_reopen;
+    $t_is_reporter  = bug_is_user_reporter( $p_bug->id, $t_user_id );
+
+    $t_reporter_closing   = $t_close_issue && $t_is_reporter && access_can_close_bug( $p_bug, $t_user_id );
+    $t_reporter_reopening = $t_reopen_issue && $t_is_reporter && access_can_reopen_bug( $p_bug, $t_user_id );
+
+    if( !$t_reporter_closing && !$t_reporter_reopening ) {
+        if( !access_has_bug_level( config_get( 'update_bug_status_threshold', null, null, $t_project_id ), $p_bug->id, $t_user_id ) ) {
+            return error_string( ERROR_ACCESS_DENIED );
+        }
+
+        if( !$t_close_issue && !$t_reopen_issue && bug_is_readonly( $p_bug->id ) ) {
+            error_parameters( $p_bug->id );
+
+            return error_string( ERROR_BUG_READ_ONLY_ACTION_DENIED );
+        }
+    }
+
+    if( !bug_check_workflow( $p_bug->status, $p_new_status ) ) {
+        error_parameters( lang_get( 'status' ) );
+
+        return error_string( ERROR_CUSTOM_FIELD_INVALID_VALUE );
+    }
+
+    # bug_change_status_page.php
     if( $p_bug->status >= $t_resolved && $p_new_status <= $t_reopen ) {
         if( !access_can_reopen_bug( $p_bug, $t_user_id ) ) {
             return error_string( ERROR_ACCESS_DENIED );
@@ -2218,16 +2622,16 @@ function telegram_status_change_step_is_applicable( $p_step, $p_draft, BugData $
                     && (int)$p_draft['resolution'] == config_get( 'bug_duplicate_resolution', null, null, $t_project_id );
 
         case 'handler':
-            return access_has_bug_level( config_get( 'update_bug_assign_threshold', config_get( 'update_bug_threshold' ) ), $p_bug->id );
+            return access_has_bug_level( config_get( 'update_bug_assign_threshold', config_get( 'update_bug_threshold', null, null, $t_project_id ), null, $t_project_id ), $p_bug->id );
 
         case 'fixed_in_version':
             return $t_new_status >= $t_resolved
                     && version_should_show_product_version( $t_project_id )
                     && !bug_is_readonly( $p_bug->id )
-                    && access_has_bug_level( config_get( 'update_bug_threshold' ), $p_bug->id );
+                    && access_has_bug_level( config_get( 'update_bug_threshold', null, null, $t_project_id ), $p_bug->id );
 
         case 'bugnote':
-            return access_has_bug_level( config_get( 'add_bugnote_threshold' ), $p_bug->id );
+            return access_has_bug_level( config_get( 'add_bugnote_threshold', null, null, $t_project_id ), $p_bug->id );
     }
 
     return FALSE;
@@ -2440,16 +2844,16 @@ function telegram_status_change_card_compose( $p_draft, $p_question = '', $p_err
 }
 
 /**
- * Build the question of the given step of the status change dialog.
+ * Build the keyboard of a question of the status change dialog: the answers the
+ * dialog offers are exactly the buttons of it.
  *
- * @param string  $p_step  Step name.
- * @param array   $p_draft Draft of the dialog.
- * @param BugData $p_bug   A valid bug object.
- * @param string  $p_error Error shown on the card when the previous answer was rejected.
- * @return array Data of the message to send.
+ * @param string  $p_step Step name.
+ * @param BugData $p_bug  A valid bug object.
+ * @return Longman\TelegramBot\Entities\InlineKeyboard
  */
-function telegram_status_change_step_ask( $p_step, $p_draft, BugData $p_bug, $p_error = '' ) {
-    $t_user_id = auth_get_current_user_id();
+function telegram_status_change_step_keyboard_get( $p_step, BugData $p_bug ) {
+
+    $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
 
     switch( $p_step ) {
         case 'resolution':
@@ -2466,39 +2870,46 @@ function telegram_status_change_step_ask( $p_step, $p_draft, BugData $p_bug, $p_
             }
 
             $t_inline_keyboard = keyboard_enum_string_get( 'resolution', $t_default, TelegrambotActions::CHANGE_STATUS_TAG, TelegrambotActions::SET_STATUS_RESOLUTION );
-            $t_question        = lang_get( 'resolution' );
-            break;
-
-        case 'duplicate_id':
-            plugin_config_set( 'status_change_draft_await', 'duplicate_id', $t_user_id );
-
-            $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-            $t_question        = lang_get( 'duplicate_id' );
             break;
 
         case 'handler':
             $t_inline_keyboard = keyboard_handler_get( $p_bug->project_id, TelegrambotActions::CHANGE_STATUS_TAG, TelegrambotActions::SET_STATUS_HANDLER );
 
             keyboard_skip_button_add( $t_inline_keyboard, array( TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SKIP_FIELD => 'handler' ) ) );
-            $t_question = lang_get( 'assigned_to' );
             break;
 
         case 'fixed_in_version':
             $t_inline_keyboard = keyboard_version_option_list( $p_bug->fixed_in_version, $p_bug->project_id, VERSION_ALL, TelegrambotActions::SET_STATUS_FIXED_VERSION, TelegrambotActions::CHANGE_STATUS_TAG );
 
             keyboard_skip_button_add( $t_inline_keyboard, array( TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SKIP_FIELD => 'fixed_in_version' ) ) );
-            $t_question = lang_get( 'fixed_in_version' );
             break;
 
         case 'bugnote':
-            plugin_config_set( 'status_change_draft_await', 'bugnote', $t_user_id );
-
-            $t_inline_keyboard = new Longman\TelegramBot\Entities\InlineKeyboard( array() );
-
             keyboard_skip_button_add( $t_inline_keyboard, array( TelegrambotActions::CHANGE_STATUS_TAG => array( TelegrambotActions::SKIP_FIELD => 'bugnote' ) ) );
-            $t_question = lang_get( 'bugnote' );
             break;
     }
+
+    return $t_inline_keyboard;
+}
+
+/**
+ * Build the question of the given step of the status change dialog.
+ *
+ * @param string  $p_step  Step name.
+ * @param array   $p_draft Draft of the dialog.
+ * @param BugData $p_bug   A valid bug object.
+ * @param string  $p_error Error shown on the card when the previous answer was rejected.
+ * @return array Data of the message to send.
+ */
+function telegram_status_change_step_ask( $p_step, $p_draft, BugData $p_bug, $p_error = '' ) {
+
+    # The answer of these questions is typed in rather than picked
+    if( in_array( $p_step, array( 'duplicate_id', 'bugnote' ), TRUE ) ) {
+        plugin_config_set( 'status_change_draft_await', $p_step, auth_get_current_user_id() );
+    }
+
+    $t_inline_keyboard = telegram_status_change_step_keyboard_get( $p_step, $p_bug );
+    $t_question        = telegram_status_change_step_label( $p_step );
 
     keyboard_status_change_buttons_add( $t_inline_keyboard, $p_draft, $p_bug );
 
@@ -2572,17 +2983,34 @@ function telegram_status_change_submit( $p_draft ) {
  * Take an answer of a keyboard step of the status change dialog and go on with
  * the next question.
  *
- * @param string $p_step  Step name.
- * @param mixed  $p_value Answer, null for a skipped step.
+ * The answer is taken only when the question applies to the transition and its
+ * keyboard, built anew, holds the very button pressed: Telegram does not vouch
+ * for the callback data and an old button keeps working after the rights change.
+ *
+ * @param string $p_step           Step name.
+ * @param mixed  $p_value          Answer, null for a skipped step.
+ * @param array  $p_current_action Decoded callback data of the button pressed.
  * @return array Data of the message to send.
  */
-function telegram_status_change_answer( $p_step, $p_value ) {
+function telegram_status_change_answer( $p_step, $p_value, array $p_current_action ) {
     $t_draft = telegram_status_change_draft_get();
 
     # The step name comes back inside callback_data, only the known ones are taken
-    if( $t_draft === NULL || !in_array( $p_step, telegram_status_change_steps_get(), TRUE ) ) {
+    if( $t_draft === NULL || !is_string( $p_step ) || !in_array( $p_step, telegram_status_change_steps_get(), TRUE ) ) {
         # The dialog is gone, the button went stale: the flow starts over
         return telegram_bug_select_step( array( 'start' => '' ), TelegrambotActions::UPDATE_BUG_TAG );
+    }
+
+    $t_bug = bug_get( (int)$t_draft['bug_id'] );
+
+    if( !telegram_status_change_step_is_applicable( $p_step, $t_draft, $t_bug )
+            || !keyboard_offers(
+                                  telegram_status_change_step_keyboard_get( $p_step, $t_bug ),
+                                  array( TelegrambotActions::CHANGE_STATUS_TAG => $p_current_action )
+            ) ) {
+        telegram_callback_alert_set( plugin_lang_get( 'value_not_offered' ) );
+
+        return telegram_status_change_ask_next_step( $t_draft );
     }
 
     $t_draft[$p_step] = $p_value;
@@ -2613,8 +3041,40 @@ function telegram_status_change_text_answer( $p_text ) {
         return NULL;
     }
 
-    $t_text  = trim( (string)$p_text );
-    $t_error = '';
+    # The dialog outlives the rights it was started with, the card must not show
+    # an issue the user may not view any more
+    $t_access_error = telegram_bug_view_error( $t_draft['bug_id'] );
+
+    if( $t_access_error != '' ) {
+        telegram_status_change_draft_clear();
+
+        return array( 'text' => $t_access_error );
+    }
+
+    $t_project_override = telegram_project_override_set( bug_get_field( (int)$t_draft['bug_id'], 'project_id' ) );
+
+    try {
+        return telegram_status_change_text_apply( $t_await, $p_text, $t_draft );
+    } finally {
+        telegram_project_override_restore( $t_project_override );
+    }
+}
+
+/**
+ * Take the message text as the answer to the pending text question of the status
+ * change dialog, see telegram_status_change_text_answer().
+ *
+ * @param string $p_await Step the text answers.
+ * @param string $p_text  Text of the message.
+ * @param array  $p_draft Draft of the dialog.
+ * @return array|null Data of the card message to edit or null when the step takes no text.
+ */
+function telegram_status_change_text_apply( $p_await, $p_text, array $p_draft ) {
+    $t_user_id = auth_get_current_user_id();
+    $t_await   = $p_await;
+    $t_draft   = $p_draft;
+    $t_text    = trim( (string)$p_text );
+    $t_error   = '';
 
     switch( $t_await ) {
         case 'duplicate_id':
@@ -2664,11 +3124,68 @@ function telegram_status_change_text_answer( $p_text ) {
  * pick the issue, pick the status, answer the questions of the transition the
  * way bug_change_status_page.php of the core asks them, apply the change.
  *
+ * Every step acts on the issue named by the button or kept in the dialog, so the
+ * issue is checked the way view.php checks it and the configuration is read for
+ * its project, the way bug_change_status_page.php overrides the current project.
+ *
  * @param array                                          $p_current_action Decoded callback data of the step.
  * @param Longman\TelegramBot\Entities\CallbackQuery|null $p_callback_query Callback query being processed.
  * @return array Data of the message to send.
  */
 function telegram_change_status( $p_current_action, $p_callback_query = NULL ) {
+
+    if( !is_array( $p_current_action ) || empty( $p_current_action ) ) {
+        return telegram_bug_select_step( array( 'start' => '' ), TelegrambotActions::UPDATE_BUG_TAG );
+    }
+
+    $t_command = array_keys( $p_current_action );
+    $t_draft   = telegram_status_change_draft_get();
+
+    switch( $t_command[0] ) {
+        case 'set_bug':
+            $t_bug_id = $p_current_action['set_bug'];
+            break;
+
+        case TelegrambotActions::SET_BUG_STATUS:
+            $t_bug_id = isset( $p_current_action[TelegrambotActions::SET_BUG_STATUS]['id'] ) ? $p_current_action[TelegrambotActions::SET_BUG_STATUS]['id'] : 0;
+            break;
+
+        default:
+            # The questions of the dialog act on the issue kept in the draft, a
+            # stale button without a dialog starts the flow over further on
+            $t_bug_id = $t_draft === NULL ? NULL : $t_draft['bug_id'];
+    }
+
+    if( $t_bug_id === NULL ) {
+        return telegram_change_status_step( $p_current_action, $p_callback_query );
+    }
+
+    $t_error = telegram_bug_view_error( $t_bug_id );
+
+    if( $t_error != '' ) {
+        telegram_status_change_draft_clear();
+
+        return array( 'text' => $t_error );
+    }
+
+    $t_project_override = telegram_project_override_set( bug_get_field( (int)$t_bug_id, 'project_id' ) );
+
+    try {
+        return telegram_change_status_step( $p_current_action, $p_callback_query );
+    } finally {
+        telegram_project_override_restore( $t_project_override );
+    }
+}
+
+/**
+ * Process a step of the flow changing the status of an issue, the access to the
+ * issue is checked by telegram_change_status().
+ *
+ * @param array                                          $p_current_action Decoded callback data of the step.
+ * @param Longman\TelegramBot\Entities\CallbackQuery|null $p_callback_query Callback query being processed.
+ * @return array Data of the message to send.
+ */
+function telegram_change_status_step( array $p_current_action, $p_callback_query = NULL ) {
 
     $t_command = array_keys( $p_current_action );
 
@@ -2730,19 +3247,19 @@ function telegram_change_status( $p_current_action, $p_callback_query = NULL ) {
             break;
 
         case TelegrambotActions::SET_STATUS_RESOLUTION:
-            $t_data_send = telegram_status_change_answer( 'resolution', (int)$p_current_action[TelegrambotActions::SET_STATUS_RESOLUTION]['id'] );
+            $t_data_send = telegram_status_change_answer( 'resolution', (int)$p_current_action[TelegrambotActions::SET_STATUS_RESOLUTION]['id'], $p_current_action );
             break;
 
         case TelegrambotActions::SET_STATUS_HANDLER:
-            $t_data_send = telegram_status_change_answer( 'handler', (int)$p_current_action[TelegrambotActions::SET_STATUS_HANDLER]['id'] );
+            $t_data_send = telegram_status_change_answer( 'handler', (int)$p_current_action[TelegrambotActions::SET_STATUS_HANDLER]['id'], $p_current_action );
             break;
 
         case TelegrambotActions::SET_STATUS_FIXED_VERSION:
-            $t_data_send = telegram_status_change_answer( 'fixed_in_version', $p_current_action[TelegrambotActions::SET_STATUS_FIXED_VERSION]['version'] );
+            $t_data_send = telegram_status_change_answer( 'fixed_in_version', $p_current_action[TelegrambotActions::SET_STATUS_FIXED_VERSION]['version'], $p_current_action );
             break;
 
         case TelegrambotActions::SKIP_FIELD:
-            $t_data_send = telegram_status_change_answer( $p_current_action[TelegrambotActions::SKIP_FIELD], null );
+            $t_data_send = telegram_status_change_answer( $p_current_action[TelegrambotActions::SKIP_FIELD], null, $p_current_action );
             break;
 
 //BACK TO THE QUESTION ANSWERED LAST
@@ -2818,7 +3335,17 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
             break;
 
         case 'set_bug':
-            $t_bug_id = $p_current_action['set_bug'];
+            # The issue comes from a button or from the notification replied to,
+            # the user may have lost the access to it since, so the note form
+            # checks of the core are run before anything is downloaded
+            $t_access_error = telegram_bugnote_add_error( $p_current_action['set_bug'] );
+
+            if( $t_access_error != '' ) {
+                $t_data_send = [ 'text' => $t_access_error ];
+                break;
+            }
+
+            $t_bug_id = (int)$p_current_action['set_bug'];
             $t_upload_is_error = FALSE;
 
             $t_orgl_message = $p_reply_to_message;
@@ -2858,7 +3385,7 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
                                 $t_error_text = telegram_file_check( $t_file_name, 0 );
                             }
                         } catch( Longman\TelegramBot\Exception\TelegramException $t_exception ) {
-                            $t_error_text = $t_exception->getMessage();
+                            $t_error_text = telegram_file_download_error( $t_exception );
                         }
                     }
 
@@ -2877,21 +3404,14 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
 //                    $t_rttt             = Longman\TelegramBot\Request::sendChatAction( $t_data_send_action );
 
                     try {
-                        Longman\TelegramBot\Request::downloadFile( $t_file );
+                        $t_file_for_attach = telegram_file_download( $t_file, $t_file_name );
                     } catch( Longman\TelegramBot\Exception\TelegramException $e ) {
                         $t_data_send       = [
-                                                  'text' => $e->getMessage()
+                                                  'text' => telegram_file_download_error( $e )
                         ];
                         $t_upload_is_error = TRUE;
                         break;
                     }
-                    $t_file_path = plugin_config_get( 'download_path' ) . $t_file->getFilePath();
-
-                    $t_file_for_attach = [
-                                              'browser_upload' => [ 0 => FALSE ],
-                                              'tmp_name'       => [ 0 => $t_file_path ],
-                                              'name'           => [ 0 => $t_file_name ]
-                    ];
                     $t_text            = $t_orgl_message->getCaption();
                     break;
 
@@ -2906,6 +3426,10 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
             if( $t_upload_is_error ) {
                 break;
             }
+
+            # The thresholds the note command reads without a project are the ones
+            # of the project of the issue, the way the pages of the core read them
+            $t_project_override = telegram_project_override_set( bug_get_field( $t_bug_id, 'project_id' ) );
 
             try {
                 $t_note_id = bugnote_add_from_telegram( $t_bug_id, $t_text, $t_file_for_attach );
@@ -2922,10 +3446,6 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
                                           'text'         => plugin_lang_get( 'content_upload_complete' ) . $p_current_action['set_bug'] . PHP_EOL . $t_content_url,
                 ];
             } catch( Mantis\Exceptions\MantisException $t_error ) {
-                if( isset( $t_file_path ) ) {
-                    $t_file_is_deleted = unlink( $t_file_path );
-                }
-
                 $t_params = $t_error->getParams();
                 if( !empty( $t_params ) ) {
                     call_user_func_array( 'error_parameters', $t_params );
@@ -2935,6 +3455,9 @@ function telegram_add_comment( $p_current_action, $p_message, $p_reply_to_messag
                 $t_data_send  = [
                                           'text' => $t_error_text
                 ];
+            } finally {
+                telegram_project_override_restore( $t_project_override );
+                telegram_file_download_remove();
             }
             break;
     }

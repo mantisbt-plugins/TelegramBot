@@ -41,6 +41,12 @@ $f_debug_connection_log_path    = gpc_get_string   ( 'debug_connection_log_path'
 $f_debug_connection_enabled	= gpc_get_bool     ( 'debug_connection_enabled', FALSE );
 $f_cli_g_path                   = gpc_get_string   ( 'cli_g_path', plugin_config_get( 'cli_g_path' ) );
 
+# The debug log carries the messages of the users: a path the web server could
+# serve or execute is refused before anything is saved
+if( !is_blank( $f_debug_connection_log_path ) && !TelegramBotFileLogger::path_is_allowed( $f_debug_connection_log_path ) ) {
+	plugin_error( 'ERROR_DEBUG_LOG_PATH_NOT_ALLOWED', ERROR );
+}
+
 $t_cert_uploaded = $f_bot_cert_file !== null && $f_bot_cert_file['error'] !== UPLOAD_ERR_NO_FILE;
 
 if( $t_cert_uploaded ) {
@@ -163,9 +169,7 @@ if( plugin_config_get( 'get_updates_run_time' ) != $f_get_updates_run_time ) {
 }
 
 if( $f_debug_connection_enabled == ON ) {
-	$t_log_handle = @fopen( $f_debug_connection_log_path, 'a' );
-	if( $t_log_handle !== false ) {
-		fclose( $t_log_handle );
+	if( TelegramBotFileLogger::file_prepare( $f_debug_connection_log_path ) ) {
 		plugin_config_set( 'debug_connection_enabled', $f_debug_connection_enabled ? ON : OFF );
 		plugin_config_set( 'debug_connection_log_path', $f_debug_connection_log_path );
 	} else {
@@ -185,36 +189,22 @@ layout_page_header();
 layout_page_begin();
 
 if( $f_reinstall_webhook == ON ) {
-        $t_data = array();
-
-        if( plugin_config_get( 'use_cert' ) == ON ) {
-                # the handle must stay referenced until setWebhook(): closing it deletes the file;
-                # Request turns a local path in 'certificate' into a multipart upload by itself
-                $t_cert_file = tmpfile();
-                fwrite( $t_cert_file, plugin_config_get( 'bot_cert' ) );
-
-                $t_data['certificate'] = stream_get_meta_data( $t_cert_file )['uri'];
-        }
-
-        $t_data['url'] = config_get_global( 'path' ) . plugin_page( 'hook', TRUE ) . '&token=' . plugin_config_get( 'api_key' );
-
         try {
-                telegram_session_start();
-                html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . Request::setWebhook( $t_data )->getDescription() );
+                html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_webhook_install()->getDescription() );
         } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
                 //plugin_config_set( 'reinstall_webhook', OFF );
-                html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
+                html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_token_mask( $t_errors->getMessage() ) );
         } catch( GuzzleHttp\Exception\GuzzleException $t_errors ) {
-                html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
+                html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_token_mask( $t_errors->getMessage() ) );
         }
 } else {
 //    html_operation_successful( $t_redirect_url );
     try {
             html_operation_successful( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . Request::deleteWebhook()->getDescription() );
     } catch( Longman\TelegramBot\Exception\TelegramException $t_errors ) {
-            html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
+            html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_token_mask( $t_errors->getMessage() ) );
     } catch( GuzzleHttp\Exception\GuzzleException $t_errors ) {
-            html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . $t_errors->getMessage() );
+            html_operation_failure( $t_redirect_url, plugin_lang_get( 'response_from_telegram' ) . telegram_token_mask( $t_errors->getMessage() ) );
     }
 }
 layout_page_end();

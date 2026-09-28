@@ -427,3 +427,17 @@ $s_plugin_TelegramBot_event_draft_busy_status = 'A status change is in progress.
 $s_plugin_TelegramBot_event_draft_busy_event = 'An event draft is in progress. Finish it or cancel it before reporting an issue.';
 
 $s_plugin_TelegramBot_user_info_header = 'Your MantisBT account:';
+
+$s_plugin_TelegramBot_webhook_secret_token_missing = 'The webhook has no secret token yet. A webhook installed by an earlier plugin version carries the bot token in its URL, where it ends up in web server logs: save the settings to reinstall it.';
+$s_plugin_TelegramBot_user_relationship_confirm_title = 'Link a Telegram account to your MantisBT account?';
+$s_plugin_TelegramBot_user_relationship_confirm_telegram = 'Telegram account';
+$s_plugin_TelegramBot_user_relationship_confirm_mantis = 'MantisBT account';
+$s_plugin_TelegramBot_user_relationship_confirm_effect = 'Once linked, this Telegram account works in the bot on your behalf: it reports issues, adds notes and receives your notifications.';
+$s_plugin_TelegramBot_user_relationship_confirm_warning = 'If you did not ask the bot for this link yourself, press NO.';
+$s_plugin_TelegramBot_user_relationship_declined = 'The Telegram account is not linked and the link does not work any more. To link your own Telegram, send any message to the bot and follow the new link.';
+$s_plugin_TelegramBot_ERROR_TG_ACCOUNT_ALREADY_ASSOCIATED = 'YOUR ACCOUNT IS ALREADY LINKED TO ANOTHER TELEGRAM ACCOUNT. UNLINK IT FIRST ON THE TELEGRAM PAGE OF YOUR ACCOUNT PREFERENCES.';
+$s_plugin_TelegramBot_ERROR_TG_REGISTRATION_LINK_INVALID = 'THE LINK IS INVALID, ALREADY USED OR HAS EXPIRED. SEND ANY MESSAGE TO THE BOT TO GET A NEW ONE.';
+$s_plugin_TelegramBot_error_file_download = 'The file could not be received from Telegram, try to send it once again.';
+$s_plugin_TelegramBot_ERROR_DEBUG_LOG_PATH_NOT_ALLOWED = 'THE DEBUG LOG PATH IS NOT ALLOWED: ONLY A .LOG OR .TXT FILE IN AN EXISTING DIRECTORY OUTSIDE THE WEB ROOT MAY BE USED.';
+
+$s_plugin_TelegramBot_value_not_offered = 'This value is not available to you any more, pick one of the offered ones.';

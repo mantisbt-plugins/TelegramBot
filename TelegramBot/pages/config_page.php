@@ -250,6 +250,9 @@ telegrambot_print_menu_config( 'config_page' );
                                     <th class="category" width="5%">
                                         <?php echo plugin_lang_get('reinstall_webhook') ?>
                                         <br><span class="small"><?php echo plugin_lang_get( 'reinstall_webhook_notice' ) ?></span>
+                                        <?php if( (int)plugin_config_get( 'reinstall_webhook' ) == ON && is_blank( plugin_config_get( 'webhook_secret_token' ) ) ) { ?>
+                                        <br><span class="small red"><?php echo plugin_lang_get( 'webhook_secret_token_missing' ) ?></span>
+                                        <?php } ?>
                                     </th>
                                     <td class="left" colspan="1">
                                         <label><input type="radio" class="ace" name="reinstall_webhook" value="1" <?php echo( ON == (int)plugin_config_get('reinstall_webhook') ) ? 'checked="checked" ' : '' ?>/>

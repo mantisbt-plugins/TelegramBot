@@ -17,6 +17,9 @@
 
 auth_ensure_user_authenticated();
 
+# A protected account (a shared or anonymous one) must not get a chat of its own
+current_user_ensure_unprotected();
+
 # Links sent before the method was switched must not keep working: with PIN codes
 # the binding is confirmed from the chat side only. An old invitation stays in the
 # chat forever, so the dead end is explained instead of a bare "access denied"
@@ -38,24 +41,69 @@ if( TELEGRAM_REGISTRATION_PIN == (int) plugin_config_get( 'registration_method' 
 }
 
 $f_telegram_user_id = gpc_get_int( 'telegram_user_id' );
+$f_token            = gpc_get_string( 'token', '' );
 $f_is_confirmed     = gpc_get_bool( '_confirmed', FALSE );
 
-helper_ensure_telegram_bot_registred_confirmed( plugin_lang_get( 'user_relationship_question' ) );
+# The telegram user id is public, the one-time token issued with the invitation is not:
+# only the owner of the chat has the link, so nobody else can get his chat bound to the
+# account that opens this page
+$t_telegram_name = telegram_registration_link_token_check( $f_telegram_user_id, $f_token );
 
-# The telegram user id travels through the browser, so a chat already bound to somebody
-# else must not be relinked: its owner would end up working in the bot on behalf of the
-# account that opened this page. The chat is released by /stop sent from that chat.
+if( $t_telegram_name === false ) {
+    plugin_log_event( 'Registration Error! Invalid or expired link token for telegram user id#' . $f_telegram_user_id . ', opened by user ' . user_get_username( auth_get_current_user_id() ) );
+    plugin_error( 'ERROR_TG_REGISTRATION_LINK_INVALID', ERROR );
+}
+
+# A refusal kills the link: it may have come from somebody else, and a link left
+# alive could still be confirmed by a careless second click
+if( '0' === gpc_get_string( '_confirmed', '' ) && 'POST' == $_SERVER['REQUEST_METHOD'] ) {
+    telegram_registration_link_token_burn( $f_telegram_user_id );
+
+    plugin_log_event( 'Binding of telegram user id#' . $f_telegram_user_id . ' is declined by mantisbt user ' . user_get_username( auth_get_current_user_id() ) );
+
+    layout_page_header( plugin_lang_get( 'account_telegram_register_page_header' ) );
+    layout_page_begin( 'account_page' );
+
+    html_operation_warning( helper_mantis_url( config_get( 'default_home_page' ) ), plugin_lang_get( 'user_relationship_declined' ) );
+
+    layout_page_end();
+
+    return;
+}
+
+# Neither the account nor the chat is relinked silently. Checked before the question,
+# asking to confirm a binding that is going to be refused would only mislead
+telegram_bot_user_mapping_ensure_allowed( auth_get_current_user_id(), $f_telegram_user_id );
+
+# Both sides of the binding are shown apart and the warning stands out: the page is
+# the last chance to notice a link sent by somebody else
+$t_telegram_account = is_blank( $t_telegram_name ) ? '' : '<strong>' . string_html_specialchars( $t_telegram_name ) . '</strong><br>';
+$t_telegram_account .= '<span class="grey">ID ' . (int)$f_telegram_user_id . '</span>';
+
+helper_ensure_telegram_bot_registred_confirmed(
+                          '<h4 class="bold">' . plugin_lang_get( 'user_relationship_confirm_title' ) . '</h4>'
+                          . '<table class="table table-bordered table-condensed" style="width: auto; margin: 10px auto;">'
+                          . '<tr><th class="category">' . plugin_lang_get( 'user_relationship_confirm_telegram' ) . '</th>'
+                          . '<td class="left">' . $t_telegram_account . '</td></tr>'
+                          . '<tr><th class="category">' . plugin_lang_get( 'user_relationship_confirm_mantis' ) . '</th>'
+                          . '<td class="left"><strong>' . string_html_specialchars( user_get_name( auth_get_current_user_id() ) ) . '</strong></td></tr>'
+                          . '</table>'
+                          . '<p>' . plugin_lang_get( 'user_relationship_confirm_effect' ) . '</p>'
+                          . '<p class="red bold">' . plugin_lang_get( 'user_relationship_confirm_warning' ) . '</p>'
+);
+
 if( $f_is_confirmed ) {
     # The token is printed by the confirmation form: a cross-site request has no way
     # to obtain it, so a forged confirmation cannot bind a foreign chat to the session
     form_security_validate( 'plugin_TelegramBot_registred' );
 
-    $t_associated_user_id = user_get_id_by_telegram_user_id( $f_telegram_user_id );
-
-    if( $t_associated_user_id != 0 && $t_associated_user_id != auth_get_current_user_id() ) {
-        plugin_log_event( 'Registration Error! Telegram user id#' . $f_telegram_user_id . ' is already mapped to mantisbt user ' . user_get_username( $t_associated_user_id ) );
-        plugin_error( 'ERROR_TG_USER_ALREADY_ASSOCIATED', ERROR );
+    if( 'POST' != $_SERVER['REQUEST_METHOD'] ) {
+        access_denied();
     }
+
+    # One use only, whatever comes next: a link that has been confirmed once must not
+    # work again, even when the binding is refused below
+    telegram_registration_link_token_burn( $f_telegram_user_id );
 }
 
 layout_page_header_begin();
@@ -69,6 +117,8 @@ if( $f_is_confirmed ) {
     $t_current_user_id = auth_get_current_user_id();
 
     telegram_bot_user_mapping_add( $t_current_user_id, $f_telegram_user_id );
+
+    plugin_log_event( 'Telegram user id#' . $f_telegram_user_id . ' is mapped to mantisbt user ' . user_get_username( $t_current_user_id ) . ' by link' );
 
     # The accounts are linked: the invitation leaves the chat and the PIN code is dropped
     telegram_registration_complete( $f_telegram_user_id );

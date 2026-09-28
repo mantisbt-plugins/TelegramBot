@@ -18,7 +18,7 @@
 /**
  * Description of TelegramBot_menu
  *
- * @author g.ermolaev
+ * @author Grigoriy Ermolaev <igflocal@gmail.com>
  */
 class TelegrambotActions {
 

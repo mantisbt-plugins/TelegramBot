@@ -22,7 +22,7 @@
  * of the 0.4x versions is gone ), and the plugin carries no logging package of
  * its own, so the debug of the exchange is written by this class.
  *
- * @author g.ermolaev
+ * @author Grigoriy Ermolaev <igflocal@gmail.com>
  */
 class TelegramBotFileLogger extends \Psr\Log\AbstractLogger {
 
@@ -42,10 +42,110 @@ class TelegramBotFileLogger extends \Psr\Log\AbstractLogger {
         private $write_failure_logged = FALSE;
 
         /**
+         * Extensions a log file may have: the log carries the messages of the users,
+         * so it must never become a file the web server executes or interprets.
+         *
+         * @var array
+         */
+        const EXTENSIONS_ALLOWED = array( 'log', 'txt' );
+
+        /**
          * @param string $p_log_path File the messages are appended to.
          */
         public function __construct( $p_log_path ) {
+                # A path stored before the validation existed is not trusted either
+                if( !self::path_is_allowed( $p_log_path ) ) {
+                        plugin_log_event( 'ERROR! The debug of the connection is not written to the refused path "' . $p_log_path . '"' );
+                        $p_log_path = '';
+                }
+
                 $this->log_path = $p_log_path;
+        }
+
+        /**
+         * Whether the path may take the debug log: a .log or .txt file in an
+         * existing directory outside the web root of MantisBT and the document root
+         * of the web server.
+         *
+         * @param string $p_log_path Path to check.
+         * @return boolean
+         */
+        public static function path_is_allowed( $p_log_path ) {
+
+                if( is_blank( $p_log_path ) ) {
+                        return FALSE;
+                }
+
+                $t_name = basename( $p_log_path );
+
+                if( $t_name === '' || $t_name[0] == '.'
+                                || !in_array( strtolower( pathinfo( $t_name, PATHINFO_EXTENSION ) ), self::EXTENSIONS_ALLOWED, TRUE ) ) {
+                        return FALSE;
+                }
+
+                $t_dir = realpath( dirname( $p_log_path ) );
+
+                if( $t_dir === FALSE || !is_dir( $t_dir ) ) {
+                        return FALSE;
+                }
+
+                # A link placed at the path would lead the writes anywhere
+                $t_path = $t_dir . DIRECTORY_SEPARATOR . $t_name;
+                if( is_link( $t_path ) ) {
+                        return FALSE;
+                }
+
+                $t_roots = array( config_get_global( 'absolute_path' ) );
+                if( !empty( $_SERVER['DOCUMENT_ROOT'] ) ) {
+                        $t_roots[] = $_SERVER['DOCUMENT_ROOT'];
+                }
+
+                foreach( $t_roots as $t_root ) {
+                        $t_root = realpath( $t_root );
+
+                        if( $t_root !== FALSE && self::path_is_inside( $t_path, $t_root ) ) {
+                                return FALSE;
+                        }
+                }
+
+                return TRUE;
+        }
+
+        /**
+         * Create the log file readable by its owner only, unless it exists already.
+         *
+         * @param string $p_log_path Path of the file, checked by path_is_allowed().
+         * @return boolean Whether the file can be written.
+         */
+        public static function file_prepare( $p_log_path ) {
+
+                # The 'x' mode fails on an existing file, so the mode of a file made
+                # by somebody else is left alone
+                $t_handle = @fopen( $p_log_path, 'x' );
+                if( $t_handle !== FALSE ) {
+                        fclose( $t_handle );
+                        @chmod( $p_log_path, 0600 );
+                }
+
+                return is_file( $p_log_path ) && is_writable( $p_log_path );
+        }
+
+        /**
+         * Whether the path lies inside the directory.
+         *
+         * @param string $p_path Resolved path.
+         * @param string $p_dir  Resolved directory.
+         * @return boolean
+         */
+        private static function path_is_inside( $p_path, $p_dir ) {
+                $t_dir = rtrim( $p_dir, '/\\' ) . DIRECTORY_SEPARATOR;
+
+                # File names on Windows are case insensitive
+                if( DIRECTORY_SEPARATOR == '\\' ) {
+                        return stripos( $p_path, $t_dir ) === 0;
+                }
+
+                return strpos( $p_path, $t_dir ) === 0;
         }
 
         /**
@@ -76,7 +176,8 @@ class TelegramBotFileLogger extends \Psr\Log\AbstractLogger {
                                           strtoupper( (string)$p_level ),
                                           $t_message );
 
-                if( @file_put_contents( $this->log_path, $t_line, FILE_APPEND | LOCK_EX ) !== FALSE ) {
+                if( self::file_prepare( $this->log_path )
+                                && @file_put_contents( $this->log_path, $t_line, FILE_APPEND | LOCK_EX ) !== FALSE ) {
                         return;
                 }
 

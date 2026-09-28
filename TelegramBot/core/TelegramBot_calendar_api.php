@@ -1268,11 +1268,18 @@ function telegram_event_report( $p_current_action, Longman\TelegramBot\Entities\
     switch( $t_action ) {
 //PROJECT
         case TelegrambotActions::GET_PROJECT:
+            # only the subprojects of a project offered to the user are listed
+            $t_project_id = (int)$p_current_action[TelegrambotActions::GET_PROJECT]['id'];
+
+            if( !telegram_project_is_accessible( $t_project_id ) ) {
+                $t_project_id = ALL_PROJECTS;
+            }
+
             $t_question        = telegram_event_draft_step_label( 'project' );
             $t_inline_keyboard = keyboard_projects_get(
-                                      $p_current_action[TelegrambotActions::GET_PROJECT]['id'],
-                                      $p_current_action[TelegrambotActions::GET_PROJECT]['p'],
-                                      $p_current_action[TelegrambotActions::GET_PROJECT]['fp'],
+                                      $t_project_id,
+                                      max( 1, (int)$p_current_action[TelegrambotActions::GET_PROJECT]['p'] ),
+                                      max( 1, (int)$p_current_action[TelegrambotActions::GET_PROJECT]['fp'] ),
                                       TelegrambotActions::CREATE_EVENT_TAG
                     );
 
@@ -1287,8 +1294,11 @@ function telegram_event_report( $p_current_action, Longman\TelegramBot\Entities\
             $t_project_id = (int)$p_current_action[TelegrambotActions::SET_PROJECT]['id'];
 
             # calendar_api_event_create() answers a missing permission with
-            # access_denied(), which would end the whole request of the bot
-            if( !telegram_calendar_can_report_event( $t_project_id, $t_user_id ) ) {
+            # access_denied(), which would end the whole request of the bot;
+            # the project has to be one of the list as well, the threshold of
+            # "All projects" or of a project out of reach is no answer to it
+            if( !telegram_project_is_accessible( $t_project_id )
+                    || !telegram_calendar_can_report_event( $t_project_id, $t_user_id ) ) {
                 $t_error = error_string( ERROR_ACCESS_DENIED );
                 break;
             }
@@ -2214,7 +2224,7 @@ function telegram_calendar_event_notification_send( $p_event_id, $p_project_id, 
             plugin_log_event( sprintf( 'ERROR! Calendar event = #%d, sendDocument to %d failed: %s', (int)$p_event_id, (int)$p_telegram_user_id, $t_response->getDescription() ) );
         }
     } catch( Exception $t_error ) {
-        plugin_log_event( sprintf( 'ERROR! Calendar event = #%d, sendDocument to %d failed: %s', (int)$p_event_id, (int)$p_telegram_user_id, $t_error->getMessage() ) );
+        plugin_log_event( sprintf( 'ERROR! Calendar event = #%d, sendDocument to %d failed: %s', (int)$p_event_id, (int)$p_telegram_user_id, telegram_token_mask( $t_error->getMessage() ) ) );
     }
 }
 

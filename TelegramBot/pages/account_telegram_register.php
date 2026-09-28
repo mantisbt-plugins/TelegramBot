@@ -29,8 +29,9 @@ $f_pin_code = gpc_get_int( 'pin_code' );
 
 $t_user_id = auth_get_current_user_id();
 
+# Another chat is never swapped in silently: the old one has to be unlinked first
 if( user_is_associated_with_telegram( $t_user_id ) ) {
-    plugin_error( 'ERROR_TG_USER_ALREADY_ASSOCIATED', ERROR );
+    plugin_error( 'ERROR_TG_ACCOUNT_ALREADY_ASSOCIATED', ERROR );
 }
 
 # A 4-digit code survives only a counted number of guesses: without the limit it is

@@ -427,3 +427,17 @@ $s_plugin_TelegramBot_event_draft_busy_status = 'Сейчас идёт смен�
 $s_plugin_TelegramBot_event_draft_busy_event = 'Сейчас создаётся черновик события. Завершите или отмените его, прежде чем создавать задачу.';
 
 $s_plugin_TelegramBot_user_info_header = 'Ваша учётная запись MantisBT:';
+
+$s_plugin_TelegramBot_webhook_secret_token_missing = 'У вебхука ещё нет секретного токена. Вебхук, установленный прежней версией плагина, содержит токен бота в адресе, откуда тот попадает в журналы веб-сервера: сохраните настройки, чтобы переустановить его.';
+$s_plugin_TelegramBot_user_relationship_confirm_title = 'Привязать Telegram к вашей учётной записи MantisBT?';
+$s_plugin_TelegramBot_user_relationship_confirm_telegram = 'Аккаунт Telegram';
+$s_plugin_TelegramBot_user_relationship_confirm_mantis = 'Учётная запись MantisBT';
+$s_plugin_TelegramBot_user_relationship_confirm_effect = 'После привязки этот аккаунт Telegram будет работать в боте от вашего имени: создавать задачи, добавлять заметки и получать ваши уведомления.';
+$s_plugin_TelegramBot_user_relationship_confirm_warning = 'Если вы не запрашивали эту ссылку у бота сами — нажмите НЕТ.';
+$s_plugin_TelegramBot_user_relationship_declined = 'Аккаунт Telegram не привязан, ссылка больше не действует. Чтобы привязать свой Telegram, отправьте боту любое сообщение и перейдите по новой ссылке.';
+$s_plugin_TelegramBot_ERROR_TG_ACCOUNT_ALREADY_ASSOCIATED = 'ВАШ АККАУНТ УЖЕ ПРИВЯЗАН К ДРУГОМУ АККАУНТУ TELEGRAM. СНАЧАЛА СНИМИТЕ ПРИВЯЗКУ НА СТРАНИЦЕ TELEGRAM В НАСТРОЙКАХ ВАШЕГО АККАУНТА.';
+$s_plugin_TelegramBot_ERROR_TG_REGISTRATION_LINK_INVALID = 'ССЫЛКА НЕДЕЙСТВИТЕЛЬНА, УЖЕ ИСПОЛЬЗОВАНА ИЛИ УСТАРЕЛА. ОТПРАВЬТЕ БОТУ ЛЮБОЕ СООБЩЕНИЕ, ЧТОБЫ ПОЛУЧИТЬ НОВУЮ.';
+$s_plugin_TelegramBot_error_file_download = 'Не удалось получить файл от Telegram, попробуйте отправить его ещё раз.';
+$s_plugin_TelegramBot_ERROR_DEBUG_LOG_PATH_NOT_ALLOWED = 'НЕДОПУСТИМЫЙ ПУТЬ К ЛОГУ ОТЛАДКИ: РАЗРЕШЁН ТОЛЬКО ФАЙЛ .LOG ИЛИ .TXT В СУЩЕСТВУЮЩЕМ КАТАЛОГЕ ВНЕ КОРНЯ ВЕБ-СЕРВЕРА.';
+
+$s_plugin_TelegramBot_value_not_offered = 'Это значение вам больше недоступно, выберите одно из предложенных.';

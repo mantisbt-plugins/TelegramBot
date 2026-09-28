@@ -76,7 +76,7 @@ telegrambot_print_menu_config( 'monitor_page' );
                                         echo plugin_lang_get( 'current_config' );
                                         echo '</td>';
                                         echo '<td colspan="2">';
-                                        echo is_blank( $t_webhook_url ) ? plugin_lang_get( 'monitor_page_url_not_set' ) : string_display_line( $t_webhook_url );
+                                        echo is_blank( $t_webhook_url ) ? plugin_lang_get( 'monitor_page_url_not_set' ) : string_display_line( telegram_token_mask( $t_webhook_url ) );
                                         echo '</td>';
                                         echo '</tr>';
                                         

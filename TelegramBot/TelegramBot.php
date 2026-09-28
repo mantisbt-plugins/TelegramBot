@@ -38,6 +38,9 @@ define( 'TELEGRAM_UNLINK_SOURCE_ADMIN', 'admin' );
 # Seconds a PIN code stays valid
 define( 'TELEGRAM_PIN_CODE_TTL', 15 * 60 );
 
+# Seconds the one-time token of a registration link stays valid
+define( 'TELEGRAM_REGISTRATION_LINK_TTL', 15 * 60 );
+
 # Seconds the registration state is kept: the PIN code inside it expires much earlier,
 # but the id of the invitation is still needed to remove that message from the chat when
 # the user follows the link later. Telegram lets a bot delete its own message for 48 hours.
@@ -142,6 +145,15 @@ class TelegramBotPlugin extends MantisPlugin {
                                   array( 'AddColumnSQL', array( plugin_table( 'pin_codes' ), "
                                         message_id  I   UNSIGNED    $t_notnull DEFAULT '0'
                                 " ) ),
+                                  // version 2.0.0 (schema 10)
+                                  // One-time token of the registration link (its SHA-256, never the token
+                                  // itself), the time it was issued and the telegram account it was issued
+                                  // to as the bot saw it, shown on the confirmation page
+                                  array( 'AddColumnSQL', array( plugin_table( 'pin_codes' ), "
+                                        link_token      C(64)   $t_notnull DEFAULT \" '' \",
+                                        link_timestamp  I   UNSIGNED    $t_notnull DEFAULT '0',
+                                        telegram_name   C(255)  $t_notnull DEFAULT \" '' \"
+                                " ) ),
         );
     }
 
@@ -236,7 +248,7 @@ class TelegramBotPlugin extends MantisPlugin {
         try {
             telegram_session_start();
         } catch( Exception $t_error ) {
-            plugin_log_event( 'ERROR! Telegram session start failed: ' . $t_error->getMessage() );
+            plugin_log_event( 'ERROR! Telegram session start failed: ' . telegram_token_mask( $t_error->getMessage() ) );
         }
     }
 
@@ -247,6 +259,8 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'use_cert'                                    => OFF,
                                   'bot_cert'                                    => '',
                                   'reinstall_webhook'                           => ON,
+                                  # sent by Telegram in X-Telegram-Bot-Api-Secret-Token, set on webhook install
+                                  'webhook_secret_token'                        => '',
                                   # how a telegram account is linked to a MantisBT one:
                                   # TELEGRAM_REGISTRATION_LINK / _PIN / _BOTH
                                   'registration_method'                         => TELEGRAM_REGISTRATION_LINK,
@@ -254,7 +268,8 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'admin_unlink_notify'                         => ON,
                                   'bot_father_url'                              => 'https://t.me/BotFather',
                                   'telegram_url'                                => 'tg://resolve?domain=',
-                                  'download_path'                               => '/tmp/',
+                                  # base of the per download directories ( 0700, removed after use ), blank - the temp directory of the system
+                                  'download_path'                               => '',
 				  'proxy_address'                               => '',
 				  'time_out_server_response'			=> 30,
 				  'debug_connection_log_path'			=> '/tmp/TelegramBot_debug.log',
@@ -519,6 +534,9 @@ class TelegramBotPlugin extends MantisPlugin {
                                   'ERROR_TG_PIN_CODE_EXPIRED'           => plugin_lang_get('ERROR_TG_PIN_CODE_EXPIRED'),
                                   'ERROR_TG_PIN_CODE_GENERATE'          => plugin_lang_get('ERROR_TG_PIN_CODE_GENERATE'),
                                   'ERROR_TG_USER_ALREADY_ASSOCIATED'    => plugin_lang_get('ERROR_TG_USER_ALREADY_ASSOCIATED'),
+                                  'ERROR_TG_ACCOUNT_ALREADY_ASSOCIATED' => plugin_lang_get('ERROR_TG_ACCOUNT_ALREADY_ASSOCIATED'),
+                                  'ERROR_TG_REGISTRATION_LINK_INVALID'  => plugin_lang_get('ERROR_TG_REGISTRATION_LINK_INVALID'),
+                                  'ERROR_DEBUG_LOG_PATH_NOT_ALLOWED'    => plugin_lang_get('ERROR_DEBUG_LOG_PATH_NOT_ALLOWED'),
         );
     }
 

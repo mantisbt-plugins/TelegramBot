@@ -1,17 +1,17 @@
 <?php
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2026 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
 # either version 2 of the License, or (at your option) any later version.
 #
-# TelegramBot plugin for for MantisBT is distributed in the hope 
+# TelegramBot plugin for MantisBT is distributed in the hope 
 # that it will be useful, but WITHOUT ANY WARRANTY; without even the 
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 # See the GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Customer management plugin for MantisBT.  
+# along with TelegramBot plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
 if( !defined( 'ACCOUNT_TELEGRAM_PREFS_INC_ALLOW' ) ) {
@@ -28,7 +28,6 @@ if( !defined( 'ACCOUNT_TELEGRAM_PREFS_INC_ALLOW' ) ) {
  * @return void
  */
 function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected = true, $p_accounts_menu = true, $p_redirect_url = '' ) {
-    global $g_account_telegram_menu_active;
     if( null === $p_user_id ) {
         $p_user_id = auth_get_current_user_id();
     }
@@ -57,7 +56,6 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
 
     <?php
     if( $p_accounts_menu ) {
-        $g_account_telegram_menu_active = TRUE;
         print_account_menu( 'account_telegram_prefs_page' );
     }
     ?>
@@ -86,7 +84,7 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                     <table class="table table-bordered table-condensed table-striped">
                                         <?php
                                         if( telegram_user_get_id_by_user_id( $p_user_id ) != NULL ) {
-                                            $t_telegram_chat = RequestMantis::getChat( array( 'chat_id' => telegram_user_get_id_by_user_id( $p_user_id ) ) )->getResult();
+                                            $t_telegram_chat = \Longman\TelegramBot\Request::getChat( array( 'chat_id' => telegram_user_get_id_by_user_id( $p_user_id ) ) )->getResult();
                                             if( $t_telegram_chat != NULL ) {
                                                 ?>
                                                 <tr>
@@ -95,6 +93,17 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                                     </td>
                                                     <td>
                                                         <?php echo '@' . string_display_line( $t_telegram_chat->getUsername() ) ?>
+
+                                                        <?php
+                                                        # Releasing the binding from here needs no access to the chat,
+                                                        # unlike the /stop command. A button of the surrounding form,
+                                                        # nested forms are not allowed
+                                                        echo form_security_field( 'telegram_user_unlink' );
+                                                        ?>
+                                                        <input type="hidden" name="source" value="<?php echo TELEGRAM_UNLINK_SOURCE_ACCOUNT ?>" />
+                                                        <input type="submit" class="btn btn-sm btn-primary btn-white btn-round pull-right"
+                                                               formaction="<?php echo plugin_page( 'user_unlink' ) ?>"
+                                                               value="<?php echo plugin_lang_get( 'user_unlink_button' ) ?>" />
                                                     </td>
                                                 </tr>
 
@@ -103,10 +112,19 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                         } else {
                                             ?>
                                             <tr>
-                                                <td class="category">
+                                                <th class="category" width="35%">
                                                     <?php
-                                                    echo sprintf( plugin_lang_get( 'account_telegram_prefs_subscribe_bot' ), plugin_config_get( 'bot_name' ) ) .
-                                                    '<a href="' . plugin_config_get( 'telegram_url' ) . plugin_config_get( 'bot_name' ) . '">' . '@' . plugin_config_get( 'bot_name' ) . '</a>';
+                                                    echo sprintf( plugin_lang_get( 'account_telegram_prefs_subscribe_bot' ), string_display_line( plugin_config_get( 'bot_name' ) ) ) .
+                                                    '<a href="' . string_attribute( plugin_config_get( 'telegram_url' ) . plugin_config_get( 'bot_name' ) ) . '">' . '@' . string_display_line( plugin_config_get( 'bot_name' ) ) . '</a>';
+                                                    ?>
+                                                </th>
+                                                <td class="left" colspan="1">
+                                                    <?php
+                                                    # The code is entered on a page of its own, this is only a pointer to it
+                                                    if( TELEGRAM_REGISTRATION_LINK != (int) plugin_config_get( 'registration_method' ) ) {
+                                                        echo '<a href="' . plugin_page( 'account_telegram_register_page' ) . '">'
+                                                        . plugin_lang_get( 'account_telegram_register_page_header' ) . '</a>';
+                                                    }
                                                     ?>
                                                 </td>
                                             </tr>
@@ -294,6 +312,44 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                                     </label>
                                                 </td>
                                             </tr>
+                                            <?php
+                                            # the calendar events have no severity, hence a switch alone
+                                            if( telegram_calendar_available() ) {
+                                                foreach( telegram_calendar_event_prefs() as $t_pref ) {
+                                                    if( !telegram_calendar_pref_offered( $t_pref ) ) {
+                                                        continue;
+                                                    }
+                                                    ?>
+                                                    <tr>
+                                                        <td class="category">
+                                                            <?php echo plugin_lang_get( $t_pref ) ?>
+                                                        </td>
+                                                        <td>
+                                                            <label class="inline">
+                                                                <input type="checkbox" class="ace input-sm" id="<?php echo str_replace( '_', '-', $t_pref ) ?>" name="<?php echo $t_pref ?>" <?php check_checked( (int) plugin_config_get( $t_pref, NULL, FALSE, $p_user_id, ALL_PROJECTS ), ON ); ?> />
+                                                                <span class="lbl"></span>
+                                                            </label>
+                                                        </td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                            }
+                                            ?>
+                                            <?php if( telegram_calendar_ics_offered() ) { ?>
+                                            <tr>
+                                                <td class="category">
+                                                    <?php echo plugin_lang_get( 'calendar_ics_attach' ) ?>
+                                                </td>
+                                                <td>
+                                                    <label class="inline">
+                                                        <input type="checkbox" class="ace input-sm"
+                                                               id="calendar-ics-attach" name="calendar_ics_attach"
+                                                               <?php check_checked( telegram_calendar_ics_wanted( $p_user_id, ALL_PROJECTS ), TRUE ); ?> />
+                                                        <span class="lbl"></span>
+                                                    </label>
+                                                </td>
+                                            </tr>
+                                            <?php } ?>
 
                                         <?php } else { ?>
 
@@ -315,6 +371,19 @@ function telegram_edit_account_prefs( $p_user_id = null, $p_error_if_protected =
                                             <input type="hidden" name="telegram_message_on_bugnote_min_severity"  value="<?php echo plugin_config_get( 'telegram_message_on_bugnote_min_severity' ) ?>" />
                                             <input type="hidden" name="telegram_message_on_status_min_severity"   value="<?php echo plugin_config_get( 'telegram_message_on_status_min_severity' ) ?>" />
                                             <input type="hidden" name="telegram_message_on_priority_min_severity" value="<?php echo plugin_config_get( 'telegram_message_on_priority_min_severity' ) ?>" />
+                                            <?php
+                                            if( telegram_calendar_available() ) {
+                                                foreach( telegram_calendar_event_prefs() as $t_pref ) {
+                                                    if( !telegram_calendar_pref_offered( $t_pref ) ) {
+                                                        continue;
+                                                    }
+                                                    echo '<input type="hidden" name="' . $t_pref . '" value="' . (int) plugin_config_get( $t_pref, NULL, FALSE, $p_user_id, ALL_PROJECTS ) . '" />' . "\n";
+                                                }
+                                            }
+                                            ?>
+                                            <?php if( telegram_calendar_ics_offered() && telegram_calendar_ics_wanted( $p_user_id, ALL_PROJECTS ) ) { ?>
+                                            <input type="hidden" name="calendar_ics_attach" value="1" />
+                                            <?php } ?>
                                             <input type="hidden" name="telegram_message_full_issue" value="<?php echo $t_telegram_message_full_issue ?>" />
                                             <input type="hidden" name="telegram_message_included_all_bugnote_is" value="<?php echo $t_telegram_message_included_all_bugnote_is ?>" />
                                         <?php } ?>

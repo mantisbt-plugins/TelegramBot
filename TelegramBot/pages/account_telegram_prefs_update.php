@@ -1,18 +1,18 @@
 <?php
 
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2026 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
 # either version 2 of the License, or (at your option) any later version.
 #
-# TelegramBot plugin for for MantisBT is distributed in the hope 
+# TelegramBot plugin for MantisBT is distributed in the hope 
 # that it will be useful, but WITHOUT ANY WARRANTY; without even the 
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 # See the GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Customer management plugin for MantisBT.  
+# along with TelegramBot plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
 form_security_validate( 'account_telegram_prefs_update' );
@@ -20,7 +20,7 @@ form_security_validate( 'account_telegram_prefs_update' );
 auth_ensure_user_authenticated();
 
 $f_user_id      = gpc_get_int( 'user_id' );
-$f_redirect_url = gpc_get_string( 'redirect_url' );
+$f_redirect_url = string_sanitize_url( gpc_get_string( 'redirect_url' ) );
 
 user_ensure_exists( $f_user_id );
 
@@ -58,6 +58,20 @@ plugin_config_set( 'telegram_message_on_bugnote_min_severity', gpc_get_int( 'tel
 plugin_config_set( 'telegram_message_on_status_min_severity', gpc_get_int( 'telegram_message_on_status_min_severity' ), $f_user_id, ALL_PROJECTS );
 plugin_config_set( 'telegram_message_on_priority_min_severity', gpc_get_int( 'telegram_message_on_priority_min_severity' ), $f_user_id, ALL_PROJECTS );
 plugin_config_set( 'telegram_message_included_all_bugnote_is', gpc_get_bool( 'telegram_message_included_all_bugnote_is' ) ? 1 : 0, $f_user_id, ALL_PROJECTS );
+
+# the choice is taken only while the file is offered: the checkbox is not shown otherwise
+if( telegram_calendar_available() ) {
+    foreach( telegram_calendar_event_prefs() as $t_pref ) {
+        if( !telegram_calendar_pref_offered( $t_pref ) ) {
+            continue;
+        }
+        plugin_config_set( $t_pref, gpc_get_bool( $t_pref ) ? ON : OFF, $f_user_id, ALL_PROJECTS );
+    }
+}
+
+if( telegram_calendar_ics_offered() ) {
+    plugin_config_set( 'calendar_ics_attach', gpc_get_bool( 'calendar_ics_attach' ) ? ON : OFF, $f_user_id, ALL_PROJECTS );
+}
 
 # Save user preference with regards to getting full issue details in notifications or not.
 $t_telegram_message_full_issue         = gpc_get_bool( 'telegram_message_full_issue' ) ? 1 : 0;

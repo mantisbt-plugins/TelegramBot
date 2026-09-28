@@ -1,18 +1,18 @@
 <?php
 
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2026 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
 # either version 2 of the License, or (at your option) any later version.
 #
-# TelegramBot plugin for for MantisBT is distributed in the hope 
+# TelegramBot plugin for MantisBT is distributed in the hope 
 # that it will be useful, but WITHOUT ANY WARRANTY; without even the 
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 # See the GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Customer management plugin for MantisBT.  
+# along with TelegramBot plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
 /**
@@ -85,10 +85,41 @@ function telegram_message_format_bugnote( $p_bugnote, $p_project_id, $p_show_tim
  */
 function telegraml_message_format_attribute( array $p_visible_bug_data, $p_attribute_id ) {
     if( array_key_exists( $p_attribute_id, $p_visible_bug_data ) ) {
-        return utf8_str_pad( lang_get( $p_attribute_id ) . ': ', plugin_config_get( 'telegram_message_padding_length' ), ' ', STR_PAD_RIGHT ) . $p_visible_bug_data[$p_attribute_id] . "\n";
+        return telegram_message_format_line( lang_get( $p_attribute_id ), $p_visible_bug_data[$p_attribute_id] );
 //        return lang_get( $p_attribute_id ) . ':' . PHP_EOL . plugin_config_get( 'telegram_message_separator2' ) . PHP_EOL . $p_visible_bug_data[$p_attribute_id] . PHP_EOL . plugin_config_get( 'telegram_message_separator2' ) . PHP_EOL;
     }
     return '';
+}
+
+/**
+ * One line of a notification: the label padded to the configured width, then
+ * the value, so the values of consecutive lines line up in a column.
+ *
+ * @param string $p_label Label of the line, without the colon.
+ * @param string $p_value Value of the line.
+ * @return string The line, newline included.
+ */
+function telegram_message_format_line( $p_label, $p_value ) {
+    return utf8_str_pad( $p_label . ': ', plugin_config_get( 'telegram_message_padding_length' ), ' ', STR_PAD_RIGHT ) . $p_value . "\n";
+}
+
+/**
+ * The most recently modified note of a list, the way bugnote_get_latest_id()
+ * picks it, but independent of the order the list was fetched in.
+ *
+ * @param array $p_bugnotes Notes visible to the recipient (BugnoteData objects).
+ * @return BugnoteData|null The latest note, or null for an empty list.
+ */
+function telegram_message_bugnote_latest( array $p_bugnotes ) {
+    $t_latest = null;
+    foreach( $p_bugnotes as $t_bugnote ) {
+        if( $t_latest === null
+                || $t_bugnote->last_modified > $t_latest->last_modified
+                || ( $t_bugnote->last_modified == $t_latest->last_modified && $t_bugnote->id > $t_latest->id ) ) {
+            $t_latest = $t_bugnote;
+        }
+    }
+    return $t_latest;
 }
 
 /**
@@ -223,11 +254,12 @@ function telegram_message_format_bug_message( array $p_visible_bug_data, $p_incl
                                 /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
             }
         } else {
-            $t_bugnotes_last_id = bugnote_get_latest_id( $p_visible_bug_data['email_bug'] );
-            if( $t_bugnotes_last_id != NULL ) {
-                $t_bugnote = bugnote_get( $t_bugnotes_last_id );
+            # Only the notes already filtered for the recipient: a note taken from the
+            # database directly would leak private notes and time tracking.
+            $t_bugnote = telegram_message_bugnote_latest( $p_visible_bug_data['bugnotes'] );
+            if( $t_bugnote !== null ) {
+                # Show time tracking is always true, since data has already been filtered out when creating the bug visible data.
                 $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
-//        $t_message .= telegram_message_format_bugnote( $p_visible_bug_data['bugnotes'][$t_bugnotes_count - 1], $p_visible_bug_data['email_project_id'],
                                 /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
             }
         }

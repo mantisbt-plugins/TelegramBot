@@ -1,18 +1,18 @@
 <?php
 
-# Copyright (c) 2018 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2026 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
 # either version 2 of the License, or (at your option) any later version.
 #
-# TelegramBot plugin for for MantisBT is distributed in the hope 
+# TelegramBot plugin for MantisBT is distributed in the hope 
 # that it will be useful, but WITHOUT ANY WARRANTY; without even the 
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 # See the GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Customer management plugin for MantisBT.  
+# along with TelegramBot plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
 $f_user_id      = gpc_get_int( 'user_id' );
@@ -58,6 +58,11 @@ plugin_config_delete( 'telegram_message_on_bugnote_min_severity', $f_user_id, AL
 plugin_config_delete( 'telegram_message_on_status_min_severity', $f_user_id, ALL_PROJECTS );
 plugin_config_delete( 'telegram_message_on_priority_min_severity', $f_user_id, ALL_PROJECTS );
 plugin_config_delete( 'telegram_message_notifications_verbose', $f_user_id, ALL_PROJECTS );
+plugin_config_delete( 'calendar_ics_attach', $f_user_id, ALL_PROJECTS );
+
+foreach( telegram_calendar_event_prefs() as $t_pref ) {
+    plugin_config_delete( $t_pref, $f_user_id, ALL_PROJECTS );
+}
 
 form_security_purge( 'account_telegram_prefs_reset' );
 

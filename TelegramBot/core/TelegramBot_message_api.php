@@ -1,18 +1,18 @@
 <?php
 
-# Copyright (c) 2024 Grigoriy Ermolaev (igflocal@gmail.com)
+# Copyright (c) 2026 Grigoriy Ermolaev (igflocal@gmail.com)
 # TelegramBot for MantisBT is free software: 
 # you can redistribute it and/or modify it under the terms of the GNU
 # General Public License as published by the Free Software Foundation, 
 # either version 2 of the License, or (at your option) any later version.
 #
-# TelegramBot plugin for for MantisBT is distributed in the hope 
+# TelegramBot plugin for MantisBT is distributed in the hope 
 # that it will be useful, but WITHOUT ANY WARRANTY; without even the 
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
 # See the GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Customer management plugin for MantisBT.  
+# along with TelegramBot plugin for MantisBT.  
 # If not, see <http://www.gnu.org/licenses/>.
 
 /**
@@ -45,7 +45,7 @@ function telegram_message_owner_changed( $p_bug_id, $p_prev_handler_id, $p_new_h
         }
     }
 
-    telegram_message_generic( $p_bug_id, 'owner', $t_message_id, /* headers */ null, $t_extra_user_ids_to_telegram );
+    telegram_message_generic( $p_bug_id, 'owner', $t_message_id, /* headers */ array(), $t_extra_user_ids_to_telegram );
 }
 
 /**
@@ -246,7 +246,7 @@ function telegram_message_bugnote_add_generic( $p_bugnote_id, $p_files = array()
  * @param array   $p_header_optional_params Array of additional telegram message headers.
  * @return void
  */
-function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_message_id, $p_user_id, array $p_header_optional_params = null ) {
+function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_message_id, $p_user_id, array $p_header_optional_params = array() ) {
     $t_telegram_user_id = telegram_user_get_id_by_user_id( $p_user_id );
 
     # check whether email should be sent
@@ -261,7 +261,7 @@ function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_me
     # build message
     $t_message = plugin_lang_get( $p_message_id );
 
-    if( is_array( $p_header_optional_params ) ) {
+    if( $p_header_optional_params ) {
         $t_message = vsprintf( $t_message, $p_header_optional_params );
     }
 
@@ -296,7 +296,7 @@ function telegram_message_bug_info_to_one_user( array $p_visible_bug_data, $p_me
  * @param array   $p_header_optional_params  Optional Parameters (default null)
  * @return void
  */
-function telegram_message_generic_to_recipients( $p_bug_id, $p_notify_type, array $p_recipients, $p_message_id = null, array $p_header_optional_params = null ) {
+function telegram_message_generic_to_recipients( $p_bug_id, $p_notify_type, array $p_recipients, $p_message_id = null, array $p_header_optional_params = array() ) {
     if( empty( $p_recipients ) ) {
         return;
     }
@@ -339,7 +339,7 @@ function telegram_message_generic_to_recipients( $p_bug_id, $p_notify_type, arra
  * @param array   $p_extra_user_ids_to_telegram_message Array of additional users to telegram message.
  * @return void
  */
-function telegram_message_generic( $p_bug_id, $p_notify_type, $p_message_id = null, array $p_header_optional_params = null, array $p_extra_user_ids_to_telegram_message = array() ) {
+function telegram_message_generic( $p_bug_id, $p_notify_type, $p_message_id = null, array $p_header_optional_params = array(), array $p_extra_user_ids_to_telegram_message = array() ) {
     # @todo yarick123: email_collect_recipients(...) will be completely rewritten to provide additional information such as language, user access,..
     # @todo yarick123:sort recipients list by language to reduce switches between different languages
     $t_recipients = telegram_message_collect_recipients( $p_bug_id, $p_notify_type, $p_extra_user_ids_to_telegram_message );

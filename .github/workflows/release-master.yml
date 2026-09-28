@@ -1,0 +1,59 @@
+name: Release Build
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-package:
+    name: Build and Package
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Cloning the repository
+    # The actions are pinned by the commit, a tag can be moved to other code.
+    # The token is not kept in .git/config: no later step pushes, and the
+    # build runs third party code (composer) next to it.
+    - name: Checkout code
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      with:
+        persist-credentials: false
+
+    # 2. Install PHP and Composer
+    # The PHP version is the minimum required by the oldest supported MantisBT
+    # release (PHP_MIN_VERSION of MantisBT 2.26, the floor declared in
+    # TelegramBot.php::register()), so that composer verifies the dependencies
+    # against the oldest platform the built archive has to run on.
+    - name: Setup PHP
+      uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+      with:
+        php-version: '7.2'
+        extensions: mbstring, intl, zip
+        tools: composer
+
+    # 3. Installing dependencies
+    # post-install-cmd of composer.json strips what the plugin never loads
+    # ( build/strip-vendor.php ), so --no-scripts must not be added here
+    - name: Install dependencies
+      run: composer install --no-dev --optimize-autoloader
+
+    # 4. Creating an archive
+    # The values of the event reach the shell through the environment only:
+    # interpolated into the script, a crafted tag name would become a command.
+    - name: Create Release Archive
+      env:
+        TAG_NAME: ${{ github.event.release.tag_name }}
+      run: |
+        zip -r "TelegramBot-${TAG_NAME}.zip" ./TelegramBot -x ".git*" "tests/*" ".github/*"
+
+    # 5. Uploading the archive to the release
+    - name: Upload to Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG_NAME: ${{ github.event.release.tag_name }}
+        REPOSITORY: ${{ github.repository }}
+      run: gh release upload "${TAG_NAME}" "TelegramBot-${TAG_NAME}.zip" --repo "${REPOSITORY}"

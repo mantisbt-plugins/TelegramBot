@@ -657,7 +657,7 @@ class TelegramBotPlugin extends MantisPlugin {
         telegram_message_generic( $p_issue_id, 'new', 'telegram_message_notification_title_for_action_bug_submitted' );
     }
 
-    function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id, $files ) {
+    function telegram_message_bugnote_add( $p_type_event, $p_bug_id, $p_bugnote_id, $p_files ) {
         global $g_skip_sending_bugnote;
 
         if( $g_skip_sending_bugnote == TRUE ) {
@@ -676,7 +676,9 @@ class TelegramBotPlugin extends MantisPlugin {
 
         $t_user_ids_that_got_mention_notifications = telegram_message_user_mention( $p_bug_id, $t_filtered_mentioned_user_ids, $t_bugnote_text, $t_removed_mentions_user_ids );
 
-        telegram_message_bugnote_add_generic( $p_bugnote_id, array(), $t_user_ids_that_got_mention_notifications );
+        # The files attached along with the note come with the event only, the
+        # way IssueNoteAddCommand hands them to email_bugnote_add()
+        telegram_message_bugnote_add_generic( $p_bugnote_id, $p_files, $t_user_ids_that_got_mention_notifications );
     }
 
     function telegram_message_skip_sending( $p_type_event, $p_updated_bug, $p_existing_bug ) {

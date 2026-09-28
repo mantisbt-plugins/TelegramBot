@@ -102,6 +102,16 @@ function telegram_bug_add( $p_bug_data_draft, $p_orgl_chat_id, $p_callback_msg_i
         $t_issue['handler'] = array( 'id' => $t_handler_id );
     }
 
+    # The command expects a list of arrays with 'id' as key, the way bug_report.php
+    # builds it; the reporter is not added on its own, the same as on the web form
+    $t_monitors = array_key_exists( 'monitors', $p_bug_data_draft ) ? $p_bug_data_draft['monitors'] : null;
+    if( is_array( $t_monitors ) && !empty( $t_monitors ) ) {
+        $t_issue['monitors'] = array();
+        foreach( $t_monitors as $t_monitor_id ) {
+            $t_issue['monitors'][] = array( 'id' => (int)$t_monitor_id );
+        }
+    }
+
     $t_view_state = array_key_exists( 'view_state', $p_bug_data_draft ) ? $p_bug_data_draft['view_state'] : 0;
     if( (int)$t_view_state != 0 ) {
         $t_issue['view_state'] = array( 'id' => $t_view_state );

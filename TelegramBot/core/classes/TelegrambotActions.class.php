@@ -36,6 +36,7 @@ class TelegrambotActions {
         # Steps of the status change dialog
         const SET_STATUS_RESOLUTION     = 'sres';
         const SET_STATUS_HANDLER        = 'sh';
+        const GET_STATUS_HANDLER        = 'gsh';
         const SET_STATUS_FIXED_VERSION  = 'sfv';
         # Apply the status change out of the draft as it is
         const APPLY_STATUS              = 'sapply';
@@ -56,6 +57,12 @@ class TelegrambotActions {
         const SET_PRODUCT_VERSION       = 'spversion';
         const SET_TARGET_VERSION        = 'stargetv';
         const SET_HANDLER               = 'shandler';
+        # Leaf through the list of the users an issue can be assigned to
+        const GET_HANDLER               = 'ghandler';
+        # Monitors of the issue: leaf through the list, tick one off, close the list
+        const GET_MONITOR               = 'gmon';
+        const TOGGLE_MONITOR            = 'tmon';
+        const END_MONITOR               = 'emon';
         # Skip an optional standard field of the draft, the value is the field name
         const SKIP_FIELD                = 'skipf';
         # Marker used instead of a value to skip a field answered with a keyboard of its own

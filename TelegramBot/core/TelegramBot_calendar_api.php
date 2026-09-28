@@ -50,9 +50,6 @@ define( 'TELEGRAM_CAPTION_LENGTH_MAX', 1024 );
 define( 'TELEGRAM_EVENT_DATE_FROM', 'f' );
 define( 'TELEGRAM_EVENT_DATE_TO', 't' );
 
-# Buttons of the member list, ten per page as everywhere else in the plugin
-define( 'TELEGRAM_EVENT_MEMBERS_PER_PAGE', 10 );
-
 # Buttons of the issue list, the page is asked from Calendar with this size
 define( 'TELEGRAM_EVENT_ISSUES_PER_PAGE', 10 );
 

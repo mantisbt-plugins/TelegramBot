@@ -104,6 +104,25 @@ function telegram_message_format_line( $p_label, $p_value ) {
 }
 
 /**
+ * The most recently modified note of a list, the way bugnote_get_latest_id()
+ * picks it, but independent of the order the list was fetched in.
+ *
+ * @param array $p_bugnotes Notes visible to the recipient (BugnoteData objects).
+ * @return BugnoteData|null The latest note, or null for an empty list.
+ */
+function telegram_message_bugnote_latest( array $p_bugnotes ) {
+    $t_latest = null;
+    foreach( $p_bugnotes as $t_bugnote ) {
+        if( $t_latest === null
+                || $t_bugnote->last_modified > $t_latest->last_modified
+                || ( $t_bugnote->last_modified == $t_latest->last_modified && $t_bugnote->id > $t_latest->id ) ) {
+            $t_latest = $t_bugnote;
+        }
+    }
+    return $t_latest;
+}
+
+/**
  * Build the bug info part of the message
  * @param array $p_visible_bug_data Bug data array to format.
  * @return string
@@ -235,11 +254,12 @@ function telegram_message_format_bug_message( array $p_visible_bug_data, $p_incl
                                 /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
             }
         } else {
-            $t_bugnotes_last_id = bugnote_get_latest_id( $p_visible_bug_data['email_bug'] );
-            if( $t_bugnotes_last_id != NULL ) {
-                $t_bugnote = bugnote_get( $t_bugnotes_last_id );
+            # Only the notes already filtered for the recipient: a note taken from the
+            # database directly would leak private notes and time tracking.
+            $t_bugnote = telegram_message_bugnote_latest( $p_visible_bug_data['bugnotes'] );
+            if( $t_bugnote !== null ) {
+                # Show time tracking is always true, since data has already been filtered out when creating the bug visible data.
                 $t_message .= email_format_bugnote( $t_bugnote, $p_visible_bug_data['email_project_id'],
-//        $t_message .= telegram_message_format_bugnote( $p_visible_bug_data['bugnotes'][$t_bugnotes_count - 1], $p_visible_bug_data['email_project_id'],
                                 /* show_time_tracking */ true, $t_telegram_message_separator2, $t_normal_date_format ) . "\n";
             }
         }

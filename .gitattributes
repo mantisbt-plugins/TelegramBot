@@ -1,1 +1,6 @@
 * text=auto eol=lf
+
+# Development files stay out of the source archives of GitHub
+/.github export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore

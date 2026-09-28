@@ -15,5 +15,9 @@
     },
     "config": {
         "vendor-dir": "TelegramBot/api/vendor"
+    },
+    "scripts": {
+        "post-install-cmd": "@php build/strip-vendor.php",
+        "post-update-cmd": "@php build/strip-vendor.php"
     }
 }

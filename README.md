@@ -231,8 +231,4 @@ Supported Versions
 - The plugin declares no PHP version of its own: the minimum is the one required by the MantisBT
   release it runs on - PHP 7.2.5 for MantisBT 2.26.x and PHP 7.4.0 for 2.27.0 and higher. Tested
   up to PHP 8.4;
-- The Calendar plugin is optional; the integration with it requires Calendar 3.0.0 or higher;
-- The Webhook mode requires MantisBT itself to be reachable from the Internet over HTTPS, with a
-  certificate from a trusted CA or a self-signed one uploaded on the settings page. The Script
-  mode needs no certificate of its own and no inbound access: the plugin talks to
-  api.telegram.org over an outgoing HTTPS connection.
+- The Calendar plugin is optional; the integration with it requires Calendar 3.0.0 or higher.
